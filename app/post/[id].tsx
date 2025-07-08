@@ -1,0 +1,524 @@
+import { StarRating } from "@/components/StarRating";
+import { palette } from "@/constants/Colors";
+import { spacing } from "@/constants/spacing";
+import { fontSizes, fontWeights } from "@/constants/typography";
+import { usePostActions, usePostsData } from "@/hooks/usePostStore";
+import { Post } from "@/models/Post";
+import { Ionicons } from "@expo/vector-icons";
+import { useLocalSearchParams, useRouter } from "expo-router";
+import React, { useEffect, useState } from "react";
+import {
+  Animated,
+  Dimensions,
+  ScrollView,
+  StyleSheet,
+  Text,
+  TextInput,
+  TouchableOpacity,
+  View,
+} from "react-native";
+import { SafeAreaView } from "react-native-safe-area-context";
+
+const { width: screenWidth } = Dimensions.get("window");
+
+export default function PostScreen() {
+  const { id } = useLocalSearchParams<{ id: string }>();
+  const router = useRouter();
+  const { posts } = usePostsData();
+  const { updatePost, togglePostRead, setPostRating, deletePost } =
+    usePostActions();
+
+  const [post, setPost] = useState<Post | null>(null);
+  const [isEditing, setIsEditing] = useState(false);
+  const [editedTitle, setEditedTitle] = useState("");
+  const [editedBody, setEditedBody] = useState("");
+  const [editedNotes, setEditedNotes] = useState("");
+  const [sidebarOpen, setSidebarOpen] = useState(false);
+
+  // Animation values
+  const slideAnim = useState(new Animated.Value(screenWidth))[0];
+  const sidebarAnim = useState(new Animated.Value(screenWidth * 0.3))[0];
+
+  useEffect(() => {
+    if (id) {
+      const foundPost = posts.find((p) => p.id === parseInt(id));
+      if (foundPost) {
+        setPost(foundPost);
+        setEditedTitle(foundPost.customTitle || foundPost.title);
+        setEditedBody(foundPost.customBody || foundPost.bodyText);
+        setEditedNotes(foundPost.notes || "");
+      }
+    }
+  }, [id, posts]);
+
+  useEffect(() => {
+    // Slide in animation
+    Animated.timing(slideAnim, {
+      toValue: 0,
+      duration: 300,
+      useNativeDriver: true,
+    }).start();
+  }, [slideAnim]);
+
+  const handleBack = () => {
+    Animated.timing(slideAnim, {
+      toValue: screenWidth,
+      duration: 300,
+      useNativeDriver: true,
+    }).start(() => {
+      router.back();
+    });
+  };
+
+  const handleSave = () => {
+    if (post) {
+      updatePost(post.id, {
+        customTitle: editedTitle !== post.title ? editedTitle : undefined,
+        customBody: editedBody !== post.bodyText ? editedBody : undefined,
+        notes: editedNotes,
+      });
+      setIsEditing(false);
+    }
+  };
+
+  const handleDelete = () => {
+    if (post) {
+      deletePost(post.id);
+      handleBack();
+    }
+  };
+
+  const toggleSidebar = () => {
+    const toValue = sidebarOpen ? screenWidth * 0.3 : 0;
+    setSidebarOpen(!sidebarOpen);
+
+    Animated.timing(sidebarAnim, {
+      toValue,
+      duration: 300,
+      useNativeDriver: true,
+    }).start();
+  };
+
+  const formatDate = (date: Date): string => {
+    return new Date(date).toLocaleDateString("en-US", {
+      year: "numeric",
+      month: "short",
+      day: "numeric",
+    });
+  };
+
+  const formatRedditUser = (username: string): string => {
+    return username.startsWith("u/") ? username : `u/${username}`;
+  };
+
+  if (!post) {
+    return (
+      <SafeAreaView style={styles.container}>
+        <Text style={styles.errorText}>Post not found</Text>
+      </SafeAreaView>
+    );
+  }
+
+  return (
+    <SafeAreaView style={styles.container}>
+      <Animated.View
+        style={[styles.mainContent, { transform: [{ translateX: slideAnim }] }]}
+      >
+        {/* Header */}
+        <View style={styles.header}>
+          <TouchableOpacity onPress={handleBack} style={styles.backButton}>
+            <Ionicons
+              name="chevron-back"
+              size={24}
+              color={palette.foreground}
+            />
+          </TouchableOpacity>
+
+          <View style={styles.headerActions}>
+            <TouchableOpacity
+              onPress={toggleSidebar}
+              style={styles.actionButton}
+            >
+              <Ionicons name="menu" size={24} color={palette.foreground} />
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              onPress={() => setIsEditing(!isEditing)}
+              style={styles.actionButton}
+            >
+              <Ionicons
+                name={isEditing ? "checkmark" : "create"}
+                size={24}
+                color={palette.accent}
+              />
+            </TouchableOpacity>
+          </View>
+        </View>
+
+        {/* Main Content */}
+        <ScrollView style={styles.content} showsVerticalScrollIndicator={false}>
+          {/* Title Section */}
+          <View style={styles.titleSection}>
+            {isEditing ? (
+              <TextInput
+                style={styles.titleInput}
+                value={editedTitle}
+                onChangeText={setEditedTitle}
+                multiline
+                placeholder="Post title..."
+              />
+            ) : (
+              <Text style={styles.title}>{editedTitle}</Text>
+            )}
+
+            {/* Post metadata */}
+            <View style={styles.metadata}>
+              <Text style={styles.metadataText}>
+                {formatDate(post.redditCreatedAt)}
+              </Text>
+              <Text style={styles.separator}>•</Text>
+              <TouchableOpacity>
+                <Text style={[styles.metadataText, styles.userLink]}>
+                  {formatRedditUser(post.author)}
+                </Text>
+              </TouchableOpacity>
+              <Text style={styles.separator}>•</Text>
+              <Text style={styles.metadataText}>r/{post.subreddit}</Text>
+            </View>
+
+            {/* Rating */}
+            <View style={styles.ratingSection}>
+              <StarRating
+                rating={post.rating || 0}
+                onRate={(rating) => setPostRating(post.id, rating)}
+                size={20}
+              />
+              <TouchableOpacity
+                onPress={() => togglePostRead(post.id)}
+                style={styles.readToggle}
+              >
+                <Ionicons
+                  name={
+                    post.isRead
+                      ? "checkmark-circle"
+                      : "checkmark-circle-outline"
+                  }
+                  size={24}
+                  color={post.isRead ? palette.accent : palette.muted}
+                />
+                <Text style={styles.readText}>
+                  {post.isRead ? "Read" : "Unread"}
+                </Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+
+          {/* Body Section */}
+          <View style={styles.bodySection}>
+            {isEditing ? (
+              <TextInput
+                style={styles.bodyInput}
+                value={editedBody}
+                onChangeText={setEditedBody}
+                multiline
+                placeholder="Post content..."
+                textAlignVertical="top"
+              />
+            ) : (
+              <Text style={styles.body}>{editedBody}</Text>
+            )}
+          </View>
+
+          {/* Notes Section (when editing) */}
+          {isEditing && (
+            <View style={styles.notesSection}>
+              <Text style={styles.sectionTitle}>Notes</Text>
+              <TextInput
+                style={styles.notesInput}
+                value={editedNotes}
+                onChangeText={setEditedNotes}
+                multiline
+                placeholder="Add your notes..."
+                textAlignVertical="top"
+              />
+            </View>
+          )}
+
+          {/* Action Buttons */}
+          {isEditing && (
+            <View style={styles.actionSection}>
+              <TouchableOpacity style={styles.saveButton} onPress={handleSave}>
+                <Text style={styles.saveButtonText}>Save Changes</Text>
+              </TouchableOpacity>
+
+              <TouchableOpacity
+                style={styles.deleteButton}
+                onPress={handleDelete}
+              >
+                <Text style={styles.deleteButtonText}>Delete Post</Text>
+              </TouchableOpacity>
+            </View>
+          )}
+        </ScrollView>
+      </Animated.View>
+
+      {/* Right Sidebar */}
+      <Animated.View
+        style={[styles.sidebar, { transform: [{ translateX: sidebarAnim }] }]}
+      >
+        <View style={styles.sidebarHeader}>
+          <Text style={styles.sidebarTitle}>Details</Text>
+          <TouchableOpacity onPress={toggleSidebar}>
+            <Ionicons name="close" size={24} color={palette.foreground} />
+          </TouchableOpacity>
+        </View>
+
+        <ScrollView style={styles.sidebarContent}>
+          {/* Notes */}
+          <View style={styles.sidebarSection}>
+            <Text style={styles.sidebarSectionTitle}>Notes</Text>
+            <Text style={styles.sidebarText}>
+              {post.notes || "No notes added yet"}
+            </Text>
+          </View>
+
+          {/* Tags */}
+          <View style={styles.sidebarSection}>
+            <Text style={styles.sidebarSectionTitle}>Tags</Text>
+            <Text style={styles.sidebarText}>
+              {post.tagIds.length > 0
+                ? "Tags will be shown here"
+                : "No tags added"}
+            </Text>
+          </View>
+
+          {/* Folder */}
+          <View style={styles.sidebarSection}>
+            <Text style={styles.sidebarSectionTitle}>Folder</Text>
+            <Text style={styles.sidebarText}>
+              {post.folderId ? "Folder info" : "No folder assigned"}
+            </Text>
+          </View>
+
+          {/* Post Info */}
+          <View style={styles.sidebarSection}>
+            <Text style={styles.sidebarSectionTitle}>Post Info</Text>
+            <Text style={styles.sidebarText}>
+              Added: {formatDate(post.addedAt)}
+            </Text>
+            <Text style={styles.sidebarText}>
+              Original: {formatDate(post.redditCreatedAt)}
+            </Text>
+            <Text style={styles.sidebarText}>
+              Subreddit: r/{post.subreddit}
+            </Text>
+          </View>
+        </ScrollView>
+      </Animated.View>
+    </SafeAreaView>
+  );
+}
+
+const styles = StyleSheet.create({
+  container: {
+    flex: 1,
+    backgroundColor: palette.background,
+  },
+  mainContent: {
+    flex: 1,
+    zIndex: 1,
+  },
+  header: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    paddingHorizontal: spacing.m,
+    paddingVertical: spacing.s,
+    borderBottomWidth: 1,
+    borderBottomColor: palette.border,
+  },
+  backButton: {
+    padding: spacing.s,
+  },
+  headerActions: {
+    flexDirection: "row",
+    gap: spacing.s,
+  },
+  actionButton: {
+    padding: spacing.s,
+  },
+  content: {
+    flex: 1,
+  },
+  titleSection: {
+    padding: spacing.m,
+    borderBottomWidth: 1,
+    borderBottomColor: palette.border,
+  },
+  title: {
+    fontSize: fontSizes.xlarge,
+    fontWeight: fontWeights.bold,
+    color: palette.foreground,
+    marginBottom: spacing.s,
+  },
+  titleInput: {
+    fontSize: fontSizes.xlarge,
+    fontWeight: fontWeights.bold,
+    color: palette.foreground,
+    marginBottom: spacing.s,
+    padding: spacing.s,
+    backgroundColor: palette.background,
+    borderWidth: 1,
+    borderColor: palette.border,
+    borderRadius: 8,
+  },
+  metadata: {
+    flexDirection: "row",
+    alignItems: "center",
+    marginBottom: spacing.m,
+  },
+  metadataText: {
+    fontSize: fontSizes.body,
+    color: palette.muted,
+  },
+  separator: {
+    fontSize: fontSizes.body,
+    color: palette.muted,
+    marginHorizontal: spacing.xs,
+  },
+  userLink: {
+    color: palette.accent,
+  },
+  ratingSection: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+  },
+  readToggle: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: spacing.xs,
+  },
+  readText: {
+    fontSize: fontSizes.body,
+    color: palette.muted,
+  },
+  bodySection: {
+    padding: spacing.m,
+  },
+  body: {
+    fontSize: fontSizes.body,
+    lineHeight: 24,
+    color: palette.foreground,
+  },
+  bodyInput: {
+    fontSize: fontSizes.body,
+    lineHeight: 24,
+    color: palette.foreground,
+    padding: spacing.s,
+    backgroundColor: palette.background,
+    borderWidth: 1,
+    borderColor: palette.border,
+    borderRadius: 8,
+    minHeight: 200,
+  },
+  notesSection: {
+    padding: spacing.m,
+    borderTopWidth: 1,
+    borderTopColor: palette.border,
+  },
+  sectionTitle: {
+    fontSize: fontSizes.large,
+    fontWeight: fontWeights.semibold,
+    color: palette.foreground,
+    marginBottom: spacing.s,
+  },
+  notesInput: {
+    fontSize: fontSizes.body,
+    color: palette.foreground,
+    padding: spacing.s,
+    backgroundColor: palette.background,
+    borderWidth: 1,
+    borderColor: palette.border,
+    borderRadius: 8,
+    minHeight: 100,
+  },
+  actionSection: {
+    padding: spacing.m,
+    gap: spacing.m,
+  },
+  saveButton: {
+    backgroundColor: palette.accent,
+    paddingVertical: spacing.m,
+    paddingHorizontal: spacing.l,
+    borderRadius: 8,
+    alignItems: "center",
+  },
+  saveButtonText: {
+    color: palette.background,
+    fontSize: fontSizes.body,
+    fontWeight: fontWeights.semibold,
+  },
+  deleteButton: {
+    backgroundColor: "transparent",
+    paddingVertical: spacing.m,
+    paddingHorizontal: spacing.l,
+    borderRadius: 8,
+    alignItems: "center",
+    borderWidth: 1,
+    borderColor: "#FF3B30",
+  },
+  deleteButtonText: {
+    color: "#FF3B30",
+    fontSize: fontSizes.body,
+    fontWeight: fontWeights.semibold,
+  },
+  sidebar: {
+    position: "absolute",
+    top: 0,
+    right: 0,
+    width: screenWidth * 0.7,
+    height: "100%",
+    backgroundColor: palette.background,
+    borderLeftWidth: 1,
+    borderLeftColor: palette.border,
+    zIndex: 2,
+  },
+  sidebarHeader: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    padding: spacing.m,
+    borderBottomWidth: 1,
+    borderBottomColor: palette.border,
+  },
+  sidebarTitle: {
+    fontSize: fontSizes.title,
+    fontWeight: fontWeights.semibold,
+    color: palette.foreground,
+  },
+  sidebarContent: {
+    flex: 1,
+    padding: spacing.m,
+  },
+  sidebarSection: {
+    marginBottom: spacing.l,
+  },
+  sidebarSectionTitle: {
+    fontSize: fontSizes.body,
+    fontWeight: fontWeights.semibold,
+    color: palette.foreground,
+    marginBottom: spacing.s,
+  },
+  sidebarText: {
+    fontSize: fontSizes.body,
+    color: palette.muted,
+    lineHeight: 20,
+  },
+  errorText: {
+    fontSize: fontSizes.body,
+    color: palette.muted,
+    textAlign: "center",
+    marginTop: spacing.xl,
+  },
+});

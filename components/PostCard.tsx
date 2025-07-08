@@ -1,4 +1,5 @@
 import { Ionicons } from "@expo/vector-icons";
+import { useRouter } from "expo-router";
 import React from "react";
 import { StyleSheet, Text, TouchableOpacity, View } from "react-native";
 import { palette } from "../constants/Colors";
@@ -7,6 +8,7 @@ import { fontSizes, fontWeights } from "../constants/typography";
 import { StarRating } from "./StarRating";
 
 interface PostCardProps {
+  id: number;
   title: string;
   date: number; // epoch timestamp
   rating: number;
@@ -16,6 +18,7 @@ interface PostCardProps {
 }
 
 export const PostCard: React.FC<PostCardProps> = ({
+  id,
   title,
   date,
   rating,
@@ -23,6 +26,11 @@ export const PostCard: React.FC<PostCardProps> = ({
   onToggleRead,
   onRate,
 }) => {
+  const router = useRouter();
+
+  const handlePress = () => {
+    router.push(`/post/${id}` as any);
+  };
   const formatDate = (timestamp: number): string => {
     const date = new Date(timestamp);
     const now = new Date();
@@ -42,7 +50,11 @@ export const PostCard: React.FC<PostCardProps> = ({
   };
 
   return (
-    <View style={styles.container}>
+    <TouchableOpacity
+      style={styles.container}
+      onPress={handlePress}
+      activeOpacity={0.8}
+    >
       {/* Top row: Title and date */}
       <View style={styles.topRow}>
         <Text
@@ -60,7 +72,10 @@ export const PostCard: React.FC<PostCardProps> = ({
 
         <TouchableOpacity
           style={styles.readButton}
-          onPress={onToggleRead}
+          onPress={(e) => {
+            e.stopPropagation();
+            onToggleRead();
+          }}
           activeOpacity={0.7}
         >
           <Ionicons
@@ -70,7 +85,7 @@ export const PostCard: React.FC<PostCardProps> = ({
           />
         </TouchableOpacity>
       </View>
-    </View>
+    </TouchableOpacity>
   );
 };
 

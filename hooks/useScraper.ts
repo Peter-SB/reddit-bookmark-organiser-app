@@ -119,6 +119,8 @@ export function useScraper(): UseScraperResult {
         throw new Error('No post data found in Reddit response');
       }
 
+      console.log('Raw post data:', raw);
+
       // Step 5: map and return
       return mapToPost(raw);
     } catch (err: any) {

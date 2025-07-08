@@ -91,6 +91,7 @@ export default function HomeScreen() {
 
   const renderPost = ({ item }: { item: Post }) => (
     <PostCard
+      id={item.id}
       title={item.customTitle || item.title}
       date={item.addedAt.getTime()}
       rating={item.rating || 0}
