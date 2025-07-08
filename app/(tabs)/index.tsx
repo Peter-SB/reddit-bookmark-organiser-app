@@ -1,75 +1,169 @@
-import { Image } from 'expo-image';
-import { Platform, StyleSheet } from 'react-native';
-
-import { HelloWave } from '@/components/HelloWave';
-import ParallaxScrollView from '@/components/ParallaxScrollView';
-import { ThemedText } from '@/components/ThemedText';
-import { ThemedView } from '@/components/ThemedView';
+import { InputBar } from "@/components/InputBar";
+import { PostCard } from "@/components/PostCard";
+import { palette } from "@/constants/Colors";
+import { spacing } from "@/constants/spacing";
+import { fontSizes, fontWeights } from "@/constants/typography";
+import { usePostStore } from "@/hooks/usePostStore";
+import { useScraper } from "@/hooks/useScraper";
+import { Post } from "@/models/Post";
+import React from "react";
+import {
+  ActivityIndicator,
+  FlatList,
+  StyleSheet,
+  Text,
+  View,
+} from "react-native";
+import { SafeAreaView } from "react-native-safe-area-context";
 
 export default function HomeScreen() {
+  const { posts, isLoading, addPost, toggleRead, setRating } = usePostStore();
+  const { extractPostData } = useScraper();
+
+  const handleAddPost = async (url: string): Promise<void> => {
+    try {
+      // Extract post data using the scraper
+      const postData = await extractPostData(url);
+
+      // Add to store
+      await addPost(url, postData.title);
+    } catch (error) {
+      console.error("Failed to add post:", error);
+      throw error;
+    }
+  };
+
+  const handleToggleRead = async (postId: string): Promise<void> => {
+    try {
+      await toggleRead(postId);
+    } catch (error) {
+      console.error("Failed to toggle read status:", error);
+    }
+  };
+
+  const handleSetRating = async (
+    postId: string,
+    rating: number
+  ): Promise<void> => {
+    try {
+      await setRating(postId, rating);
+    } catch (error) {
+      console.error("Failed to set rating:", error);
+    }
+  };
+
+  const renderPost = ({ item }: { item: Post }) => (
+    <PostCard
+      title={item.title}
+      date={item.dateAdded}
+      rating={item.rating}
+      read={item.read}
+      onToggleRead={() => handleToggleRead(item.id)}
+      onRate={(rating) => handleSetRating(item.id, rating)}
+    />
+  );
+
+  const renderEmptyState = () => (
+    <View style={styles.emptyState}>
+      <Text style={styles.emptyTitle}>No bookmarks yet</Text>
+      <Text style={styles.emptySubtitle}>
+        Add your first Reddit post by pasting a URL above
+      </Text>
+    </View>
+  );
+
+  if (isLoading) {
+    return (
+      <SafeAreaView style={styles.container}>
+        <View style={styles.loadingContainer}>
+          <ActivityIndicator size="large" color={palette.accent} />
+          <Text style={styles.loadingText}>Loading bookmarks...</Text>
+        </View>
+      </SafeAreaView>
+    );
+  }
+
   return (
-    <ParallaxScrollView
-      headerBackgroundColor={{ light: '#A1CEDC', dark: '#1D3D47' }}
-      headerImage={
-        <Image
-          source={require('@/assets/images/partial-react-logo.png')}
-          style={styles.reactLogo}
-        />
-      }>
-      <ThemedView style={styles.titleContainer}>
-        <ThemedText type="title">Welcome!</ThemedText>
-        <HelloWave />
-      </ThemedView>
-      <ThemedView style={styles.stepContainer}>
-        <ThemedText type="subtitle">Step 1: Try it</ThemedText>
-        <ThemedText>
-          Edit <ThemedText type="defaultSemiBold">app/(tabs)/index.tsx</ThemedText> to see changes.
-          Press{' '}
-          <ThemedText type="defaultSemiBold">
-            {Platform.select({
-              ios: 'cmd + d',
-              android: 'cmd + m',
-              web: 'F12',
-            })}
-          </ThemedText>{' '}
-          to open developer tools.
-        </ThemedText>
-      </ThemedView>
-      <ThemedView style={styles.stepContainer}>
-        <ThemedText type="subtitle">Step 2: Explore</ThemedText>
-        <ThemedText>
-          {`Tap the Explore tab to learn more about what's included in this starter app.`}
-        </ThemedText>
-      </ThemedView>
-      <ThemedView style={styles.stepContainer}>
-        <ThemedText type="subtitle">Step 3: Get a fresh start</ThemedText>
-        <ThemedText>
-          {`When you're ready, run `}
-          <ThemedText type="defaultSemiBold">npm run reset-project</ThemedText> to get a fresh{' '}
-          <ThemedText type="defaultSemiBold">app</ThemedText> directory. This will move the current{' '}
-          <ThemedText type="defaultSemiBold">app</ThemedText> to{' '}
-          <ThemedText type="defaultSemiBold">app-example</ThemedText>.
-        </ThemedText>
-      </ThemedView>
-    </ParallaxScrollView>
+    <SafeAreaView style={styles.container}>
+      <View style={styles.header}>
+        <Text style={styles.title}>Reddit Bookmarks</Text>
+        <Text style={styles.subtitle}>
+          {posts.length} {posts.length === 1 ? "bookmark" : "bookmarks"}
+        </Text>
+      </View>
+
+      <InputBar onSubmit={handleAddPost} />
+
+      <FlatList
+        data={posts}
+        keyExtractor={(item) => item.id}
+        renderItem={renderPost}
+        ListEmptyComponent={renderEmptyState}
+        showsVerticalScrollIndicator={false}
+        style={styles.list}
+        contentContainerStyle={
+          posts.length === 0 ? styles.listContentCentered : styles.listContent
+        }
+      />
+    </SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
-  titleContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
+  container: {
+    flex: 1,
+    backgroundColor: "#F8F9FA",
   },
-  stepContainer: {
-    gap: 8,
-    marginBottom: 8,
+  header: {
+    paddingHorizontal: spacing.m,
+    paddingTop: spacing.m,
+    paddingBottom: spacing.s,
   },
-  reactLogo: {
-    height: 178,
-    width: 290,
-    bottom: 0,
-    left: 0,
-    position: 'absolute',
+  title: {
+    fontSize: fontSizes.xlarge,
+    fontWeight: fontWeights.bold,
+    color: palette.foreground,
+    marginBottom: spacing.xs,
+  },
+  subtitle: {
+    fontSize: fontSizes.body,
+    color: palette.muted,
+  },
+  list: {
+    flex: 1,
+  },
+  listContent: {
+    paddingBottom: spacing.l,
+  },
+  listContentCentered: {
+    flexGrow: 1,
+    justifyContent: "center",
+    paddingBottom: spacing.l,
+  },
+  emptyState: {
+    alignItems: "center",
+    paddingHorizontal: spacing.l,
+  },
+  emptyTitle: {
+    fontSize: fontSizes.title,
+    fontWeight: fontWeights.semibold,
+    color: palette.foreground,
+    marginBottom: spacing.s,
+  },
+  emptySubtitle: {
+    fontSize: fontSizes.body,
+    color: palette.muted,
+    textAlign: "center",
+    lineHeight: 20,
+  },
+  loadingContainer: {
+    flex: 1,
+    justifyContent: "center",
+    alignItems: "center",
+  },
+  loadingText: {
+    fontSize: fontSizes.body,
+    color: palette.muted,
+    marginTop: spacing.m,
   },
 });
