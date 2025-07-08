@@ -3,12 +3,17 @@ import { PostCard } from "@/components/PostCard";
 import { palette } from "@/constants/Colors";
 import { spacing } from "@/constants/spacing";
 import { fontSizes, fontWeights } from "@/constants/typography";
-import { usePostStore } from "@/hooks/usePostStore";
+import {
+  usePostActions,
+  usePostsData,
+  usePostStore,
+} from "@/hooks/usePostStore";
 import { useScraper } from "@/hooks/useScraper";
 import { Post } from "@/models/Post";
-import React from "react";
+import React, { useState } from "react";
 import {
   ActivityIndicator,
+  Alert,
   FlatList,
   StyleSheet,
   Text,
@@ -17,36 +22,68 @@ import {
 import { SafeAreaView } from "react-native-safe-area-context";
 
 export default function HomeScreen() {
-  const { posts, isLoading, addPost, toggleRead, setRating } = usePostStore();
-  const { extractPostData } = useScraper();
+  const { posts, getPostStats } = usePostsData();
+  const { addPost, togglePostRead, setPostRating } = usePostActions();
+  const detectDuplicates = usePostStore((state) => state.detectDuplicates);
+  const { extractPostData, loading: scraperLoading } = useScraper();
+  const [isAddingPost, setIsAddingPost] = useState(false);
 
   const handleAddPost = async (url: string): Promise<void> => {
+    if (isAddingPost) return;
+
+    setIsAddingPost(true);
     try {
       // Extract post data using the scraper
       const postData = await extractPostData(url);
 
+      console.log("Extracted post data:", postData);
+
+      // Check for duplicates
+      const duplicates = detectDuplicates(postData);
+      if (duplicates.length > 0) {
+        Alert.alert(
+          "Duplicate Post",
+          "This post appears to already exist in your library. Do you want to add it anyway?",
+          [
+            { text: "Cancel", style: "cancel" },
+            {
+              text: "Add Anyway",
+              onPress: () => {
+                addPost(postData);
+                Alert.alert("Success", "Post added to your library!");
+              },
+            },
+          ]
+        );
+        return;
+      }
+
       // Add to store
-      await addPost(url, postData.title);
+      addPost(postData);
+      Alert.alert("Success", "Post added to your library!");
     } catch (error) {
       console.error("Failed to add post:", error);
-      throw error;
+      Alert.alert(
+        "Error",
+        "Failed to add post. Please check the URL and try again. \nError: " +
+          (error instanceof Error ? error.message : String(error))
+      );
+    } finally {
+      setIsAddingPost(false);
     }
   };
 
-  const handleToggleRead = async (postId: string): Promise<void> => {
+  const handleToggleRead = (postId: number): void => {
     try {
-      await toggleRead(postId);
+      togglePostRead(postId);
     } catch (error) {
       console.error("Failed to toggle read status:", error);
     }
   };
 
-  const handleSetRating = async (
-    postId: string,
-    rating: number
-  ): Promise<void> => {
+  const handleSetRating = (postId: number, rating: number): void => {
     try {
-      await setRating(postId, rating);
+      setPostRating(postId, rating);
     } catch (error) {
       console.error("Failed to set rating:", error);
     }
@@ -54,10 +91,10 @@ export default function HomeScreen() {
 
   const renderPost = ({ item }: { item: Post }) => (
     <PostCard
-      title={item.title}
-      date={item.dateAdded}
-      rating={item.rating}
-      read={item.read}
+      title={item.customTitle || item.title}
+      date={item.addedAt.getTime()}
+      rating={item.rating || 0}
+      read={item.isRead}
       onToggleRead={() => handleToggleRead(item.id)}
       onRate={(rating) => handleSetRating(item.id, rating)}
     />
@@ -72,31 +109,33 @@ export default function HomeScreen() {
     </View>
   );
 
-  if (isLoading) {
-    return (
-      <SafeAreaView style={styles.container}>
-        <View style={styles.loadingContainer}>
-          <ActivityIndicator size="large" color={palette.accent} />
-          <Text style={styles.loadingText}>Loading bookmarks...</Text>
-        </View>
-      </SafeAreaView>
-    );
-  }
+  const stats = getPostStats();
+  const isLoading = scraperLoading || isAddingPost;
 
   return (
     <SafeAreaView style={styles.container}>
       <View style={styles.header}>
         <Text style={styles.title}>Reddit Bookmarks</Text>
         <Text style={styles.subtitle}>
-          {posts.length} {posts.length === 1 ? "bookmark" : "bookmarks"}
+          {stats.total} {stats.total === 1 ? "bookmark" : "bookmarks"}
+          {stats.unread > 0 && ` • ${stats.unread} unread`}
         </Text>
       </View>
 
       <InputBar onSubmit={handleAddPost} />
 
+      {isLoading && (
+        <View style={styles.loadingContainer}>
+          <ActivityIndicator size="small" color={palette.accent} />
+          <Text style={styles.loadingText}>
+            {isAddingPost ? "Adding post..." : "Loading..."}
+          </Text>
+        </View>
+      )}
+
       <FlatList
         data={posts}
-        keyExtractor={(item) => item.id}
+        keyExtractor={(item) => item.id.toString()}
         renderItem={renderPost}
         ListEmptyComponent={renderEmptyState}
         showsVerticalScrollIndicator={false}
@@ -157,13 +196,14 @@ const styles = StyleSheet.create({
     lineHeight: 20,
   },
   loadingContainer: {
-    flex: 1,
+    flexDirection: "row",
     justifyContent: "center",
     alignItems: "center",
+    paddingVertical: spacing.m,
   },
   loadingText: {
     fontSize: fontSizes.body,
     color: palette.muted,
-    marginTop: spacing.m,
+    marginLeft: spacing.s,
   },
 });

@@ -20,7 +20,7 @@ def get_reddit_post_data(post_url):
 
 # Example usage:
 if __name__ == "__main__":
-    post_url = 'https://www.reddit.com/r/LocalLLaMA/comments/15sgg4m/what_modules_should_i_target_when_training_using/'  # Replace with your post URL
+    post_url = 'https://www.reddit.com/r/LocalLLaMA/comments/15sgg4m/what_modules_should_i_target_when_training_using.json/'  # Replace with your post URL
     try:
         post_data = get_reddit_post_data(post_url)
         print(post_data)
