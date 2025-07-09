@@ -92,7 +92,7 @@ export default function PostScreen() {
   const handleBack = () => {
     Animated.timing(slideAnim, {
       toValue: screenWidth,
-      duration: 300,
+      duration: 150,
       useNativeDriver: true,
     }).start(() => router.back());
   };

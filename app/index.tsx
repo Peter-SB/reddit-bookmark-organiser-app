@@ -1,3 +1,4 @@
+import { useRouter } from "expo-router";
 import React, { useState } from "react";
 import {
   ActivityIndicator,
@@ -24,6 +25,7 @@ import { usePosts } from "@/hooks/usePosts";
 import { useRedditApi } from "@/hooks/useRedditApi";
 
 export default function HomeScreen() {
+  const router = useRouter();
   const {
     posts,
     loading: postsLoading,
@@ -86,6 +88,8 @@ export default function HomeScreen() {
     // key is "home" | "search" | "tags" | "favorites" | "unread" | "settings"
     // or a folder.id number
     console.log("Selected:", key);
+    if (key === "settings") router.push("/settings");
+
     // TODO: navigate or filter your list based on key
     setSidebarOpen(false);
   };

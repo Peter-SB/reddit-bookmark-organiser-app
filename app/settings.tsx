@@ -3,24 +3,36 @@ import { spacing } from "@/constants/spacing";
 import { fontSizes, fontWeights } from "@/constants/typography";
 // import { useRedditAuth } from "@/hooks/useRedditAuth";
 import { Ionicons } from "@expo/vector-icons";
+import { router } from "expo-router";
 import React from "react";
-import { ScrollView, StyleSheet, Text, View } from "react-native";
+import {
+  ScrollView,
+  StyleSheet,
+  Text,
+  TouchableOpacity,
+  View,
+} from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 
 export default function SettingsScreen() {
-  // const { login, accessToken, loading } = useRedditAuth();
+  // const { login, accessToken, loading } = useRedditAuth()
 
   return (
     <SafeAreaView style={styles.container}>
-      <ScrollView
-        style={styles.scrollView}
-        contentContainerStyle={styles.content}
-      >
+      {/* Header */}
+      <View style={styles.header}>
+        <TouchableOpacity onPress={router.back} style={styles.backButton}>
+          <Ionicons name="chevron-back" size={24} color={palette.foreground} />
+        </TouchableOpacity>
         <View style={styles.header}>
           <Ionicons name="settings-outline" size={32} color={palette.accent} />
           <Text style={styles.title}>Settings</Text>
         </View>
-
+      </View>
+      <ScrollView
+        style={styles.scrollView}
+        contentContainerStyle={styles.content}
+      >
         {/* Login Button
         <View style={styles.section}>
           <Button
@@ -173,5 +185,8 @@ const styles = StyleSheet.create({
     color: palette.foreground,
     marginLeft: spacing.m,
     flex: 1,
+  },
+  backButton: {
+    padding: spacing.s,
   },
 });
