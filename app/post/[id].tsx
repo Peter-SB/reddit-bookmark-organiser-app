@@ -2,11 +2,13 @@ import { StarRating } from "@/components/StarRating";
 import { palette } from "@/constants/Colors";
 import { spacing } from "@/constants/spacing";
 import { fontSizes, fontWeights } from "@/constants/typography";
+import { usePosts } from "@/hooks/usePosts";
 import { Post } from "@/models/models";
 import { Ionicons } from "@expo/vector-icons";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import React, { useEffect, useState } from "react";
 import {
+  ActivityIndicator,
   Animated,
   Dimensions,
   ScrollView,
@@ -23,9 +25,16 @@ const { width: screenWidth } = Dimensions.get("window");
 export default function PostScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const router = useRouter();
-  const { posts } = usePostsData();
-  const { updatePost, togglePostRead, setPostRating, deletePost } =
-    usePostActions();
+
+  // grab everything from our hook
+  const {
+    posts,
+    loading,
+    updatePost: savePost,
+    toggleRead,
+    toggleFavorite,
+    deletePost,
+  } = usePosts();
 
   const [post, setPost] = useState<Post | null>(null);
   const [isEditing, setIsEditing] = useState(false);
@@ -41,20 +50,21 @@ export default function PostScreen() {
   const sidebarAnim = useState(new Animated.Value(sidebarWidth))[0];
   const [overlayOpacity] = useState(new Animated.Value(0));
 
+  // when posts load (or ID changes), find our post
   useEffect(() => {
-    if (id) {
-      const foundPost = posts.find((p) => p.id === parseInt(id));
-      if (foundPost) {
-        setPost(foundPost);
-        setEditedTitle(foundPost.customTitle || foundPost.title);
-        setEditedBody(foundPost.customBody || foundPost.bodyText);
-        setEditedNotes(foundPost.notes || "");
+    if (id && !loading) {
+      const found = posts.find((p) => p.id === parseInt(id, 10));
+      if (found) {
+        setPost(found);
+        setEditedTitle(found.customTitle ?? found.title);
+        setEditedBody(found.customBody ?? found.bodyText);
+        setEditedNotes(found.notes ?? "");
       }
     }
-  }, [id, posts]);
+  }, [id, posts, loading]);
 
+  // slide in
   useEffect(() => {
-    // Slide in animation
     Animated.timing(slideAnim, {
       toValue: 0,
       duration: 300,
@@ -62,49 +72,69 @@ export default function PostScreen() {
     }).start();
   }, [slideAnim]);
 
+  // guard while we load
+  if (loading || !post) {
+    return (
+      <SafeAreaView style={styles.container}>
+        {loading ? (
+          <ActivityIndicator style={{ marginTop: 40 }} />
+        ) : (
+          <Text style={styles.errorText}>Post not found</Text>
+        )}
+      </SafeAreaView>
+    );
+  }
+
   const handleBack = () => {
     Animated.timing(slideAnim, {
       toValue: screenWidth,
       duration: 300,
       useNativeDriver: true,
-    }).start(() => {
-      router.back();
-    });
+    }).start(() => router.back());
   };
 
-  const handleSave = () => {
-    if (post) {
-      updatePost(post.id, {
-        customTitle: editedTitle !== post.title ? editedTitle : undefined,
-        customBody: editedBody !== post.bodyText ? editedBody : undefined,
-        notes: editedNotes,
-      });
-      setIsEditing(false);
-    }
+  const handleSave = async () => {
+    const updated: Post = {
+      ...post,
+      customTitle: editedTitle !== post.title ? editedTitle : post.customTitle,
+      customBody: editedBody !== post.bodyText ? editedBody : post.customBody,
+      notes: editedNotes,
+    };
+    await savePost(updated);
+    setIsEditing(false);
   };
 
-  const handleDelete = () => {
-    if (post) {
-      deletePost(post.id);
-      handleBack();
-    }
+  const handleDelete = async () => {
+    await deletePost(post.id);
+    handleBack();
+  };
+
+  const handleSetRating = async (rating: number) => {
+    await savePost({ ...post, rating });
+  };
+
+  const handleToggleRead = async () => {
+    await toggleRead(post.id);
+  };
+
+  const handleToggleFavorite = async () => {
+    await toggleFavorite(post.id);
   };
 
   const toggleSidebar = () => {
-    const animationDuration = 150;
-
-    if (!sidebarVisible && !sidebarOpen) {
+    const dur = 150;
+    if (!sidebarOpen) {
       setSidebarVisible(true);
       setSidebarOpen(true);
       Animated.parallel([
         Animated.timing(sidebarAnim, {
           toValue: 0,
-          duration: animationDuration,
+          duration: dur,
           useNativeDriver: true,
         }),
         Animated.timing(overlayOpacity, {
           toValue: 1,
-          duration: animationDuration,
+          duration: dur,
           useNativeDriver: true,
         }),
       ]).start();
@@ -113,39 +143,26 @@ export default function PostScreen() {
       Animated.parallel([
         Animated.timing(sidebarAnim, {
           toValue: sidebarWidth,
-          duration: animationDuration,
+          duration: dur,
           useNativeDriver: true,
         }),
         Animated.timing(overlayOpacity, {
           toValue: 0,
-          duration: animationDuration,
+          duration: dur,
           useNativeDriver: true,
         }),
-      ]).start(() => {
-        setSidebarVisible(false);
-      });
+      ]).start(() => setSidebarVisible(false));
     }
   };
 
-  const formatDate = (date: Date): string => {
-    return new Date(date).toLocaleDateString("en-US", {
+  const formatDate = (dt: Date) =>
+    dt.toLocaleDateString("en-US", {
       year: "numeric",
       month: "short",
       day: "numeric",
     });
-  };
 
-  const formatRedditUser = (username: string): string => {
-    return username.startsWith("u/") ? username : `u/${username}`;
-  };
-
-  if (!post) {
-    return (
-      <SafeAreaView style={styles.container}>
-        <Text style={styles.errorText}>Post not found</Text>
-      </SafeAreaView>
-    );
-  }
+  const formatRedditUser = (u: string) => (u.startsWith("u/") ? u : `u/${u}`);
 
   return (
     <SafeAreaView style={styles.container}>
@@ -161,7 +178,6 @@ export default function PostScreen() {
               color={palette.foreground}
             />
           </TouchableOpacity>
-
           <View style={styles.headerActions}>
             <TouchableOpacity
               onPress={toggleSidebar}
@@ -169,9 +185,8 @@ export default function PostScreen() {
             >
               <Ionicons name="menu" size={24} color={palette.foreground} />
             </TouchableOpacity>
-
             <TouchableOpacity
-              onPress={() => setIsEditing(!isEditing)}
+              onPress={() => setIsEditing((e) => !e)}
               style={styles.actionButton}
             >
               <Ionicons
@@ -183,9 +198,9 @@ export default function PostScreen() {
           </View>
         </View>
 
-        {/* Main Content */}
+        {/* Content */}
         <ScrollView style={styles.content} showsVerticalScrollIndicator={false}>
-          {/* Title Section */}
+          {/* Title */}
           <View style={styles.titleSection}>
             {isEditing ? (
               <TextInput
@@ -198,8 +213,6 @@ export default function PostScreen() {
             ) : (
               <Text style={styles.title}>{editedTitle}</Text>
             )}
-
-            {/* Post metadata */}
             <View style={styles.metadata}>
               <Text style={styles.metadataText}>
                 {formatDate(post.redditCreatedAt)}
@@ -214,15 +227,15 @@ export default function PostScreen() {
               <Text style={styles.metadataText}>r/{post.subreddit}</Text>
             </View>
 
-            {/* Rating */}
+            {/* Rating & Read */}
             <View style={styles.ratingSection}>
               <StarRating
                 rating={post.rating || 0}
-                onRate={(rating) => setPostRating(post.id, rating)}
+                onRate={handleSetRating}
                 size={20}
               />
               <TouchableOpacity
-                onPress={() => togglePostRead(post.id)}
+                onPress={handleToggleRead}
                 style={styles.readToggle}
               >
                 <Ionicons
@@ -238,10 +251,20 @@ export default function PostScreen() {
                   {post.isRead ? "Read" : "Unread"}
                 </Text>
               </TouchableOpacity>
+              <TouchableOpacity
+                onPress={handleToggleFavorite}
+                style={styles.readToggle}
+              >
+                <Ionicons
+                  name={post.isFavorite ? "heart" : "heart-outline"}
+                  size={24}
+                  color={post.isFavorite ? palette.accent : palette.muted}
+                />
+              </TouchableOpacity>
             </View>
           </View>
 
-          {/* Body Section */}
+          {/* Body */}
           <View style={styles.bodySection}>
             {isEditing ? (
               <TextInput
@@ -257,7 +280,7 @@ export default function PostScreen() {
             )}
           </View>
 
-          {/* Notes Section (when editing) */}
+          {/* Notes */}
           {isEditing && (
             <View style={styles.notesSection}>
               <Text style={styles.sectionTitle}>Notes</Text>
@@ -272,13 +295,12 @@ export default function PostScreen() {
             </View>
           )}
 
-          {/* Action Buttons */}
+          {/* Save / Delete */}
           {isEditing && (
             <View style={styles.actionSection}>
               <TouchableOpacity style={styles.saveButton} onPress={handleSave}>
                 <Text style={styles.saveButtonText}>Save Changes</Text>
               </TouchableOpacity>
-
               <TouchableOpacity
                 style={styles.deleteButton}
                 onPress={handleDelete}
@@ -290,7 +312,7 @@ export default function PostScreen() {
         </ScrollView>
       </Animated.View>
 
-      {/* Right Sidebar */}
+      {/* Sidebar overlay */}
       {sidebarVisible && (
         <Animated.View
           style={[
@@ -308,6 +330,8 @@ export default function PostScreen() {
           />
         </Animated.View>
       )}
+
+      {/* Sidebar */}
       {sidebarVisible && (
         <Animated.View
           style={[styles.sidebar, { transform: [{ translateX: sidebarAnim }] }]}
@@ -318,7 +342,6 @@ export default function PostScreen() {
               <Ionicons name="close" size={24} color={palette.foreground} />
             </TouchableOpacity>
           </View>
-
           <ScrollView style={styles.sidebarContent}>
             {/* Notes */}
             <View style={styles.sidebarSection}>
@@ -327,25 +350,22 @@ export default function PostScreen() {
                 {post.notes || "No notes added yet"}
               </Text>
             </View>
-
             {/* Tags */}
             <View style={styles.sidebarSection}>
               <Text style={styles.sidebarSectionTitle}>Tags</Text>
               <Text style={styles.sidebarText}>
                 {post.tagIds.length > 0
-                  ? "Tags will be shown here"
+                  ? post.tagIds.join(", ")
                   : "No tags added"}
               </Text>
             </View>
-
             {/* Folder */}
             <View style={styles.sidebarSection}>
               <Text style={styles.sidebarSectionTitle}>Folder</Text>
               <Text style={styles.sidebarText}>
-                {post.folderId ? "Folder info" : "No folder assigned"}
+                {post.folderId ? `#${post.folderId}` : "No folder assigned"}
               </Text>
             </View>
-
             {/* Post Info */}
             <View style={styles.sidebarSection}>
               <Text style={styles.sidebarSectionTitle}>Post Info</Text>

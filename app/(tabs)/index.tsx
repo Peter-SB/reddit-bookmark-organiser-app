@@ -16,61 +16,70 @@ import { PostCard } from "@/components/PostCard";
 import { palette } from "@/constants/Colors";
 import { spacing } from "@/constants/spacing";
 import { fontSizes, fontWeights } from "@/constants/typography";
-//import { useFolderStore } from "@/hooks/useFolderStore"; // assume this exists
-import {
-  usePostActions,
-  usePostsData,
-  usePostStore,
-} from "@/hooks/usePostStore";
-import { useRedditApi } from "@/hooks/useRedditApi";
-
-import { MenuSidebar } from "@/components/MenuSidebar";
 import { Post } from "@/models/models";
 
-export default function HomeScreen() {
-  const { posts, getPostStats } = usePostsData();
-  const { addPost, togglePostRead, setPostRating } = usePostActions();
-  const detectDuplicates = usePostStore((s) => s.detectDuplicates);
-  const { getPostData, loading: redditApiLoading } = useRedditApi();
-  const folders = null; //useFolderStore((s) => s.folders);
+import { usePosts } from "@/hooks/usePosts";
+import { useRedditApi } from "@/hooks/useRedditApi";
 
-  const [isAddingPost, setIsAddingPost] = useState(false);
+export default function HomeScreen() {
+  // our unified posts hook
+  const {
+    posts,
+    loading: postsLoading,
+    addPost,
+    updatePost,
+    toggleRead,
+    toggleFavorite,
+  } = usePosts();
+
+  const { getPostData, loading: redditApiLoading } = useRedditApi();
+  const [isAdding, setIsAdding] = useState(false);
   const [sidebarOpen, setSidebarOpen] = useState(false);
 
+  // stats
+  const total = posts.length;
+  const unread = posts.filter((p) => !p.isRead).length;
+
+  // detect duplicates by redditId
+  const detectDuplicates = (redditId: string) =>
+    posts.filter((p) => p.redditId === redditId);
+
   const handleAddPost = async (url: string) => {
-    if (isAddingPost) return;
-    setIsAddingPost(true);
+    if (isAdding) return;
+    setIsAdding(true);
     try {
       const postData = await getPostData(url);
-      const duplicates = detectDuplicates(postData);
+      const duplicates = detectDuplicates(postData.redditId);
       if (duplicates.length) {
         Alert.alert(
           "Duplicate Post",
-          "This post appears to already exist in your library. Do you want to add it anyway?",
+          "This post appears to already exist. Add anyway?",
           [
             { text: "Cancel", style: "cancel" },
-            { text: "Add Anyway", onPress: () => addPost(postData) },
+            {
+              text: "Add Anyway",
+              onPress: () => addPost(postData),
+            },
           ]
         );
-        return;
+      } else {
+        await addPost(postData);
       }
-      addPost(postData);
     } catch (e) {
       Alert.alert("Error", `Failed to add post: ${(e as Error).message}`);
     } finally {
-      setIsAddingPost(false);
+      setIsAdding(false);
     }
   };
 
-  const handleSelect = (key: string | number) => {
-    setSidebarOpen(false);
-    // navigate or filter based on key
-    // e.g. if key === 'home' navigate to Home; if number filter by folderId
+  const handleToggleRead = (id: number) => toggleRead(id);
+  const handleToggleFavorite = (id: number) => toggleFavorite(id);
+  const handleSetRating = async (id: number, rating: number) => {
+    const post = posts.find((p) => p.id === id);
+    if (post) {
+      await updatePost({ ...post, rating });
+    }
   };
-
-  const handleToggleRead = (postId: number) => togglePostRead(postId);
-  const handleSetRating = (postId: number, rating: number) =>
-    setPostRating(postId, rating);
 
   const renderPost = ({ item }: { item: Post }) => (
     <PostCard
@@ -81,21 +90,14 @@ export default function HomeScreen() {
       read={item.isRead}
       onToggleRead={() => handleToggleRead(item.id)}
       onRate={(r) => handleSetRating(item.id, r)}
+      //onToggleFavorite={() => handleToggleFavorite(item.id)}
     />
   );
 
-  const stats = getPostStats();
-  const isLoading = redditApiLoading || isAddingPost;
+  const isLoading = postsLoading || redditApiLoading || isAdding;
 
   return (
     <SafeAreaView style={styles.container}>
-      <MenuSidebar
-        isOpen={sidebarOpen}
-        onClose={() => setSidebarOpen(false)}
-        onSelect={handleSelect}
-        folders=null
-      />
-
       <View style={styles.header}>
         <TouchableOpacity onPress={() => setSidebarOpen(true)}>
           <Icon name="menu" size={28} color={palette.foreground} />
@@ -103,8 +105,8 @@ export default function HomeScreen() {
         <View style={styles.headerText}>
           <Text style={styles.title}>Reddit Bookmarks</Text>
           <Text style={styles.subtitle}>
-            {stats.total} {stats.total === 1 ? "bookmark" : "bookmarks"}
-            {stats.unread > 0 && ` • ${stats.unread} unread`}
+            {total} {total === 1 ? "bookmark" : "bookmarks"}
+            {unread > 0 && ` • ${unread} unread`}
           </Text>
         </View>
       </View>
@@ -115,7 +117,11 @@ export default function HomeScreen() {
         <View style={styles.loadingContainer}>
           <ActivityIndicator size="small" color={palette.accent} />
           <Text style={styles.loadingText}>
-            {isAddingPost ? "Adding post..." : "Loading..."}
+            {isAdding
+              ? "Adding post..."
+              : redditApiLoading
+              ? "Fetching from Reddit..."
+              : "Loading posts..."}
           </Text>
         </View>
       )}

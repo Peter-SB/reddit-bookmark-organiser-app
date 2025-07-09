@@ -11,11 +11,14 @@ export class DatabaseService {
 
   /** call this at app-start to get the ready DB */
   public static async getInstance(): Promise<DatabaseService> {
+    console.debug('DatabaseService.getInstance() called');
     if (!DatabaseService.instance) {
-      const db = await SQLite.openDatabaseAsync('app.db', { enableChangeListener: false });
+      console.log('Creating new DatabaseService instance');
+      const db = await SQLite.openDatabaseAsync('reddit_posts.db', { enableChangeListener: false });
       const svc = new DatabaseService(db);
       await svc.init();
       DatabaseService.instance = svc;
+      console.log('DatabaseService instance created and initialized');
     }
     return DatabaseService.instance;
   }
