@@ -50,7 +50,7 @@ export default function PostScreen() {
 
   // Animation values
   const slideAnim = useState(new Animated.Value(screenWidth))[0];
-  const sidebarWidth = screenWidth * 0.7;
+  const sidebarWidth = screenWidth * 0.8;
   const sidebarAnim = useState(new Animated.Value(sidebarWidth))[0];
   const [overlayOpacity] = useState(new Animated.Value(0));
 
@@ -346,7 +346,7 @@ export default function PostScreen() {
             },
           ]}
         >
-          <View style={styles.sidebarHeader}>
+          <View style={styles.sidebarHeaderNoBorder}>
             <Text style={styles.sidebarTitle}>Details</Text>
             <TouchableOpacity onPress={toggleSidebar}>
               <Ionicons name="close" size={24} color={palette.foreground} />
@@ -577,6 +577,12 @@ const styles = StyleSheet.create({
     padding: spacing.m,
     borderBottomWidth: 1,
     borderBottomColor: palette.border,
+  },
+  sidebarHeaderNoBorder: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    padding: spacing.m,
   },
   sidebarTitle: {
     fontSize: fontSizes.title,
