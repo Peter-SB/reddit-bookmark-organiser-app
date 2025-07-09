@@ -18,11 +18,12 @@ import { spacing } from "@/constants/spacing";
 import { fontSizes, fontWeights } from "@/constants/typography";
 import { Post } from "@/models/models";
 
+import { MenuSidebar } from "@/components/MenuSidebar";
+import { useFolders } from "@/hooks/useFolders"; // <-- new
 import { usePosts } from "@/hooks/usePosts";
 import { useRedditApi } from "@/hooks/useRedditApi";
 
 export default function HomeScreen() {
-  // our unified posts hook
   const {
     posts,
     loading: postsLoading,
@@ -31,16 +32,15 @@ export default function HomeScreen() {
     toggleRead,
     toggleFavorite,
   } = usePosts();
-
   const { getPostData, loading: redditApiLoading } = useRedditApi();
+  const { folders } = useFolders(); // <-- new
+
   const [isAdding, setIsAdding] = useState(false);
   const [sidebarOpen, setSidebarOpen] = useState(false);
 
-  // stats
   const total = posts.length;
   const unread = posts.filter((p) => !p.isRead).length;
 
-  // detect duplicates by redditId
   const detectDuplicates = (redditId: string) =>
     posts.filter((p) => p.redditId === redditId);
 
@@ -81,6 +81,15 @@ export default function HomeScreen() {
     }
   };
 
+  // when sidebar item is tapped
+  const handleSelect = (key: string | number) => {
+    // key is "home" | "search" | "tags" | "favorites" | "unread" | "settings"
+    // or a folder.id number
+    console.log("Selected:", key);
+    // TODO: navigate or filter your list based on key
+    setSidebarOpen(false);
+  };
+
   const renderPost = ({ item }: { item: Post }) => (
     <PostCard
       id={item.id}
@@ -90,7 +99,7 @@ export default function HomeScreen() {
       read={item.isRead}
       onToggleRead={() => handleToggleRead(item.id)}
       onRate={(r) => handleSetRating(item.id, r)}
-      //onToggleFavorite={() => handleToggleFavorite(item.id)}
+      // onToggleFavorite={() => handleToggleFavorite(item.id)}
     />
   );
 
@@ -98,6 +107,13 @@ export default function HomeScreen() {
 
   return (
     <SafeAreaView style={styles.container}>
+      <MenuSidebar
+        isOpen={sidebarOpen}
+        onClose={() => setSidebarOpen(false)}
+        onSelect={handleSelect}
+        folders={folders}
+      />
+
       <View style={styles.header}>
         <TouchableOpacity onPress={() => setSidebarOpen(true)}>
           <Icon name="menu" size={28} color={palette.foreground} />

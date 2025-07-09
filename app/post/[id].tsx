@@ -18,11 +18,15 @@ import {
   TouchableOpacity,
   View,
 } from "react-native";
-import { SafeAreaView } from "react-native-safe-area-context";
+import {
+  SafeAreaView,
+  useSafeAreaInsets,
+} from "react-native-safe-area-context";
 
 const { width: screenWidth } = Dimensions.get("window");
 
 export default function PostScreen() {
+  const insets = useSafeAreaInsets();
   const { id } = useLocalSearchParams<{ id: string }>();
   const router = useRouter();
 
@@ -334,7 +338,13 @@ export default function PostScreen() {
       {/* Sidebar */}
       {sidebarVisible && (
         <Animated.View
-          style={[styles.sidebar, { transform: [{ translateX: sidebarAnim }] }]}
+          style={[
+            styles.sidebar,
+            {
+              transform: [{ translateX: sidebarAnim }],
+              paddingTop: insets.top,
+            },
+          ]}
         >
           <View style={styles.sidebarHeader}>
             <Text style={styles.sidebarTitle}>Details</Text>
