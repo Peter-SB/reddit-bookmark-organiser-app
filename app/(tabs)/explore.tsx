@@ -1,12 +1,15 @@
 import { palette } from "@/constants/Colors";
 import { spacing } from "@/constants/spacing";
 import { fontSizes, fontWeights } from "@/constants/typography";
+// import { useRedditAuth } from "@/hooks/useRedditAuth";
 import { Ionicons } from "@expo/vector-icons";
 import React from "react";
 import { ScrollView, StyleSheet, Text, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 
 export default function SettingsScreen() {
+  // const { login, accessToken, loading } = useRedditAuth();
+
   return (
     <SafeAreaView style={styles.container}>
       <ScrollView
@@ -17,6 +20,22 @@ export default function SettingsScreen() {
           <Ionicons name="settings-outline" size={32} color={palette.accent} />
           <Text style={styles.title}>Settings</Text>
         </View>
+
+        {/* Login Button
+        <View style={styles.section}>
+          <Button
+            title={
+              accessToken
+                ? "Logged In"
+                : loading
+                ? "Logging in..."
+                : "Sign in with Reddit"
+            }
+            onPress={login}
+            disabled={!!accessToken || loading}
+            color={palette.accent}
+          />
+        </View> */}
 
         <View style={styles.section}>
           <Text style={styles.sectionTitle}>About</Text>

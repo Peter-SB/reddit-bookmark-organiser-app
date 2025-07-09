@@ -8,7 +8,7 @@ import {
   usePostsData,
   usePostStore,
 } from "@/hooks/usePostStore";
-import { useScraper } from "@/hooks/useScraper";
+import { useRedditApi } from "@/hooks/useRedditApi";
 import { Post } from "@/models/Post";
 import React, { useState } from "react";
 import {
@@ -25,7 +25,7 @@ export default function HomeScreen() {
   const { posts, getPostStats } = usePostsData();
   const { addPost, togglePostRead, setPostRating } = usePostActions();
   const detectDuplicates = usePostStore((state) => state.detectDuplicates);
-  const { extractPostData, loading: scraperLoading } = useScraper();
+  const { getPostData, loading: redditApiLoading } = useRedditApi();
   const [isAddingPost, setIsAddingPost] = useState(false);
 
   const handleAddPost = async (url: string): Promise<void> => {
@@ -34,7 +34,7 @@ export default function HomeScreen() {
     setIsAddingPost(true);
     try {
       // Extract post data using the scraper
-      const postData = await extractPostData(url);
+      const postData = await getPostData(url);
 
       console.log("Extracted post data:", postData);
 
@@ -111,7 +111,7 @@ export default function HomeScreen() {
   );
 
   const stats = getPostStats();
-  const isLoading = scraperLoading || isAddingPost;
+  const isLoading = redditApiLoading || isAddingPost;
 
   return (
     <SafeAreaView style={styles.container}>
