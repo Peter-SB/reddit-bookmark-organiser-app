@@ -41,3 +41,4 @@ app-example
 .vscode/
 
 *.secrets.json
+_bin/

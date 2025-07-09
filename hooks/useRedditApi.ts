@@ -1,6 +1,6 @@
 import * as SecureStore from 'expo-secure-store';
 import { useCallback, useRef, useState } from 'react';
-import type { Post } from '../models/Post';
+import type { Post } from '../models/models';
 import secretsRaw from '../reddit.secrets.json';
 
 // Patch type for secrets to include all expected fields
