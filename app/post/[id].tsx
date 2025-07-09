@@ -34,10 +34,13 @@ export default function PostScreen() {
   const [editedBody, setEditedBody] = useState("");
   const [editedNotes, setEditedNotes] = useState("");
   const [sidebarOpen, setSidebarOpen] = useState(false);
+  const [sidebarVisible, setSidebarVisible] = useState(false);
 
   // Animation values
   const slideAnim = useState(new Animated.Value(screenWidth))[0];
-  const sidebarAnim = useState(new Animated.Value(screenWidth * 0.3))[0];
+  const sidebarWidth = screenWidth * 0.7;
+  const sidebarAnim = useState(new Animated.Value(sidebarWidth))[0];
+  const [overlayOpacity] = useState(new Animated.Value(0));
 
   useEffect(() => {
     if (id) {
@@ -89,14 +92,40 @@ export default function PostScreen() {
   };
 
   const toggleSidebar = () => {
-    const toValue = sidebarOpen ? screenWidth * 0.3 : 0;
-    setSidebarOpen(!sidebarOpen);
+    const animationDuration = 150;
 
-    Animated.timing(sidebarAnim, {
-      toValue,
-      duration: 300,
-      useNativeDriver: true,
-    }).start();
+    if (!sidebarVisible && !sidebarOpen) {
+      setSidebarVisible(true);
+      setSidebarOpen(true);
+      Animated.parallel([
+        Animated.timing(sidebarAnim, {
+          toValue: 0,
+          duration: animationDuration,
+          useNativeDriver: true,
+        }),
+        Animated.timing(overlayOpacity, {
+          toValue: 1,
+          duration: animationDuration,
+          useNativeDriver: true,
+        }),
+      ]).start();
+    } else {
+      setSidebarOpen(false);
+      Animated.parallel([
+        Animated.timing(sidebarAnim, {
+          toValue: sidebarWidth,
+          duration: animationDuration,
+          useNativeDriver: true,
+        }),
+        Animated.timing(overlayOpacity, {
+          toValue: 0,
+          duration: animationDuration,
+          useNativeDriver: true,
+        }),
+      ]).start(() => {
+        setSidebarVisible(false);
+      });
+    }
   };
 
   const formatDate = (date: Date): string => {
@@ -263,58 +292,77 @@ export default function PostScreen() {
       </Animated.View>
 
       {/* Right Sidebar */}
-      <Animated.View
-        style={[styles.sidebar, { transform: [{ translateX: sidebarAnim }] }]}
-      >
-        <View style={styles.sidebarHeader}>
-          <Text style={styles.sidebarTitle}>Details</Text>
-          <TouchableOpacity onPress={toggleSidebar}>
-            <Ionicons name="close" size={24} color={palette.foreground} />
-          </TouchableOpacity>
-        </View>
-
-        <ScrollView style={styles.sidebarContent}>
-          {/* Notes */}
-          <View style={styles.sidebarSection}>
-            <Text style={styles.sidebarSectionTitle}>Notes</Text>
-            <Text style={styles.sidebarText}>
-              {post.notes || "No notes added yet"}
-            </Text>
+      {sidebarVisible && (
+        <Animated.View
+          style={[
+            styles.overlay,
+            {
+              opacity: overlayOpacity,
+              pointerEvents: sidebarOpen ? "auto" : "none",
+            },
+          ]}
+        >
+          <TouchableOpacity
+            style={{ flex: 1 }}
+            activeOpacity={1}
+            onPress={toggleSidebar}
+          />
+        </Animated.View>
+      )}
+      {sidebarVisible && (
+        <Animated.View
+          style={[styles.sidebar, { transform: [{ translateX: sidebarAnim }] }]}
+        >
+          <View style={styles.sidebarHeader}>
+            <Text style={styles.sidebarTitle}>Details</Text>
+            <TouchableOpacity onPress={toggleSidebar}>
+              <Ionicons name="close" size={24} color={palette.foreground} />
+            </TouchableOpacity>
           </View>
 
-          {/* Tags */}
-          <View style={styles.sidebarSection}>
-            <Text style={styles.sidebarSectionTitle}>Tags</Text>
-            <Text style={styles.sidebarText}>
-              {post.tagIds.length > 0
-                ? "Tags will be shown here"
-                : "No tags added"}
-            </Text>
-          </View>
+          <ScrollView style={styles.sidebarContent}>
+            {/* Notes */}
+            <View style={styles.sidebarSection}>
+              <Text style={styles.sidebarSectionTitle}>Notes</Text>
+              <Text style={styles.sidebarText}>
+                {post.notes || "No notes added yet"}
+              </Text>
+            </View>
 
-          {/* Folder */}
-          <View style={styles.sidebarSection}>
-            <Text style={styles.sidebarSectionTitle}>Folder</Text>
-            <Text style={styles.sidebarText}>
-              {post.folderId ? "Folder info" : "No folder assigned"}
-            </Text>
-          </View>
+            {/* Tags */}
+            <View style={styles.sidebarSection}>
+              <Text style={styles.sidebarSectionTitle}>Tags</Text>
+              <Text style={styles.sidebarText}>
+                {post.tagIds.length > 0
+                  ? "Tags will be shown here"
+                  : "No tags added"}
+              </Text>
+            </View>
 
-          {/* Post Info */}
-          <View style={styles.sidebarSection}>
-            <Text style={styles.sidebarSectionTitle}>Post Info</Text>
-            <Text style={styles.sidebarText}>
-              Added: {formatDate(post.addedAt)}
-            </Text>
-            <Text style={styles.sidebarText}>
-              Original: {formatDate(post.redditCreatedAt)}
-            </Text>
-            <Text style={styles.sidebarText}>
-              Subreddit: r/{post.subreddit}
-            </Text>
-          </View>
-        </ScrollView>
-      </Animated.View>
+            {/* Folder */}
+            <View style={styles.sidebarSection}>
+              <Text style={styles.sidebarSectionTitle}>Folder</Text>
+              <Text style={styles.sidebarText}>
+                {post.folderId ? "Folder info" : "No folder assigned"}
+              </Text>
+            </View>
+
+            {/* Post Info */}
+            <View style={styles.sidebarSection}>
+              <Text style={styles.sidebarSectionTitle}>Post Info</Text>
+              <Text style={styles.sidebarText}>
+                Added: {formatDate(post.addedAt)}
+              </Text>
+              <Text style={styles.sidebarText}>
+                Original: {formatDate(post.redditCreatedAt)}
+              </Text>
+              <Text style={styles.sidebarText}>
+                Subreddit: r/{post.subreddit}
+              </Text>
+            </View>
+          </ScrollView>
+        </Animated.View>
+      )}
     </SafeAreaView>
   );
 }
@@ -483,6 +531,15 @@ const styles = StyleSheet.create({
     borderLeftWidth: 1,
     borderLeftColor: palette.border,
     zIndex: 2,
+  },
+  overlay: {
+    position: "absolute",
+    top: 0,
+    left: 0,
+    width: screenWidth,
+    height: "100%",
+    backgroundColor: "rgba(0,0,0,0.2)",
+    zIndex: 1,
   },
   sidebarHeader: {
     flexDirection: "row",
