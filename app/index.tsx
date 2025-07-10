@@ -39,6 +39,7 @@ export default function HomeScreen() {
 
   const [isAdding, setIsAdding] = useState(false);
   const [sidebarOpen, setSidebarOpen] = useState(false);
+  const [isInputVisible, setIsInputVisible] = useState(false);
 
   const total = posts.length;
   const unread = posts.filter((p) => !p.isRead).length;
@@ -67,6 +68,7 @@ export default function HomeScreen() {
       } else {
         await addPost(postData);
       }
+      setIsInputVisible(false);
     } catch (e) {
       Alert.alert("Error", `Failed to add post: ${(e as Error).message}`);
     } finally {
@@ -127,7 +129,7 @@ export default function HomeScreen() {
         </View>
       </View>
 
-      {/* <InputBar onSubmit={handleAddPost} />
+      {/* <InputBar onSubmit={handleAddPost} /> */}
 
       {isLoading && (
         <View style={styles.loadingContainer}>
@@ -140,7 +142,7 @@ export default function HomeScreen() {
               : "Loading posts..."}
           </Text>
         </View>
-      )} */}
+      )}
 
       <FlatList
         data={posts}
@@ -166,21 +168,15 @@ export default function HomeScreen() {
               backgroundColor: palette.backgroundLight,
             }}
           >
-            <InputBar onSubmit={handleAddPost} />
-            {isLoading && (
-              <View style={styles.loadingContainer}>
-                <ActivityIndicator size="small" color={palette.accent} />
-                <Text style={styles.loadingText}>
-                  {isAdding
-                    ? "Adding post..."
-                    : redditApiLoading
-                    ? "Fetching from Reddit..."
-                    : "Loading posts..."}
-                </Text>
-              </View>
-            )}
+            {/* <InputBar onSubmit={handleAddPost} /> */}
           </View>
         }
+      />
+      <InputBar
+        visible={isInputVisible}
+        onExpand={() => setIsInputVisible(true)}
+        onClose={() => setIsInputVisible(false)}
+        onSubmit={handleAddPost}
       />
     </SafeAreaView>
   );
