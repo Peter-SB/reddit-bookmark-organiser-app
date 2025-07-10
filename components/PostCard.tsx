@@ -52,7 +52,7 @@ export const PostCard: React.FC<PostCardProps> = ({
       <View style={styles.topRow}>
         <Text
           style={[styles.title, post.isRead && styles.readTitle]}
-          numberOfLines={2}
+          numberOfLines={4}
         >
           {post.title}
         </Text>
@@ -108,7 +108,7 @@ export const PostCard: React.FC<PostCardProps> = ({
 
 const styles = StyleSheet.create({
   container: {
-    backgroundColor: palette.background,
+    backgroundColor: palette.backgroundLight,
     borderRadius: 0,
     padding: spacing.m,
     marginHorizontal: 0, //spacing.s,
@@ -129,11 +129,11 @@ const styles = StyleSheet.create({
     marginBottom: spacing.s,
   },
   title: {
-    fontSize: fontSizes.title,
+    fontSize: fontSizes.title * 0.9,
     fontWeight: fontWeights.semibold,
     color: palette.foreground,
     marginBottom: spacing.xs,
-    lineHeight: 24,
+    lineHeight: 24 * 0.9,
   },
   readTitle: {
     opacity: 0.6,
@@ -154,7 +154,7 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "flex-end",
     justifyContent: "space-between",
-    marginBottom: spacing.xs,
+    // marginBottom: spacing.xs,
   },
   metadataText: {
     fontSize: fontSizes.small,

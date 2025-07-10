@@ -203,7 +203,7 @@ export default function PostScreen() {
         </View>
 
         {/* Content */}
-        <ScrollView style={styles.content} showsVerticalScrollIndicator={false}>
+        <ScrollView style={styles.content} showsVerticalScrollIndicator={true}>
           {/* Title */}
           <View style={styles.titleSection}>
             {isEditing ? (

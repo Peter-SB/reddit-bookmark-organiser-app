@@ -57,6 +57,7 @@ export function usePosts(): UsePostsResult {
   }, [repo, loadPosts]);
 
   const updatePost = useCallback(async (post: Post) => {
+    console.debug('Updating post:', post);
     if (!repo) throw new Error('PostRepository not ready');
     await repo.update(post);
     const updated = await repo.getById(post.id);
@@ -72,6 +73,7 @@ export function usePosts(): UsePostsResult {
   }, [repo, loadPosts]);
 
   const toggleRead = useCallback(async (id: number) => {
+    console.debug('Toggling read status for post:', id);
     if (!repo) throw new Error('PostRepository not ready');
     const p = await repo.getById(id);
     if (!p) return;
@@ -80,6 +82,7 @@ export function usePosts(): UsePostsResult {
   }, [repo, loadPosts]);
 
   const toggleFavorite = useCallback(async (id: number) => {
+    console.debug('Toggling favorite status for post:', id);
     if (!repo) throw new Error('PostRepository not ready');
     const p = await repo.getById(id);
     if (!p) return;

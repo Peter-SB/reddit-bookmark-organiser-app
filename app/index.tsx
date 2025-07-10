@@ -20,7 +20,7 @@ import { fontSizes, fontWeights } from "@/constants/typography";
 import { Post } from "@/models/models";
 
 import { MenuSidebar } from "@/components/MenuSidebar";
-import { useFolders } from "@/hooks/useFolders"; // <-- new
+import { useFolders } from "@/hooks/useFolders";
 import { usePosts } from "@/hooks/usePosts";
 import { useRedditApi } from "@/hooks/useRedditApi";
 
@@ -127,7 +127,7 @@ export default function HomeScreen() {
         </View>
       </View>
 
-      <InputBar onSubmit={handleAddPost} />
+      {/* <InputBar onSubmit={handleAddPost} />
 
       {isLoading && (
         <View style={styles.loadingContainer}>
@@ -140,12 +140,16 @@ export default function HomeScreen() {
               : "Loading posts..."}
           </Text>
         </View>
-      )}
+      )} */}
 
       <FlatList
         data={posts}
         keyExtractor={(item) => item.id.toString()}
         renderItem={renderPost}
+        showsVerticalScrollIndicator={true}
+        contentContainerStyle={
+          posts.length === 0 ? styles.listContentCentered : styles.listContent
+        }
         ListEmptyComponent={() => (
           <View style={styles.emptyState}>
             <Text style={styles.emptyTitle}>No bookmarks yet</Text>
@@ -154,10 +158,28 @@ export default function HomeScreen() {
             </Text>
           </View>
         )}
-        showsVerticalScrollIndicator={false}
-        style={styles.list}
-        contentContainerStyle={
-          posts.length === 0 ? styles.listContentCentered : styles.listContent
+        ListHeaderComponent={
+          <View
+            style={{
+              borderBottomWidth: 1,
+              borderColor: palette.border,
+              backgroundColor: palette.backgroundLight,
+            }}
+          >
+            <InputBar onSubmit={handleAddPost} />
+            {isLoading && (
+              <View style={styles.loadingContainer}>
+                <ActivityIndicator size="small" color={palette.accent} />
+                <Text style={styles.loadingText}>
+                  {isAdding
+                    ? "Adding post..."
+                    : redditApiLoading
+                    ? "Fetching from Reddit..."
+                    : "Loading posts..."}
+                </Text>
+              </View>
+            )}
+          </View>
         }
       />
     </SafeAreaView>
@@ -170,6 +192,8 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     padding: spacing.m,
+    borderBottomWidth: 1.5,
+    borderColor: palette.border,
   },
   headerText: { marginLeft: spacing.s },
   title: {
