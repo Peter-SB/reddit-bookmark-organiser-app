@@ -36,6 +36,7 @@ export function usePosts(): UsePostsResult {
 
   // helper to reload all posts
   const loadPosts = useCallback(async (r?: PostRepository) => {
+    console.debug('Loading posts...');
     setLoading(true);
     const repository = r ?? repo;
     if (!repository) return;

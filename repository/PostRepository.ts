@@ -161,6 +161,8 @@ export class PostRepository {
       notes, rating, isRead, isFavorite, folderId, extraFields
     } = post;
 
+    console.debug(`Updating post ${id} with data:`)
+
     const result = await this.db.runAsync(
       `UPDATE posts SET
          title         = ?,
@@ -188,12 +190,15 @@ export class PostRepository {
       id
     );
 
+    console.debug(`Updated post ${id}:`, result);
+
     // sync tags: delete all + reinsert
     await this.db.runAsync(`DELETE FROM post_tags WHERE postId = ?`, id);
     for (const tagId of post.tagIds) {
       await this.db.runAsync(`INSERT INTO post_tags (postId, tagId) VALUES (?, ?)`, id, tagId);
     }
 
+    console.debug(`Updated tags for post ${id}:`, post.tagIds);
     return result.changes;
   }
 

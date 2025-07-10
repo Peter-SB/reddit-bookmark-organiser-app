@@ -17,6 +17,8 @@ import { palette } from "../constants/Colors";
 import { spacing } from "../constants/spacing";
 import { fontSizes } from "../constants/typography";
 
+const SCALE_FACTOR = 0.8; // scale factor for the icon circle
+
 interface InputBarProps {
   visible: boolean;
   onExpand: () => void;
@@ -36,10 +38,12 @@ export const InputBar: React.FC<InputBarProps> = ({
   const [keyboardHeight, setKeyboardHeight] = useState(0);
   const anim = useRef(new Animated.Value(0)).current;
   const insets = useSafeAreaInsets();
-  const SCREEN_W = Dimensions.get("window").width;
-  const COLLAPSED_SIZE = 56;
+  const { width: SCREEN_W } = Dimensions.get("window");
+  const COLLAPSED_SIZE = 56; // diameter of the icon circle
+  const H_MARGIN = spacing.m; // right + left margin
+  const FULL_WIDTH = SCREEN_W - H_MARGIN * 2;
+  const inputRef = useRef<TextInput>(null);
 
-  // Animate expand/collapse
   useEffect(() => {
     Animated.timing(anim, {
       toValue: visible ? 1 : 0,
@@ -49,33 +53,47 @@ export const InputBar: React.FC<InputBarProps> = ({
     }).start();
   }, [visible]);
 
-  // Keyboard listeners
   useEffect(() => {
-    const show = Keyboard.addListener(
-      Platform.OS === "ios" ? "keyboardWillShow" : "keyboardDidShow",
-      (e) => setKeyboardHeight(e.endCoordinates.height)
+    const showEvent: import("react-native").KeyboardEventName = Platform.select(
+      {
+        ios: "keyboardWillShow",
+        android: "keyboardDidShow",
+      }
+    ) as import("react-native").KeyboardEventName;
+    const hideEvent: import("react-native").KeyboardEventName = Platform.select(
+      {
+        ios: "keyboardWillHide",
+        android: "keyboardDidHide",
+      }
+    ) as import("react-native").KeyboardEventName;
+
+    const showSub = Keyboard.addListener(showEvent, (e) =>
+      setKeyboardHeight(e.endCoordinates.height)
     );
-    const hide = Keyboard.addListener(
-      Platform.OS === "ios" ? "keyboardWillHide" : "keyboardDidHide",
-      () => setKeyboardHeight(0)
-    );
+    const hideSub = Keyboard.addListener(hideEvent, () => setKeyboardHeight(0));
     return () => {
-      show.remove();
-      hide.remove();
+      showSub.remove();
+      hideSub.remove();
     };
   }, []);
 
-  // Interpolate width & border-radius
-  const width = anim.interpolate({
+  useEffect(() => {
+    if (visible) {
+      // Focus the input and open the keyboard when bar is expanded
+      setTimeout(() => {
+        inputRef.current?.focus();
+      }, 1); // Wait for animation to finish
+    }
+  }, [visible]);
+
+  const barWidth = anim.interpolate({
     inputRange: [0, 1],
-    outputRange: [COLLAPSED_SIZE, SCREEN_W - spacing.l * 2],
-  });
-  const borderRadius = anim.interpolate({
-    inputRange: [0, 1],
-    outputRange: [COLLAPSED_SIZE / 2, 12],
+    outputRange: [COLLAPSED_SIZE * SCALE_FACTOR, FULL_WIDTH],
   });
 
-  const handlePress = () => {
+  const offsetBottom = H_MARGIN + insets.bottom + keyboardHeight;
+
+  const handleIconPress = () => {
     if (!visible) return onExpand();
     if (!url.trim()) return;
     onSubmit(url.trim());
@@ -84,11 +102,12 @@ export const InputBar: React.FC<InputBarProps> = ({
 
   return (
     <>
+      {/* tappable overlay when open */}
       {visible && (
         <TouchableWithoutFeedback
           onPress={() => {
-            onClose();
             setUrl("");
+            onClose();
           }}
         >
           <View style={styles.overlay} />
@@ -97,16 +116,18 @@ export const InputBar: React.FC<InputBarProps> = ({
 
       <Animated.View
         style={[
-          styles.fabContainer,
+          styles.bar,
           {
-            width,
-            borderRadius,
-            bottom: spacing.m + insets.bottom + keyboardHeight,
+            width: barWidth,
+            borderRadius: 90,
+            bottom: offsetBottom,
+            right: H_MARGIN,
           },
         ]}
       >
         {visible && (
           <TextInput
+            ref={inputRef}
             style={styles.input}
             value={url}
             onChangeText={setUrl}
@@ -115,11 +136,16 @@ export const InputBar: React.FC<InputBarProps> = ({
             autoCapitalize="none"
             autoCorrect={false}
             returnKeyType="done"
-            onSubmitEditing={handlePress}
+            onSubmitEditing={handleIconPress}
           />
         )}
+      </Animated.View>
 
-        <TouchableOpacity onPress={handlePress} activeOpacity={0.7}>
+      {/* fixed-size icon circle on top */}
+      <Animated.View
+        style={[styles.iconWrapper, { bottom: offsetBottom, right: H_MARGIN }]}
+      >
+        <TouchableOpacity onPress={handleIconPress} activeOpacity={0.7}>
           <Icon
             name={url.trim() ? "check" : "add"}
             size={28}
@@ -132,21 +158,25 @@ export const InputBar: React.FC<InputBarProps> = ({
 };
 
 const styles = StyleSheet.create({
-  fabContainer: {
+  overlay: {
+    ...StyleSheet.absoluteFillObject,
+    backgroundColor: "transparent",
+  },
+  bar: {
     position: "absolute",
-    right: spacing.m,
-    height: 56,
+    height: 56 * SCALE_FACTOR,
     flexDirection: "row",
     alignItems: "center",
     backgroundColor: palette.background,
     borderWidth: 1,
     borderColor: palette.border,
     paddingHorizontal: spacing.s,
-    shadowColor: palette.cardShadow,
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.95,
+    shadowRadius: 12,
     elevation: 4,
+    zIndex: 1,
   },
   input: {
     flex: 1,
@@ -154,8 +184,21 @@ const styles = StyleSheet.create({
     fontSize: fontSizes.body,
     color: palette.foreground,
   },
-  overlay: {
-    ...StyleSheet.absoluteFillObject,
-    backgroundColor: "transparent",
+  iconWrapper: {
+    position: "absolute",
+    width: 56 * SCALE_FACTOR,
+    height: 56 * SCALE_FACTOR,
+    borderRadius: 90,
+    backgroundColor: palette.background,
+    borderWidth: 1,
+    borderColor: palette.border,
+    justifyContent: "center",
+    alignItems: "center",
+    shadowColor: palette.cardShadow,
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 4,
+    zIndex: 2,
   },
 });

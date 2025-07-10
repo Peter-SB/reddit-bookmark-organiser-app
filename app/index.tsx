@@ -117,32 +117,33 @@ export default function HomeScreen() {
       />
 
       <View style={styles.header}>
-        <TouchableOpacity onPress={() => setSidebarOpen(true)}>
-          <Icon name="menu" size={28} color={palette.foreground} />
-        </TouchableOpacity>
-        <View style={styles.headerText}>
-          <Text style={styles.title}>Reddit Bookmarks</Text>
-          <Text style={styles.subtitle}>
-            {total} {total === 1 ? "bookmark" : "bookmarks"}
-            {unread > 0 && ` • ${unread} unread`}
-          </Text>
+        <View style={{ flexDirection: "row", alignItems: "center" }}>
+          <TouchableOpacity onPress={() => setSidebarOpen(true)}>
+            <Icon name="menu" size={28} color={palette.foreground} />
+          </TouchableOpacity>
+          <View style={styles.headerText}>
+            <Text style={styles.title}>Reddit Bookmarks</Text>
+            <Text style={styles.subtitle}>
+              {total} {total === 1 ? "bookmark" : "bookmarks"}
+              {unread > 0 && ` • ${unread} unread`}
+            </Text>
+          </View>
         </View>
+        {isLoading && (
+          <View style={styles.loadingContainer}>
+            <ActivityIndicator size="small" color={palette.accent} />
+            <Text style={styles.loadingText}>
+              {isAdding
+                ? "Adding post..."
+                : redditApiLoading
+                ? "Fetching from Reddit..."
+                : "Loading posts..."}
+            </Text>
+          </View>
+        )}
       </View>
 
       {/* <InputBar onSubmit={handleAddPost} /> */}
-
-      {isLoading && (
-        <View style={styles.loadingContainer}>
-          <ActivityIndicator size="small" color={palette.accent} />
-          <Text style={styles.loadingText}>
-            {isAdding
-              ? "Adding post..."
-              : redditApiLoading
-              ? "Fetching from Reddit..."
-              : "Loading posts..."}
-          </Text>
-        </View>
-      )}
 
       <FlatList
         data={posts}
@@ -162,11 +163,11 @@ export default function HomeScreen() {
         )}
         ListHeaderComponent={
           <View
-            style={{
-              borderBottomWidth: 1,
-              borderColor: palette.border,
-              backgroundColor: palette.backgroundLight,
-            }}
+          // style={{
+          //   borderBottomWidth: 1,
+          //   borderColor: palette.border,
+          //   backgroundColor: palette.backgroundLight,
+          // }}
           >
             {/* <InputBar onSubmit={handleAddPost} /> */}
           </View>
@@ -185,8 +186,6 @@ export default function HomeScreen() {
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: palette.background },
   header: {
-    flexDirection: "row",
-    alignItems: "center",
     padding: spacing.m,
     borderBottomWidth: 1.5,
     borderColor: palette.border,
@@ -225,7 +224,7 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     justifyContent: "center",
     alignItems: "center",
-    paddingVertical: spacing.m,
+    marginTop: spacing.m,
   },
   loadingText: {
     fontSize: fontSizes.body,
