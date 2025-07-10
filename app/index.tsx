@@ -96,11 +96,7 @@ export default function HomeScreen() {
 
   const renderPost = ({ item }: { item: Post }) => (
     <PostCard
-      id={item.id}
-      title={item.customTitle ?? item.title}
-      date={item.addedAt.getTime()}
-      rating={item.rating || 0}
-      read={item.isRead}
+      post={item}
       onToggleRead={() => handleToggleRead(item.id)}
       onRate={(r) => handleSetRating(item.id, r)}
       // onToggleFavorite={() => handleToggleFavorite(item.id)}
@@ -169,7 +165,7 @@ export default function HomeScreen() {
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: "#F8F9FA" },
+  container: { flex: 1, backgroundColor: palette.background },
   header: {
     flexDirection: "row",
     alignItems: "center",

@@ -1,40 +1,31 @@
-import { Ionicons } from "@expo/vector-icons";
 import { useRouter } from "expo-router";
 import React from "react";
 import { StyleSheet, Text, TouchableOpacity, View } from "react-native";
 import { palette } from "../constants/Colors";
 import { spacing } from "../constants/spacing";
 import { fontSizes, fontWeights } from "../constants/typography";
-import { StarRating } from "./StarRating";
+import { Post } from "../models/models";
 
 interface PostCardProps {
-  id: number;
-  title: string;
-  date: number; // epoch timestamp
-  rating: number;
-  read: boolean;
+  post: Post;
   onToggleRead: () => void;
   onRate: (rating: number) => void;
 }
 
 export const PostCard: React.FC<PostCardProps> = ({
-  id,
-  title,
-  date,
-  rating,
-  read,
+  post,
   onToggleRead,
   onRate,
 }) => {
   const router = useRouter();
 
   const handlePress = () => {
-    router.push(`/post/${id}` as any);
+    router.push(`/post/${post.id}` as any);
   };
-  const formatDate = (timestamp: number): string => {
+  const formatDate = (timestamp: Date | number): string => {
     const date = new Date(timestamp);
     const now = new Date();
-    const diffInDays = Math.floor(
+    const diffInDays = Math.round(
       (now.getTime() - date.getTime()) / (1000 * 60 * 60 * 24)
     );
 
@@ -49,6 +40,8 @@ export const PostCard: React.FC<PostCardProps> = ({
     }
   };
 
+  const formatRedditUser = (u: string) => (u.startsWith("u/") ? u : `u/${u}`);
+
   return (
     <TouchableOpacity
       style={styles.container}
@@ -58,17 +51,41 @@ export const PostCard: React.FC<PostCardProps> = ({
       {/* Top row: Title and date */}
       <View style={styles.topRow}>
         <Text
-          style={[styles.title, read && styles.readTitle]}
+          style={[styles.title, post.isRead && styles.readTitle]}
           numberOfLines={2}
         >
-          {title}
+          {post.title}
         </Text>
-        <Text style={styles.date}>{formatDate(date)}</Text>
+      </View>
+      <View
+        style={{
+          flexDirection: "row",
+          justifyContent: "space-between",
+          alignItems: "flex-end",
+        }}
+      >
+        {/* <Text style={styles.date}>{formatDate(post.addedAt)}</Text>
+        <View style={{ flexDirection: "row", alignItems: "flex-end" }}>
+          <Text style={styles.date}>u/test • r/test</Text>
+        </View> */}
+        <View style={styles.metadata}>
+          <Text style={styles.metadataText}>
+            {formatDate(post.redditCreatedAt)}
+          </Text>
+          {/* <Text style={styles.separator}>•</Text>
+          <TouchableOpacity>
+            <Text style={[styles.metadataText, styles.userLink]}>
+              {formatRedditUser(post.author)}
+            </Text>
+          </TouchableOpacity> */}
+          <Text style={styles.separator}>•</Text>
+          <Text style={styles.metadataText}>r/{post.subreddit}</Text>
+        </View>
       </View>
 
       {/* Bottom row: Star rating and read toggle */}
-      <View style={styles.bottomRow}>
-        <StarRating rating={rating} onRate={onRate} size={18} />
+      {/* <View style={styles.bottomRow}>
+        <StarRating rating={post.rating ?? 0} onRate={onRate} size={18} />
 
         <TouchableOpacity
           style={styles.readButton}
@@ -79,12 +96,12 @@ export const PostCard: React.FC<PostCardProps> = ({
           activeOpacity={0.7}
         >
           <Ionicons
-            name={read ? "checkmark-circle" : "checkmark-circle-outline"}
+            name={post.isRead ? "checkmark-circle" : "checkmark-circle-outline"}
             size={24}
-            color={read ? palette.accent : palette.muted}
+            color={post.isRead ? palette.accent : palette.muted}
           />
         </TouchableOpacity>
-      </View>
+      </View> */}
     </TouchableOpacity>
   );
 };
@@ -92,23 +109,24 @@ export const PostCard: React.FC<PostCardProps> = ({
 const styles = StyleSheet.create({
   container: {
     backgroundColor: palette.background,
-    borderRadius: 8,
+    borderRadius: 0,
     padding: spacing.m,
-    marginHorizontal: spacing.m,
-    marginVertical: spacing.s,
+    marginHorizontal: 0, //spacing.s,
+    marginVertical: 0,
     shadowColor: palette.cardShadow,
     shadowOffset: {
       width: 0,
       height: 2,
     },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
+    //shadowOpacity: 0.1,
+    //shadowRadius: 4,
     elevation: 2,
-    borderWidth: 1,
+    borderWidth: 0,
+    borderBottomWidth: 1,
     borderColor: palette.border,
   },
   topRow: {
-    marginBottom: spacing.m,
+    marginBottom: spacing.s,
   },
   title: {
     fontSize: fontSizes.title,
@@ -132,4 +150,22 @@ const styles = StyleSheet.create({
   readButton: {
     padding: spacing.xs,
   },
+  metadata: {
+    flexDirection: "row",
+    alignItems: "flex-end",
+    justifyContent: "space-between",
+    marginBottom: spacing.xs,
+  },
+  metadataText: {
+    fontSize: fontSizes.small,
+    color: palette.muted,
+  },
+  separator: {
+    fontSize: fontSizes.body,
+    color: palette.muted,
+    marginHorizontal: spacing.xs,
+  },
+  // userLink: {
+  //   color: palette.accent,
+  // },
 });
