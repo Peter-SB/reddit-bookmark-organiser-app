@@ -24,7 +24,8 @@ I was struggling to use Reddit's OAuth flow because I was testing the app with E
 
 ## Paterns
 
-- Use
+- Repositoy pattern
+- hooks for posts, folders etc
 
 ## Todo
 
@@ -32,6 +33,8 @@ I was struggling to use Reddit's OAuth flow because I was testing the app with E
 - Link to subreddits and usernames
 - Search functionality
 - Switch Database from settings
+- Menu items
+- - folders/tags
 
 Stretch Goals
 
