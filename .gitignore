@@ -42,3 +42,4 @@ app-example
 
 *.secrets.json
 _bin/
+android/

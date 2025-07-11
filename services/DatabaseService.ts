@@ -27,7 +27,7 @@ export class DatabaseService {
     
     const db = await SQLite.openDatabaseAsync(
       filename,
-      { enableChangeListener: false },
+      //{ enableChangeListener: false },
       // iOS / Android: directory can be omitted (uses defaultDatabaseDirectory)
     );
 
@@ -48,7 +48,7 @@ export class DatabaseService {
     public static async switchDatabase(filename: string): Promise<void> {
     // clear old instance
     if (DatabaseService.instance) {
-      await DatabaseService.instance.db.closeAsync();
+      //await DatabaseService.instance.db.closeAsync();
       DatabaseService.instance = null;
     }
     // persist choice
@@ -87,6 +87,7 @@ export class DatabaseService {
         subreddit         TEXT    NOT NULL,
         redditCreatedAt   TEXT    NOT NULL,
         addedAt           TEXT    NOT NULL,
+        updatedAt         TEXT    DEFAULT CURRENT_TIMESTAMP,
         customTitle       TEXT,
         customBody        TEXT,
         notes             TEXT,

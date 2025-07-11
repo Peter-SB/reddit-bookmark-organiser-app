@@ -77,7 +77,7 @@ export default function PostScreen() {
   }, [slideAnim]);
 
   // guard while we load
-  if (loading || !post) {
+  if (!post) {
     return (
       <SafeAreaView style={styles.container}>
         {loading ? (
@@ -100,8 +100,8 @@ export default function PostScreen() {
   const handleSave = async () => {
     const updated: Post = {
       ...post,
-      customTitle: editedTitle !== post.title ? editedTitle : post.customTitle,
-      customBody: editedBody !== post.bodyText ? editedBody : post.customBody,
+      customTitle: editedTitle, // !== post.title ? editedTitle : post.customTitle,
+      customBody: editedBody, // !== post.bodyText ? editedBody : post.customBody,
       notes: editedNotes,
     };
     await savePost(updated);

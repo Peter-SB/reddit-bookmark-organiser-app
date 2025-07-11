@@ -14,4 +14,7 @@ config.server.enhanceMiddleware = (middleware) => {
     };
 };
 
+// Ensure JSON files are resolved as modules
+config.resolver.sourceExts.push('json');
+
 module.exports = config;

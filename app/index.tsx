@@ -1,5 +1,5 @@
-import { useRouter } from "expo-router";
-import React, { useState } from "react";
+import { useFocusEffect, useRouter } from "expo-router";
+import React, { useCallback, useState } from "react";
 import {
   ActivityIndicator,
   Alert,
@@ -30,6 +30,7 @@ export default function HomeScreen() {
     posts,
     loading: postsLoading,
     addPost,
+    refresh,
     updatePost,
     toggleRead,
     toggleFavorite,
@@ -43,6 +44,13 @@ export default function HomeScreen() {
 
   const total = posts.length;
   const unread = posts.filter((p) => !p.isRead).length;
+
+  useFocusEffect(
+    useCallback(() => {
+      // every time HomeScreen comes into focus, reload posts
+      refresh();
+    }, [refresh])
+  );
 
   const detectDuplicates = (redditId: string) =>
     posts.filter((p) => p.redditId === redditId);
@@ -105,7 +113,7 @@ export default function HomeScreen() {
     />
   );
 
-  const isLoading = postsLoading || redditApiLoading || isAdding;
+  const isLoading = false; //postsLoading || redditApiLoading || isAdding;
 
   return (
     <SafeAreaView style={styles.container}>

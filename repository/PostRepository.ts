@@ -175,7 +175,7 @@ export class PostRepository {
          isFavorite    = ?,
          folderId      = ?,
          extraFields   = ?,
-         updated_at    = CURRENT_TIMESTAMP
+         updatedAt    = CURRENT_TIMESTAMP
        WHERE id = ?`,
       title,
       bodyText,

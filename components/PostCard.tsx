@@ -54,7 +54,7 @@ export const PostCard: React.FC<PostCardProps> = ({
           style={[styles.title, post.isRead && styles.readTitle]}
           numberOfLines={4}
         >
-          {post.title}
+          {post.customTitle ?? post.title}
         </Text>
       </View>
       <View
