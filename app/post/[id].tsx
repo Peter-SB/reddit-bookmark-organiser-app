@@ -190,7 +190,9 @@ export default function PostScreen() {
               <Ionicons name="menu" size={24} color={palette.foreground} />
             </TouchableOpacity>
             <TouchableOpacity
-              onPress={() => setIsEditing((e) => !e)}
+              onPress={() => {
+                setIsEditing((e) => !e);
+              }}
               style={styles.actionButton}
             >
               <Ionicons

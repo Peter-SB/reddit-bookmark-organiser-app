@@ -67,9 +67,10 @@ export const InputBar: React.FC<InputBarProps> = ({
       }
     ) as import("react-native").KeyboardEventName;
 
-    const showSub = Keyboard.addListener(showEvent, (e) =>
-      setKeyboardHeight(e.endCoordinates.height)
-    );
+    const showSub = Keyboard.addListener(showEvent, (e) => {
+      setKeyboardHeight(e.endCoordinates.height);
+      console.log(`Keyboard height: ${e.endCoordinates.height}`);
+    });
     const hideSub = Keyboard.addListener(hideEvent, () => setKeyboardHeight(0));
     return () => {
       showSub.remove();
