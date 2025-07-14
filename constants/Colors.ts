@@ -32,7 +32,9 @@ export const palette = {
   foreground: '#111',
   accent: '#007AFF',  // iOS blue
   muted: '#888',
-  star: '#FFD700',  // gold
   cardShadow: '#00000010',
   border: '#E5E5E5',
+
+  favHeartRed: '#FF4500', 
+  starYellow: '#FFB700',
 };

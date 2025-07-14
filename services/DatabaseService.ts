@@ -48,13 +48,13 @@ export class DatabaseService {
     public static async switchDatabase(filename: string): Promise<void> {
     // clear old instance
     if (DatabaseService.instance) {
-      //await DatabaseService.instance.db.closeAsync();
+      await DatabaseService.instance.db.closeAsync();
       DatabaseService.instance = null;
     }
     // persist choice
     await AsyncStorage.setItem(STORAGE_KEY, filename);
     // re-create
-    await DatabaseService.getInstance();
+    await DatabaseService.getInstance();   
   }
 
   private async init(): Promise<void> {

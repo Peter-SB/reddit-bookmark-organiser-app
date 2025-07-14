@@ -264,7 +264,7 @@ export default function PostScreen() {
                 <Ionicons
                   name={post.isFavorite ? "heart" : "heart-outline"}
                   size={24}
-                  color={post.isFavorite ? palette.accent : palette.muted}
+                  color={post.isFavorite ? palette.favHeartRed : palette.muted}
                 />
               </TouchableOpacity>
             </View>

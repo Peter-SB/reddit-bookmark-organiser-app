@@ -3,6 +3,7 @@ import { palette } from "@/constants/Colors";
 import { spacing } from "@/constants/spacing";
 import { fontSizes, fontWeights } from "@/constants/typography";
 import { Picker } from "@react-native-picker/picker";
+import { useRouter } from "expo-router";
 import React, { useEffect, useState } from "react";
 import {
   ActivityIndicator,
@@ -14,12 +15,14 @@ import {
 import { SafeAreaView } from "react-native-safe-area-context";
 import { DatabaseService } from "../services/DatabaseService";
 
-const defaultDbs = ["reddit_posts.db", "reddit_posts_test2.db"];
+const defaultDbs = ["reddit_posts.db", "reddit_posts_test.db"];
 
 export default function SettingsScreen() {
   const [files, setFiles] = useState<string[]>([]);
   const [selected, setSelected] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
+
+  const router = useRouter();
 
   // load available .db files + current selection
   useEffect(() => {
@@ -44,11 +47,12 @@ export default function SettingsScreen() {
   }, []);
 
   // handle user choice
-  const onChange = async (filename: string) => {
+  const onChangeDB = async (filename: string) => {
     setSelected(filename);
     setLoading(true);
     await DatabaseService.switchDatabase(filename);
     setLoading(false);
+    router.replace("/");
   };
 
   if (loading) {
@@ -66,7 +70,7 @@ export default function SettingsScreen() {
         <View style={styles.pickerContainer}>
           <Picker
             selectedValue={selected ?? files[0]}
-            onValueChange={(v) => onChange(v)}
+            onValueChange={(v) => onChangeDB(v)}
           >
             {files.map((f) => (
               <Picker.Item key={f} label={f} value={f} />

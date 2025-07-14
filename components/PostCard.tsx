@@ -1,6 +1,7 @@
 import { useRouter } from "expo-router";
 import React from "react";
 import { StyleSheet, Text, TouchableOpacity, View } from "react-native";
+import Ionicons from "react-native-vector-icons/Ionicons";
 import { palette } from "../constants/Colors";
 import { spacing } from "../constants/spacing";
 import { fontSizes, fontWeights } from "../constants/typography";
@@ -48,7 +49,7 @@ export const PostCard: React.FC<PostCardProps> = ({
       onPress={handlePress}
       activeOpacity={0.8}
     >
-      {/* Top row: Title and date */}
+      {/* Top row: Title */}
       <View style={styles.topRow}>
         <Text
           style={[styles.title, post.isRead && styles.readTitle]}
@@ -57,51 +58,40 @@ export const PostCard: React.FC<PostCardProps> = ({
           {post.customTitle ?? post.title}
         </Text>
       </View>
-      <View
-        style={{
-          flexDirection: "row",
-          justifyContent: "space-between",
-          alignItems: "flex-end",
-        }}
-      >
-        {/* <Text style={styles.date}>{formatDate(post.addedAt)}</Text>
-        <View style={{ flexDirection: "row", alignItems: "flex-end" }}>
-          <Text style={styles.date}>u/test • r/test</Text>
-        </View> */}
-        <View style={styles.metadata}>
+      {/* Metadata and actions row */}
+      <View style={styles.rowMetaActions}>
+        {/* Right: Date and subreddit */}
+        <View style={styles.leftMeta}>
           <Text style={styles.metadataText}>
             {formatDate(post.redditCreatedAt)}
           </Text>
-          {/* <Text style={styles.separator}>•</Text>
-          <TouchableOpacity>
-            <Text style={[styles.metadataText, styles.userLink]}>
-              {formatRedditUser(post.author)}
-            </Text>
-          </TouchableOpacity> */}
           <Text style={styles.separator}>•</Text>
           <Text style={styles.metadataText}>r/{post.subreddit}</Text>
         </View>
+
+        {/* Left: Heart and rating */}
+        <View style={styles.rightMeta}>
+          {typeof post.rating === "number" && post.rating > 0 && (
+            <View style={styles.ratingContainer}>
+              <Text style={styles.ratingText}>{post.rating.toFixed(1)}/5</Text>
+              <Ionicons
+                name="star"
+                size={16}
+                color={palette.starYellow}
+                style={{ marginRight: 2 }}
+              />
+            </View>
+          )}
+          {post.isFavorite && (
+            <Ionicons
+              name="heart"
+              size={16}
+              color={palette.favHeartRed}
+              style={{ marginRight: 2 }}
+            />
+          )}
+        </View>
       </View>
-
-      {/* Bottom row: Star rating and read toggle */}
-      {/* <View style={styles.bottomRow}>
-        <StarRating rating={post.rating ?? 0} onRate={onRate} size={18} />
-
-        <TouchableOpacity
-          style={styles.readButton}
-          onPress={(e) => {
-            e.stopPropagation();
-            onToggleRead();
-          }}
-          activeOpacity={0.7}
-        >
-          <Ionicons
-            name={post.isRead ? "checkmark-circle" : "checkmark-circle-outline"}
-            size={24}
-            color={post.isRead ? palette.accent : palette.muted}
-          />
-        </TouchableOpacity>
-      </View> */}
     </TouchableOpacity>
   );
 };
@@ -142,13 +132,30 @@ const styles = StyleSheet.create({
     fontSize: fontSizes.small,
     color: palette.muted,
   },
-  bottomRow: {
+  rowMetaActions: {
     flexDirection: "row",
     justifyContent: "space-between",
     alignItems: "center",
+    marginTop: spacing.s,
   },
-  readButton: {
-    padding: spacing.xs,
+  rightMeta: {
+    flexDirection: "row",
+    alignItems: "flex-end",
+  },
+  ratingContainer: {
+    flexDirection: "row",
+    alignItems: "flex-end",
+  },
+  ratingText: {
+    fontSize: fontSizes.small,
+    color: palette.muted,
+    marginLeft: 2,
+    marginRight: 3,
+  },
+  leftMeta: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "flex-start",
   },
   metadata: {
     flexDirection: "row",

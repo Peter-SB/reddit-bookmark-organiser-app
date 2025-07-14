@@ -42,7 +42,7 @@ export const StarRating: React.FC<StarRatingProps> = ({
         <Ionicons
           name={iconName}
           size={size}
-          color={filled || halfFilled ? palette.star : palette.muted}
+          color={filled || halfFilled ? palette.starYellow : palette.muted}
         />
       </StarComponent>
     );
