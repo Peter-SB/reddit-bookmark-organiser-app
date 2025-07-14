@@ -26,15 +26,7 @@ import { useRedditApi } from "@/hooks/useRedditApi";
 
 export default function HomeScreen() {
   const router = useRouter();
-  const {
-    posts,
-    loading: postsLoading,
-    addPost,
-    refresh,
-    updatePost,
-    toggleRead,
-    toggleFavorite,
-  } = usePosts();
+  const { posts, loading: postsLoading, addPost, refresh } = usePosts();
   const { getPostData, loading: redditApiLoading } = useRedditApi();
   const { folders } = useFolders(); // <-- new
 
@@ -45,9 +37,9 @@ export default function HomeScreen() {
   const total = posts.length;
   const unread = posts.filter((p) => !p.isRead).length;
 
+  // Every time HomeScreen comes into focus, reload posts
   useFocusEffect(
     useCallback(() => {
-      // every time HomeScreen comes into focus, reload posts
       refresh();
     }, [refresh])
   );
@@ -110,7 +102,12 @@ export default function HomeScreen() {
       <View style={styles.header}>
         <View style={{ flexDirection: "row", alignItems: "center" }}>
           <TouchableOpacity onPress={() => setSidebarOpen(true)}>
-            <Icon name="menu" size={28} color={palette.foreground} />
+            <Icon
+              name="menu"
+              size={28}
+              color={palette.foreground}
+              style={{ marginRight: spacing.xs }}
+            />
           </TouchableOpacity>
           <View style={styles.headerText}>
             <Text style={styles.title}>Reddit Bookmarks</Text>

@@ -1,3 +1,4 @@
+import { Sidebar } from "@/components/Sidebar";
 import { StarRating } from "@/components/StarRating";
 import { palette } from "@/constants/Colors";
 import { spacing } from "@/constants/spacing";
@@ -372,87 +373,20 @@ export default function PostScreen() {
         </ScrollView>
       </Animated.View>
 
-      {/* Sidebar overlay */}
-      {sidebarVisible && (
-        <Animated.View
-          style={[
-            styles.overlay,
-            {
-              opacity: overlayOpacity,
-              pointerEvents: sidebarOpen ? "auto" : "none",
-            },
-          ]}
-        >
-          <TouchableOpacity
-            style={{ flex: 1 }}
-            activeOpacity={1}
-            onPress={toggleSidebar}
-          />
-        </Animated.View>
-      )}
-
-      {/* Sidebar */}
-      {sidebarVisible && (
-        <Animated.View
-          style={[
-            styles.sidebar,
-            {
-              transform: [{ translateX: sidebarAnim }],
-              paddingTop: insets.top,
-            },
-          ]}
-        >
-          <View style={styles.sidebarHeaderNoBorder}>
-            <Text style={styles.sidebarTitle}>Details</Text>
-            <TouchableOpacity onPress={toggleSidebar}>
-              <Ionicons name="close" size={24} color={palette.foreground} />
-            </TouchableOpacity>
-          </View>
-          <ScrollView style={styles.sidebarContent}>
-            {/* Notes */}
-            <View style={styles.sidebarSection}>
-              <Text style={styles.sidebarSectionTitle}>Notes</Text>
-              <TextInput
-                style={styles.sidebarText}
-                value={editedNotes}
-                onChangeText={setEditedNotes}
-                multiline
-                placeholder="Add your notes..."
-                textAlignVertical="top"
-              />
-            </View>
-            {/* Tags */}
-            <View style={styles.sidebarSection}>
-              <Text style={styles.sidebarSectionTitle}>Tags</Text>
-              <Text style={styles.sidebarText}>
-                {post.tagIds.length > 0
-                  ? post.tagIds.join(", ")
-                  : "No tags added"}
-              </Text>
-            </View>
-            {/* Folder */}
-            <View style={styles.sidebarSection}>
-              <Text style={styles.sidebarSectionTitle}>Folder</Text>
-              <Text style={styles.sidebarText}>
-                {post.folderId ? `#${post.folderId}` : "No folder assigned"}
-              </Text>
-            </View>
-            {/* Post Info */}
-            <View style={styles.sidebarSection}>
-              <Text style={styles.sidebarSectionTitle}>Post Info</Text>
-              <Text style={styles.sidebarText}>
-                Added: {formatDate(post.addedAt)}
-              </Text>
-              <Text style={styles.sidebarText}>
-                Original: {formatDate(post.redditCreatedAt)}
-              </Text>
-              <Text style={styles.sidebarText}>
-                Subreddit: r/{post.subreddit}
-              </Text>
-            </View>
-          </ScrollView>
-        </Animated.View>
-      )}
+      {/* Sidebar overlay & Sidebar extracted to component */}
+      <Sidebar
+        sidebarAnim={sidebarAnim}
+        sidebarWidth={sidebarWidth}
+        insets={insets}
+        overlayOpacity={overlayOpacity}
+        sidebarOpen={sidebarOpen}
+        sidebarVisible={sidebarVisible}
+        toggleSidebar={toggleSidebar}
+        post={post}
+        editedNotes={editedNotes}
+        setEditedNotes={setEditedNotes}
+        formatDate={formatDate}
+      />
     </SafeAreaView>
   );
 }
@@ -499,17 +433,6 @@ const styles = StyleSheet.create({
     color: palette.foreground,
     marginBottom: spacing.s,
   },
-  titleInput: {
-    fontSize: fontSizes.xlarge,
-    fontWeight: fontWeights.bold,
-    color: palette.foreground,
-    marginBottom: spacing.s,
-    padding: spacing.s,
-    backgroundColor: palette.background,
-    borderWidth: 1,
-    borderColor: palette.border,
-    borderRadius: 8,
-  },
   metadata: {
     flexDirection: "row",
     alignItems: "center",
@@ -548,17 +471,6 @@ const styles = StyleSheet.create({
     fontSize: fontSizes.body,
     lineHeight: 24,
     color: palette.foreground,
-  },
-  bodyInput: {
-    fontSize: fontSizes.body,
-    lineHeight: 24,
-    color: palette.foreground,
-    padding: spacing.s,
-    backgroundColor: palette.background,
-    borderWidth: 1,
-    borderColor: palette.border,
-    borderRadius: 8,
-    minHeight: 200,
   },
   notesSection: {
     padding: spacing.m,
@@ -610,63 +522,6 @@ const styles = StyleSheet.create({
     color: "#FF3B30",
     fontSize: fontSizes.body,
     fontWeight: fontWeights.semibold,
-  },
-  sidebar: {
-    position: "absolute",
-    top: 0,
-    right: 0,
-    bottom: 0,
-    width: screenWidth * 0.7,
-    backgroundColor: palette.background,
-    borderLeftWidth: 1,
-    borderLeftColor: palette.border,
-    zIndex: 2,
-  },
-  overlay: {
-    position: "absolute",
-    top: 0,
-    left: 0,
-    bottom: 0,
-    width: screenWidth,
-    backgroundColor: "rgba(0,0,0,0.2)",
-    zIndex: 1,
-  },
-  sidebarHeader: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "center",
-    padding: spacing.m,
-    borderBottomWidth: 1,
-    borderBottomColor: palette.border,
-  },
-  sidebarHeaderNoBorder: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "center",
-    padding: spacing.m,
-  },
-  sidebarTitle: {
-    fontSize: fontSizes.title,
-    fontWeight: fontWeights.semibold,
-    color: palette.foreground,
-  },
-  sidebarContent: {
-    flex: 1,
-    padding: spacing.m,
-  },
-  sidebarSection: {
-    marginBottom: spacing.l,
-  },
-  sidebarSectionTitle: {
-    fontSize: fontSizes.body,
-    fontWeight: fontWeights.semibold,
-    color: palette.foreground,
-    marginBottom: spacing.s,
-  },
-  sidebarText: {
-    fontSize: fontSizes.body,
-    color: palette.muted,
-    lineHeight: 20,
   },
   errorText: {
     fontSize: fontSizes.body,
