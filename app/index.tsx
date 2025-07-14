@@ -84,16 +84,6 @@ export default function HomeScreen() {
     }
   };
 
-  const handleToggleRead = (id: number) => toggleRead(id);
-  const handleToggleFavorite = (id: number) => toggleFavorite(id);
-  const handleSetRating = async (id: number, rating: number) => {
-    const post = posts.find((p) => p.id === id);
-    if (post) {
-      await updatePost({ ...post, rating });
-    }
-  };
-
-  // when sidebar item is tapped
   const handleSelect = (key: string | number) => {
     // key is "home" | "search" | "tags" | "favorites" | "unread" | "settings"
     // or a folder.id number
@@ -104,16 +94,9 @@ export default function HomeScreen() {
     setSidebarOpen(false);
   };
 
-  const renderPost = ({ item }: { item: Post }) => (
-    <PostCard
-      post={item}
-      onToggleRead={() => handleToggleRead(item.id)}
-      onRate={(r) => handleSetRating(item.id, r)}
-      // onToggleFavorite={() => handleToggleFavorite(item.id)}
-    />
-  );
+  const renderPost = ({ item }: { item: Post }) => <PostCard post={item} />;
 
-  const isLoading = false; //postsLoading || redditApiLoading || isAdding;
+  const isLoading = postsLoading || redditApiLoading || isAdding;
 
   return (
     <SafeAreaView style={styles.container}>
@@ -151,10 +134,11 @@ export default function HomeScreen() {
         )}
       </View>
 
-      {/* <InputBar onSubmit={handleAddPost} /> */}
-
       <FlatList
-        data={posts}
+        data={posts.sort(
+          (a, b) =>
+            new Date(b.addedAt).getTime() - new Date(a.addedAt).getTime()
+        )}
         keyExtractor={(item) => item.id.toString()}
         renderItem={renderPost}
         showsVerticalScrollIndicator={true}

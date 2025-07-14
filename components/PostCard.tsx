@@ -9,15 +9,9 @@ import { Post } from "../models/models";
 
 interface PostCardProps {
   post: Post;
-  onToggleRead: () => void;
-  onRate: (rating: number) => void;
 }
 
-export const PostCard: React.FC<PostCardProps> = ({
-  post,
-  onToggleRead,
-  onRate,
-}) => {
+export const PostCard: React.FC<PostCardProps> = ({ post }) => {
   const router = useRouter();
 
   const handlePress = () => {
@@ -40,8 +34,6 @@ export const PostCard: React.FC<PostCardProps> = ({
       return date.toLocaleDateString();
     }
   };
-
-  const formatRedditUser = (u: string) => (u.startsWith("u/") ? u : `u/${u}`);
 
   return (
     <TouchableOpacity
