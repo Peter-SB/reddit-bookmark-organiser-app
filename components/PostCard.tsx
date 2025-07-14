@@ -90,7 +90,7 @@ export const PostCard: React.FC<PostCardProps> = ({ post }) => {
 
 const styles = StyleSheet.create({
   container: {
-    backgroundColor: palette.backgroundLight,
+    backgroundColor: palette.background,
     borderRadius: 0,
     padding: spacing.m,
     marginHorizontal: 0, //spacing.s,

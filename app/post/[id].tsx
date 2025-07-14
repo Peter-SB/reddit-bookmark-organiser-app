@@ -9,7 +9,9 @@ import { useLocalSearchParams, useRouter } from "expo-router";
 import React, { useEffect, useState } from "react";
 import {
   ActivityIndicator,
+  Alert,
   Animated,
+  BackHandler,
   Dimensions,
   ScrollView,
   StyleSheet,
@@ -54,6 +56,66 @@ export default function PostScreen() {
   const sidebarAnim = useState(new Animated.Value(sidebarWidth))[0];
   const [overlayOpacity] = useState(new Animated.Value(0));
 
+  const hasUnsavedChanges = () => {
+    if (!post) return false;
+    const originalTitle = post.customTitle ?? post.title;
+    const originalBody = post.customBody ?? post.bodyText;
+    const originalNotes = post.notes ?? "";
+    return (
+      editedTitle !== originalTitle ||
+      editedBody !== originalBody ||
+      editedNotes !== originalNotes
+    );
+  };
+
+  // animates out then goes back
+  const animateAndGoBack = () => {
+    Animated.timing(slideAnim, {
+      toValue: screenWidth,
+      duration: 150,
+      useNativeDriver: true,
+    }).start(() => router.back());
+  };
+
+  const handleBack = () => {
+    if (hasUnsavedChanges()) {
+      Alert.alert(
+        "Unsaved Changes",
+        "You have unsaved edits. What would you like to do?",
+        [
+          { text: "Cancel", style: "cancel" },
+          {
+            text: "Discard",
+            style: "destructive",
+            onPress: () => animateAndGoBack(),
+          },
+          {
+            text: "Save",
+            onPress: async () => {
+              await handleSave();
+              animateAndGoBack();
+            },
+          },
+        ],
+        { cancelable: true }
+      );
+    } else {
+      animateAndGoBack();
+    }
+  };
+
+  useEffect(() => {
+    const onBackPress = () => {
+      handleBack();
+      return true;
+    };
+    const subscription = BackHandler.addEventListener(
+      "hardwareBackPress",
+      onBackPress
+    );
+    return () => subscription.remove();
+  }, [editedTitle, editedBody, editedNotes, post]);
+
   // when posts load (or ID changes), find our post
   useEffect(() => {
     if (id && !loading) {
@@ -88,14 +150,6 @@ export default function PostScreen() {
       </SafeAreaView>
     );
   }
-
-  const handleBack = () => {
-    Animated.timing(slideAnim, {
-      toValue: screenWidth,
-      duration: 150,
-      useNativeDriver: true,
-    }).start(() => router.back());
-  };
 
   const handleSave = async () => {
     const updated: Post = {
@@ -210,7 +264,7 @@ export default function PostScreen() {
           <View style={styles.titleSection}>
             {isEditing ? (
               <TextInput
-                style={styles.titleInput}
+                style={styles.title}
                 value={editedTitle}
                 onChangeText={setEditedTitle}
                 multiline
@@ -238,7 +292,7 @@ export default function PostScreen() {
               <StarRating
                 rating={post.rating || 0}
                 onRate={handleSetRating}
-                size={20}
+                size={18}
               />
               <TouchableOpacity
                 onPress={handleToggleRead}
@@ -250,7 +304,7 @@ export default function PostScreen() {
                       ? "checkmark-circle"
                       : "checkmark-circle-outline"
                   }
-                  size={24}
+                  size={20}
                   color={post.isRead ? palette.accent : palette.muted}
                 />
                 <Text style={styles.readText}>
@@ -263,7 +317,7 @@ export default function PostScreen() {
               >
                 <Ionicons
                   name={post.isFavorite ? "heart" : "heart-outline"}
-                  size={24}
+                  size={20}
                   color={post.isFavorite ? palette.favHeartRed : palette.muted}
                 />
               </TouchableOpacity>
@@ -274,7 +328,7 @@ export default function PostScreen() {
           <View style={styles.bodySection}>
             {isEditing ? (
               <TextInput
-                style={styles.bodyInput}
+                style={styles.body}
                 value={editedBody}
                 onChangeText={setEditedBody}
                 multiline
@@ -358,9 +412,14 @@ export default function PostScreen() {
             {/* Notes */}
             <View style={styles.sidebarSection}>
               <Text style={styles.sidebarSectionTitle}>Notes</Text>
-              <Text style={styles.sidebarText}>
-                {post.notes || "No notes added yet"}
-              </Text>
+              <TextInput
+                style={styles.sidebarText}
+                value={editedNotes}
+                onChangeText={setEditedNotes}
+                multiline
+                placeholder="Add your notes..."
+                textAlignVertical="top"
+              />
             </View>
             {/* Tags */}
             <View style={styles.sidebarSection}>
@@ -457,7 +516,7 @@ const styles = StyleSheet.create({
     marginBottom: spacing.m,
   },
   metadataText: {
-    fontSize: fontSizes.body,
+    fontSize: fontSizes.body * 0.9,
     color: palette.muted,
   },
   separator: {
@@ -556,8 +615,8 @@ const styles = StyleSheet.create({
     position: "absolute",
     top: 0,
     right: 0,
+    bottom: 0,
     width: screenWidth * 0.7,
-    height: "100%",
     backgroundColor: palette.background,
     borderLeftWidth: 1,
     borderLeftColor: palette.border,
@@ -567,8 +626,8 @@ const styles = StyleSheet.create({
     position: "absolute",
     top: 0,
     left: 0,
+    bottom: 0,
     width: screenWidth,
-    height: "100%",
     backgroundColor: "rgba(0,0,0,0.2)",
     zIndex: 1,
   },
