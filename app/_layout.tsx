@@ -4,7 +4,8 @@ import {
   ThemeProvider,
 } from "@react-navigation/native";
 import { useFonts } from "expo-font";
-import { Stack } from "expo-router";
+import * as Linking from "expo-linking";
+import { Stack, useRouter } from "expo-router";
 import { StatusBar } from "expo-status-bar";
 import { useEffect } from "react";
 import "react-native-reanimated";
@@ -17,6 +18,7 @@ export default function RootLayout() {
   const [loaded] = useFonts({
     SpaceMono: require("../assets/fonts/SpaceMono-Regular.ttf"),
   });
+  const router = useRouter();
 
   useEffect(() => {
     DatabaseService.getInstance().catch((err) => {
@@ -24,6 +26,25 @@ export default function RootLayout() {
     });
     console.log("DatabaseService initialized");
   }, []);
+
+  // Handle incoming shared Reddit URLs
+  useEffect(() => {
+    const handleUrl = (url: string) => {
+      if (url && url.includes("reddit.com")) {
+        // Pass the shared URL as a param to index
+        router.replace({ pathname: "/", params: { sharedUrl: url } });
+      }
+    };
+
+    // Listen for URLs while app is open
+    const sub = Linking.addEventListener("url", ({ url }) => handleUrl(url));
+    // Handle initial launch with URL
+    Linking.getInitialURL().then((url) => {
+      if (url) handleUrl(url);
+    });
+
+    return () => sub.remove();
+  }, [router]);
 
   if (!loaded) {
     // Async font loading only occurs in development.

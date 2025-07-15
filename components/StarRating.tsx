@@ -1,6 +1,6 @@
 import { Ionicons } from "@expo/vector-icons";
 import React from "react";
-import { StyleSheet, TouchableOpacity, View } from "react-native";
+import { StyleSheet, Text, TouchableOpacity, View } from "react-native";
 import { palette } from "../constants/Colors";
 import { spacing } from "../constants/spacing";
 
@@ -49,7 +49,12 @@ export const StarRating: React.FC<StarRatingProps> = ({
   };
 
   return (
-    <View style={styles.container}>{[0, 1, 2, 3, 4].map(renderStar)}</View>
+    <View style={styles.container}>
+      {[0, 1, 2, 3, 4].map(renderStar)}
+      <View style={{ marginLeft: 6 }}>
+        <Text style={styles.ratingText}>{rating.toFixed(1)}/5</Text>
+      </View>
+    </View>
   );
 };
 
@@ -60,5 +65,11 @@ const styles = StyleSheet.create({
   },
   starContainer: {
     marginRight: spacing.xs,
+  },
+  ratingText: {
+    fontSize: 14,
+    color: palette.muted,
+    marginLeft: 2,
+    marginRight: 3,
   },
 });

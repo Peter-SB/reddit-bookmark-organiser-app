@@ -1,6 +1,8 @@
 import { palette } from "@/constants/Colors";
 import { spacing } from "@/constants/spacing";
 import { fontSizes, fontWeights } from "@/constants/typography";
+import { Post } from "@/models/models";
+import { openRedditSubreddit, openRedditUser } from "@/utils/redditLinks";
 import { Ionicons } from "@expo/vector-icons";
 import React from "react";
 import {
@@ -21,7 +23,7 @@ interface SidebarProps {
   sidebarOpen: boolean;
   sidebarVisible: boolean;
   toggleSidebar: () => void;
-  post: any;
+  post: Post;
   editedNotes: string;
   setEditedNotes: (notes: string) => void;
   formatDate: (dt: Date) => string;
@@ -112,10 +114,31 @@ export const Sidebar: React.FC<SidebarProps> = ({
               Added: {formatDate(post.addedAt)}
             </Text>
             <Text style={styles.sidebarText}>
-              Original: {formatDate(post.redditCreatedAt)}
+              Posted: {formatDate(post.redditCreatedAt)}
             </Text>
             <Text style={styles.sidebarText}>
-              Subreddit: r/{post.subreddit}
+              User:{" "}
+              <Text
+                style={{
+                  color: palette.accent,
+                  textDecorationLine: "underline",
+                }}
+                onPress={() => openRedditUser(post.author)}
+              >
+                u/{post.author || "Unknown"}
+              </Text>
+            </Text>
+            <Text style={styles.sidebarText}>
+              Subreddit:{" "}
+              <Text
+                style={{
+                  color: palette.accent,
+                  textDecorationLine: "underline",
+                }}
+                onPress={() => openRedditSubreddit(post.subreddit)}
+              >
+                r/{post.subreddit}
+              </Text>
             </Text>
           </View>
         </ScrollView>

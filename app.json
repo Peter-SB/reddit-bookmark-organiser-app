@@ -17,7 +17,32 @@
         "backgroundColor": "#ffffff"
       },
       "edgeToEdgeEnabled": true,
-      "package": "com.peterbs.redditpostorganiserapp"
+      "package": "com.peterbs.redditpostorganiserapp",
+      "intentFilters": [
+        {
+          "action": "VIEW",
+          "data": [
+            {
+              "scheme": "https",
+              "host": "reddit.com"
+            },
+            {
+              "scheme": "https",
+              "host": "www.reddit.com"
+            },
+            {
+              "scheme": "https",
+              "host": "old.reddit.com"
+            }
+          ],
+          "category": ["BROWSABLE", "DEFAULT"]
+        },
+        {
+          "action": "SEND",
+          "data": "text/plain",
+          "category": ["DEFAULT"]
+        }
+      ]
     },
     "web": {
       "bundler": "metro",

@@ -7,17 +7,18 @@ import { usePosts } from "@/hooks/usePosts";
 import { Post } from "@/models/models";
 import { Ionicons } from "@expo/vector-icons";
 import { useLocalSearchParams, useRouter } from "expo-router";
-import React, { useEffect, useState } from "react";
+import React, { useCallback, useEffect, useState } from "react";
 import {
   ActivityIndicator,
   Alert,
   Animated,
   BackHandler,
   Dimensions,
+  Modal,
+  TextInput as RNTextInput,
   ScrollView,
   StyleSheet,
   Text,
-  TextInput,
   TouchableOpacity,
   View,
 } from "react-native";
@@ -33,7 +34,6 @@ export default function PostScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const router = useRouter();
 
-  // grab everything from our hook
   const {
     posts,
     loading,
@@ -57,7 +57,10 @@ export default function PostScreen() {
   const sidebarAnim = useState(new Animated.Value(sidebarWidth))[0];
   const [overlayOpacity] = useState(new Animated.Value(0));
 
-  const hasUnsavedChanges = () => {
+  const [ratingModalVisible, setRatingModalVisible] = useState(false);
+  const [ratingInput, setRatingInput] = useState<string>("");
+
+  const hasUnsavedChanges = useCallback(() => {
     if (!post) return false;
     const originalTitle = post.customTitle ?? post.title;
     const originalBody = post.customBody ?? post.bodyText;
@@ -67,18 +70,30 @@ export default function PostScreen() {
       editedBody !== originalBody ||
       editedNotes !== originalNotes
     );
-  };
+  }, [post, editedTitle, editedBody, editedNotes]);
 
   // animates out then goes back
-  const animateAndGoBack = () => {
+  const animateAndGoBack = useCallback(() => {
     Animated.timing(slideAnim, {
       toValue: screenWidth,
       duration: 150,
       useNativeDriver: true,
     }).start(() => router.back());
-  };
+  }, [slideAnim, router]);
 
-  const handleBack = () => {
+  const handleSave = useCallback(async () => {
+    if (!post) return;
+    const updated: Post = {
+      ...post,
+      customTitle: editedTitle,
+      customBody: editedBody,
+      notes: editedNotes,
+    };
+    await savePost(updated);
+    setIsEditing(false);
+  }, [post, editedTitle, editedBody, editedNotes, savePost]);
+
+  const handleBack = useCallback(() => {
     if (hasUnsavedChanges()) {
       Alert.alert(
         "Unsaved Changes",
@@ -103,7 +118,7 @@ export default function PostScreen() {
     } else {
       animateAndGoBack();
     }
-  };
+  }, [hasUnsavedChanges, animateAndGoBack, handleSave]);
 
   useEffect(() => {
     const onBackPress = () => {
@@ -115,7 +130,7 @@ export default function PostScreen() {
       onBackPress
     );
     return () => subscription.remove();
-  }, [editedTitle, editedBody, editedNotes, post]);
+  }, [editedTitle, editedBody, editedNotes, post, handleBack]);
 
   // when posts load (or ID changes), find our post
   useEffect(() => {
@@ -152,24 +167,21 @@ export default function PostScreen() {
     );
   }
 
-  const handleSave = async () => {
-    const updated: Post = {
-      ...post,
-      customTitle: editedTitle, // !== post.title ? editedTitle : post.customTitle,
-      customBody: editedBody, // !== post.bodyText ? editedBody : post.customBody,
-      notes: editedNotes,
-    };
-    await savePost(updated);
-    setIsEditing(false);
-  };
-
   const handleDelete = async () => {
     await deletePost(post.id);
     handleBack();
   };
 
-  const handleSetRating = async (rating: number) => {
-    await savePost({ ...post, rating });
+  // allow null now:
+  const handleSetRating = async (rating: number | null) => {
+    // Fix: allow null for rating in Post type
+    await savePost({ ...post!, rating: rating === null ? undefined : rating });
+  };
+
+  // when you long‑press the stars:
+  const openRatingModal = () => {
+    setRatingInput(post?.rating != null ? post.rating.toFixed(1) : "");
+    setRatingModalVisible(true);
   };
 
   const handleToggleRead = async () => {
@@ -264,7 +276,7 @@ export default function PostScreen() {
           {/* Title */}
           <View style={styles.titleSection}>
             {isEditing ? (
-              <TextInput
+              <RNTextInput
                 style={styles.title}
                 value={editedTitle}
                 onChangeText={setEditedTitle}
@@ -280,20 +292,20 @@ export default function PostScreen() {
               </Text>
               <Text style={styles.separator}>•</Text>
               <TouchableOpacity>
-                <Text style={[styles.metadataText, styles.userLink]}>
+                <Text style={[styles.metadataText]}>
                   {formatRedditUser(post.author)}
                 </Text>
               </TouchableOpacity>
               <Text style={styles.separator}>•</Text>
-              <Text style={styles.metadataText}>r/{post.subreddit}</Text>
+              <Text style={[styles.metadataText]}>r/{post.subreddit}</Text>
             </View>
 
             {/* Rating & Read */}
             <View style={styles.ratingSection}>
               <StarRating
                 rating={post.rating || 0}
-                onRate={handleSetRating}
-                size={18}
+                onRate={openRatingModal}
+                size={16}
               />
               <TouchableOpacity
                 onPress={handleToggleRead}
@@ -305,7 +317,7 @@ export default function PostScreen() {
                       ? "checkmark-circle"
                       : "checkmark-circle-outline"
                   }
-                  size={20}
+                  size={16}
                   color={post.isRead ? palette.accent : palette.muted}
                 />
                 <Text style={styles.readText}>
@@ -318,7 +330,7 @@ export default function PostScreen() {
               >
                 <Ionicons
                   name={post.isFavorite ? "heart" : "heart-outline"}
-                  size={20}
+                  size={18}
                   color={post.isFavorite ? palette.favHeartRed : palette.muted}
                 />
               </TouchableOpacity>
@@ -328,7 +340,7 @@ export default function PostScreen() {
           {/* Body */}
           <View style={styles.bodySection}>
             {isEditing ? (
-              <TextInput
+              <RNTextInput
                 style={styles.body}
                 value={editedBody}
                 onChangeText={setEditedBody}
@@ -345,7 +357,7 @@ export default function PostScreen() {
           {isEditing && (
             <View style={styles.notesSection}>
               <Text style={styles.sectionTitle}>Notes</Text>
-              <TextInput
+              <RNTextInput
                 style={styles.notesInput}
                 value={editedNotes}
                 onChangeText={setEditedNotes}
@@ -387,6 +399,62 @@ export default function PostScreen() {
         setEditedNotes={setEditedNotes}
         formatDate={formatDate}
       />
+      {/* --- put this at the bottom of your JSX: */}
+      <Modal
+        transparent
+        visible={ratingModalVisible}
+        animationType="fade"
+        onRequestClose={() => setRatingModalVisible(false)}
+      >
+        <View style={styles.modalOverlay}>
+          <View style={styles.modalContent}>
+            <Text style={styles.modalTitle}>Custom Rating</Text>
+            <RNTextInput
+              style={styles.modalInput}
+              value={ratingInput}
+              onChangeText={setRatingInput}
+              keyboardType="decimal-pad"
+              placeholder="0.0 – 5.0"
+              maxLength={4} // e.g. "5.0"
+            />
+            <View style={styles.modalButtons}>
+              <TouchableOpacity
+                onPress={() => setRatingModalVisible(false)}
+                style={styles.modalButton}
+              >
+                <Text>Cancel</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                onPress={async () => {
+                  const v = parseFloat(ratingInput);
+                  if (isNaN(v) || v < 0 || v > 5) {
+                    Alert.alert(
+                      "Invalid",
+                      "Enter a number between 0.0 and 5.0"
+                    );
+                    return;
+                  }
+                  const rounded = Math.round(v * 10) / 10;
+                  await handleSetRating(rounded);
+                  setRatingModalVisible(false);
+                }}
+                style={styles.modalButton}
+              >
+                <Text>Save</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                onPress={async () => {
+                  await handleSetRating(null);
+                  setRatingModalVisible(false);
+                }}
+                style={styles.modalButton}
+              >
+                <Text>Clear</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </View>
+      </Modal>
     </SafeAreaView>
   );
 }
@@ -446,9 +514,6 @@ const styles = StyleSheet.create({
     fontSize: fontSizes.body,
     color: palette.muted,
     marginHorizontal: spacing.xs,
-  },
-  userLink: {
-    color: palette.accent,
   },
   ratingSection: {
     flexDirection: "row",
@@ -528,5 +593,40 @@ const styles = StyleSheet.create({
     color: palette.muted,
     textAlign: "center",
     marginTop: spacing.xl,
+  },
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: "rgba(0,0,0,0.3)",
+    justifyContent: "center",
+    alignItems: "center",
+  },
+  modalContent: {
+    width: "80%",
+    backgroundColor: palette.background,
+    padding: spacing.m,
+    borderRadius: 8,
+    elevation: 5,
+  },
+  modalTitle: {
+    fontSize: fontSizes.large,
+    fontWeight: fontWeights.semibold,
+    marginBottom: spacing.s,
+    color: palette.foreground,
+  },
+  modalInput: {
+    borderWidth: 1,
+    borderColor: palette.border,
+    borderRadius: 6,
+    padding: spacing.s,
+    fontSize: fontSizes.body,
+    marginBottom: spacing.m,
+    color: palette.foreground,
+  },
+  modalButtons: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+  },
+  modalButton: {
+    padding: spacing.s,
   },
 });
