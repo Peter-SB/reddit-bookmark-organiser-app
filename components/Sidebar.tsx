@@ -211,5 +211,6 @@ const styles = StyleSheet.create({
     fontSize: fontSizes.body,
     color: palette.muted,
     lineHeight: 20,
+    padding: 0,
   },
 });

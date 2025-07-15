@@ -30,6 +30,7 @@ export const palette = {
   background: '#FFF',
   backgroundLight: '#fcfcfc',//'#fafafa',
   foreground: '#111',
+  foregroundLight: '#323232',
   accent: '#007AFF',  // iOS blue
   muted: '#888',
   cardShadow: '#00000010',

@@ -189,8 +189,22 @@ export default function PostScreen() {
   }
 
   const handleDelete = async () => {
-    await deletePost(post.id);
-    handleBack();
+    Alert.alert(
+      "Delete Post",
+      "Are you sure you want to permanently delete this post? This cannot be undone.",
+      [
+        { text: "Cancel", style: "cancel" },
+        {
+          text: "Delete",
+          style: "destructive",
+          onPress: async () => {
+            await deletePost(post!.id);
+            handleBack();
+          },
+        },
+      ],
+      { cancelable: true }
+    );
   };
 
   const openRatingModal = () => {
@@ -320,7 +334,7 @@ export default function PostScreen() {
               <Ionicons
                 name={isEditing ? "lock-closed" : "create"}
                 size={18}
-                color={palette.accent}
+                color={palette.foregroundLight}
               />
             </TouchableOpacity>
           </View>
@@ -608,12 +622,9 @@ const styles = StyleSheet.create({
   notesInput: {
     fontSize: fontSizes.body,
     color: palette.foreground,
-    padding: spacing.s,
     backgroundColor: palette.background,
-    borderWidth: 1,
-    borderColor: palette.border,
-    borderRadius: 8,
-    minHeight: 100,
+    minHeight: 50,
+    padding: 0,
   },
   actionSection: {
     padding: spacing.m,
