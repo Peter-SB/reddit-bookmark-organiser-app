@@ -11,3 +11,9 @@ export function openRedditSubreddit(subreddit?: string) {
     Linking.openURL(`https://www.reddit.com/r/${subreddit}`);
   }
 }
+
+export function openRedditPost(url?: string) {
+  if (url) {
+    Linking.openURL(url);
+  }
+}

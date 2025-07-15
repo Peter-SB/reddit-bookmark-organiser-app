@@ -15,10 +15,10 @@ import {
   BackHandler,
   Dimensions,
   Modal,
-  TextInput as RNTextInput,
   ScrollView,
   StyleSheet,
   Text,
+  TextInput,
   TouchableOpacity,
   View,
 } from "react-native";
@@ -34,20 +34,18 @@ export default function PostScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const router = useRouter();
 
-  const {
-    posts,
-    loading,
-    updatePost: savePost,
-    toggleRead,
-    toggleFavorite,
-    deletePost,
-  } = usePosts();
+  const { posts, loading, updatePost: savePost, deletePost } = usePosts();
 
   const [post, setPost] = useState<Post | null>(null);
+
   const [isEditing, setIsEditing] = useState(true);
   const [editedTitle, setEditedTitle] = useState("");
   const [editedBody, setEditedBody] = useState("");
   const [editedNotes, setEditedNotes] = useState("");
+  const [editedRating, setEditedRating] = useState<number | null>(null);
+  const [editedIsRead, setEditedIsRead] = useState<boolean>(false);
+  const [editedIsFavorite, setEditedIsFavorite] = useState<boolean>(false);
+
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [sidebarVisible, setSidebarVisible] = useState(false);
 
@@ -67,10 +65,20 @@ export default function PostScreen() {
     return (
       editedTitle !== originalTitle ||
       editedBody !== originalBody ||
-      editedNotes !== originalNotes
+      editedNotes !== originalNotes ||
+      (editedRating ?? undefined) !== post.rating ||
+      editedIsRead !== post.isRead ||
+      editedIsFavorite !== post.isFavorite
     );
-  }, [post, editedTitle, editedBody, editedNotes]);
-
+  }, [
+    post,
+    editedTitle,
+    editedBody,
+    editedNotes,
+    editedRating,
+    editedIsRead,
+    editedIsFavorite,
+  ]);
   // animates out then goes back
   const animateAndGoBack = useCallback(() => {
     Animated.timing(slideAnim, {
@@ -87,10 +95,21 @@ export default function PostScreen() {
       customTitle: editedTitle,
       customBody: editedBody,
       notes: editedNotes,
+      rating: editedRating ?? undefined,
+      isRead: editedIsRead,
+      isFavorite: editedIsFavorite,
     };
     await savePost(updated);
-    setIsEditing(false);
-  }, [post, editedTitle, editedBody, editedNotes, savePost]);
+  }, [
+    post,
+    editedTitle,
+    editedBody,
+    editedNotes,
+    editedRating,
+    editedIsRead,
+    editedIsFavorite,
+    savePost,
+  ]);
 
   const handleBack = useCallback(() => {
     if (hasUnsavedChanges()) {
@@ -140,6 +159,9 @@ export default function PostScreen() {
         setEditedTitle(found.customTitle ?? found.title);
         setEditedBody(found.customBody ?? found.bodyText);
         setEditedNotes(found.notes ?? "");
+        setEditedRating(found.rating ?? null);
+        setEditedIsRead(found.isRead);
+        setEditedIsFavorite(found.isFavorite);
       }
     }
   }, [id, posts, loading]);
@@ -171,24 +193,21 @@ export default function PostScreen() {
     handleBack();
   };
 
-  // allow null now:
-  const handleSetRating = async (rating: number | null) => {
-    // Fix: allow null for rating in Post type
-    await savePost({ ...post!, rating: rating === null ? undefined : rating });
-  };
-
-  // when you long‑press the stars:
   const openRatingModal = () => {
     setRatingInput(post?.rating != null ? post.rating.toFixed(1) : "");
     setRatingModalVisible(true);
   };
 
+  const handleSetRating = async (rating: number | null) => {
+    setEditedRating(rating);
+  };
+
   const handleToggleRead = async () => {
-    await toggleRead(post.id);
+    setEditedIsRead((prev) => !prev);
   };
 
   const handleToggleFavorite = async () => {
-    await toggleFavorite(post.id);
+    setEditedIsFavorite((prev) => !prev);
   };
 
   const toggleSidebar = () => {
@@ -241,33 +260,73 @@ export default function PostScreen() {
       >
         {/* Header */}
         <View style={styles.header}>
-          <TouchableOpacity onPress={handleBack} style={styles.backButton}>
-            <Ionicons
-              name="chevron-back"
-              size={24}
-              color={palette.foreground}
-            />
-          </TouchableOpacity>
-          <View style={styles.headerActions}>
+          <View style={[styles.headerActions, { alignItems: "center" }]}>
             <TouchableOpacity
-              onPress={toggleSidebar}
-              style={styles.actionButton}
+              onPress={handleBack}
+              style={styles.backButton}
+              hitSlop={1}
             >
-              <Ionicons name="menu" size={24} color={palette.foreground} />
+              <Ionicons
+                name="chevron-back"
+                size={24}
+                color={palette.foreground}
+              />
             </TouchableOpacity>
+            {hasUnsavedChanges() && (
+              <TouchableOpacity
+                onPress={handleSave}
+                style={styles.actionButton}
+                hitSlop={1}
+              >
+                <Ionicons name="checkmark" size={22} color="green" />
+              </TouchableOpacity>
+            )}
+            {hasUnsavedChanges() && (
+              <TouchableOpacity
+                onPress={() => {
+                  Alert.alert(
+                    "Discard Changes",
+                    "Are you sure you want to discard your unsaved changes?",
+                    [
+                      { text: "Cancel", style: "cancel" },
+                      {
+                        text: "Discard",
+                        style: "destructive",
+                        onPress: () => {
+                          if (post) {
+                            setEditedTitle(post.customTitle ?? post.title);
+                            setEditedBody(post.customBody ?? post.bodyText);
+                            setEditedNotes(post.notes ?? "");
+                          }
+                        },
+                      },
+                    ],
+                    { cancelable: true }
+                  );
+                }}
+                style={styles.actionButton}
+                hitSlop={1}
+              >
+                <Ionicons name="trash" size={22} color="#FF3B30" />
+              </TouchableOpacity>
+            )}
             <TouchableOpacity
               onPress={() => {
                 setIsEditing((e) => !e);
               }}
               style={styles.actionButton}
+              hitSlop={1}
             >
               <Ionicons
-                name={isEditing ? "checkmark" : "create"}
-                size={24}
+                name={isEditing ? "lock-closed" : "create"}
+                size={18}
                 color={palette.accent}
               />
             </TouchableOpacity>
           </View>
+          <TouchableOpacity onPress={toggleSidebar} style={styles.actionButton}>
+            <Ionicons name="menu" size={24} color={palette.foreground} />
+          </TouchableOpacity>
         </View>
 
         {/* Content */}
@@ -275,7 +334,7 @@ export default function PostScreen() {
           {/* Title */}
           <View style={styles.titleSection}>
             {isEditing ? (
-              <RNTextInput
+              <TextInput
                 style={styles.title}
                 value={editedTitle}
                 onChangeText={setEditedTitle}
@@ -290,11 +349,9 @@ export default function PostScreen() {
                 {formatDate(post.redditCreatedAt)}
               </Text>
               <Text style={styles.separator}>•</Text>
-              <TouchableOpacity>
-                <Text style={[styles.metadataText]}>
-                  {formatRedditUser(post.author)}
-                </Text>
-              </TouchableOpacity>
+              <Text style={[styles.metadataText]}>
+                {formatRedditUser(post.author)}
+              </Text>
               <Text style={styles.separator}>•</Text>
               <Text style={[styles.metadataText]}>r/{post.subreddit}</Text>
             </View>
@@ -302,7 +359,7 @@ export default function PostScreen() {
             {/* Rating & Read */}
             <View style={styles.ratingSection}>
               <StarRating
-                rating={post.rating || 0}
+                rating={editedRating || 0}
                 onRate={openRatingModal}
                 size={16}
               />
@@ -312,15 +369,15 @@ export default function PostScreen() {
               >
                 <Ionicons
                   name={
-                    post.isRead
+                    editedIsRead
                       ? "checkmark-circle"
                       : "checkmark-circle-outline"
                   }
                   size={16}
-                  color={post.isRead ? palette.accent : palette.muted}
+                  color={editedIsRead ? palette.accent : palette.muted}
                 />
                 <Text style={styles.readText}>
-                  {post.isRead ? "Read" : "Unread"}
+                  {editedIsRead ? "Read" : "Unread"}
                 </Text>
               </TouchableOpacity>
               <TouchableOpacity
@@ -328,9 +385,9 @@ export default function PostScreen() {
                 style={styles.readToggle}
               >
                 <Ionicons
-                  name={post.isFavorite ? "heart" : "heart-outline"}
+                  name={editedIsFavorite ? "heart" : "heart-outline"}
                   size={18}
-                  color={post.isFavorite ? palette.favHeartRed : palette.muted}
+                  color={editedIsFavorite ? palette.favHeartRed : palette.muted}
                 />
               </TouchableOpacity>
             </View>
@@ -339,7 +396,7 @@ export default function PostScreen() {
           {/* Body */}
           <View style={styles.bodySection}>
             {isEditing ? (
-              <RNTextInput
+              <TextInput
                 style={styles.body}
                 value={editedBody}
                 onChangeText={setEditedBody}
@@ -356,7 +413,7 @@ export default function PostScreen() {
           {isEditing && (
             <View style={styles.notesSection}>
               <Text style={styles.sectionTitle}>Notes</Text>
-              <RNTextInput
+              <TextInput
                 style={styles.notesInput}
                 value={editedNotes}
                 onChangeText={setEditedNotes}
@@ -398,7 +455,6 @@ export default function PostScreen() {
         setEditedNotes={setEditedNotes}
         formatDate={formatDate}
       />
-      {/* --- put this at the bottom of your JSX: */}
       <Modal
         transparent
         visible={ratingModalVisible}
@@ -408,7 +464,7 @@ export default function PostScreen() {
         <View style={styles.modalOverlay}>
           <View style={styles.modalContent}>
             <Text style={styles.modalTitle}>Custom Rating</Text>
-            <RNTextInput
+            <TextInput
               style={styles.modalInput}
               value={ratingInput}
               onChangeText={setRatingInput}
@@ -478,13 +534,13 @@ const styles = StyleSheet.create({
   },
   backButton: {
     padding: spacing.s,
+    marginRight: spacing.s,
   },
   headerActions: {
     flexDirection: "row",
-    gap: spacing.s,
   },
   actionButton: {
-    padding: spacing.s,
+    padding: spacing.xs,
   },
   content: {
     flex: 1,
@@ -499,6 +555,7 @@ const styles = StyleSheet.create({
     fontWeight: fontWeights.bold,
     color: palette.foreground,
     marginBottom: spacing.s,
+    padding: 0,
   },
   metadata: {
     flexDirection: "row",
@@ -529,12 +586,13 @@ const styles = StyleSheet.create({
     color: palette.muted,
   },
   bodySection: {
-    padding: spacing.m,
+    padding: spacing.m - 4,
   },
   body: {
     fontSize: fontSizes.body,
     lineHeight: 24,
     color: palette.foreground,
+    padding: 0,
   },
   notesSection: {
     padding: spacing.m,

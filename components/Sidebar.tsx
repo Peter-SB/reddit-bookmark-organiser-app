@@ -2,7 +2,11 @@ import { palette } from "@/constants/Colors";
 import { spacing } from "@/constants/spacing";
 import { fontSizes, fontWeights } from "@/constants/typography";
 import { Post } from "@/models/models";
-import { openRedditSubreddit, openRedditUser } from "@/utils/redditLinks";
+import {
+  openRedditPost,
+  openRedditSubreddit,
+  openRedditUser,
+} from "@/utils/redditLinks";
 import { Ionicons } from "@expo/vector-icons";
 import React from "react";
 import {
@@ -111,10 +115,16 @@ export const Sidebar: React.FC<SidebarProps> = ({
           <View style={styles.sidebarSection}>
             <Text style={styles.sidebarSectionTitle}>Post Info</Text>
             <Text style={styles.sidebarText}>
-              Added: {formatDate(post.addedAt)}
-            </Text>
-            <Text style={styles.sidebarText}>
-              Posted: {formatDate(post.redditCreatedAt)}
+              Post:{" "}
+              <Text
+                style={{
+                  color: palette.accent,
+                  textDecorationLine: "underline",
+                }}
+                onPress={() => post.url && openRedditPost(post.url)}
+              >
+                Link
+              </Text>
             </Text>
             <Text style={styles.sidebarText}>
               User:{" "}
@@ -139,6 +149,12 @@ export const Sidebar: React.FC<SidebarProps> = ({
               >
                 r/{post.subreddit}
               </Text>
+            </Text>
+            <Text style={styles.sidebarText}>
+              Added: {formatDate(post.addedAt)}
+            </Text>
+            <Text style={styles.sidebarText}>
+              Posted: {formatDate(post.redditCreatedAt)}
             </Text>
           </View>
         </ScrollView>
