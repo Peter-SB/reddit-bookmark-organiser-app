@@ -45,7 +45,6 @@ export function usePosts(): UsePostsResult {
     setLoading(false);
   }, [repo]);
 
-  // expose a manual refresh
   const refresh = useCallback(() => loadPosts(), [loadPosts]);
 
   const addPost = useCallback(async (data: Omit<Post, 'id' | 'tagIds'> & { tagIds?: number[] }) => {

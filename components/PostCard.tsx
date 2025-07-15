@@ -54,11 +54,17 @@ export const PostCard: React.FC<PostCardProps> = ({ post }) => {
       <View style={styles.rowMetaActions}>
         {/* Right: Date and subreddit */}
         <View style={styles.leftMeta}>
+          <Text style={styles.metadataText}>r/{post.subreddit}</Text>
+          <Text style={styles.separator}>•</Text>
           <Text style={styles.metadataText}>
-            {formatDate(post.redditCreatedAt)}
+            {post.author ? `u/${post.author}` : "Unknown User"}
           </Text>
           <Text style={styles.separator}>•</Text>
-          <Text style={styles.metadataText}>r/{post.subreddit}</Text>
+          <Text style={styles.metadataText}>
+            {" "}
+            Words:
+            {post.bodyText.trim().split(/\s+/).length}
+          </Text>
         </View>
 
         {/* Left: Heart and rating */}
@@ -153,7 +159,7 @@ const styles = StyleSheet.create({
     // marginBottom: spacing.xs,
   },
   metadataText: {
-    fontSize: fontSizes.small,
+    fontSize: fontSizes.small * 0.8,
     color: palette.muted,
   },
   separator: {

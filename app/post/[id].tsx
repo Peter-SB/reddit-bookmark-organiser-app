@@ -44,14 +44,13 @@ export default function PostScreen() {
   } = usePosts();
 
   const [post, setPost] = useState<Post | null>(null);
-  const [isEditing, setIsEditing] = useState(false);
+  const [isEditing, setIsEditing] = useState(true);
   const [editedTitle, setEditedTitle] = useState("");
   const [editedBody, setEditedBody] = useState("");
   const [editedNotes, setEditedNotes] = useState("");
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [sidebarVisible, setSidebarVisible] = useState(false);
 
-  // Animation values
   const slideAnim = useState(new Animated.Value(screenWidth))[0];
   const sidebarWidth = screenWidth * 0.8;
   const sidebarAnim = useState(new Animated.Value(sidebarWidth))[0];
