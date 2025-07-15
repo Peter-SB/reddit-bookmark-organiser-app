@@ -4,7 +4,7 @@ import * as SQLite from 'expo-sqlite';
 
 
 const STORAGE_KEY = 'DB_FILENAME';
-const DEFAULT_DB = 'reddit_posts.db';
+export const DEFAULT_DB = 'reddit_posts.db';
 
 export class DatabaseService {
   private static instance: DatabaseService | null;

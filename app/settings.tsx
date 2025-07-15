@@ -1,17 +1,11 @@
 // app/settings.tsx
+import SettingsDatabaseManager from "@/components/SettingsDatabaseManager";
 import { palette } from "@/constants/Colors";
 import { spacing } from "@/constants/spacing";
 import { fontSizes, fontWeights } from "@/constants/typography";
-import { Picker } from "@react-native-picker/picker";
 import { useRouter } from "expo-router";
 import React, { useEffect, useState } from "react";
-import {
-  ActivityIndicator,
-  ScrollView,
-  StyleSheet,
-  Text,
-  View,
-} from "react-native";
+import { ActivityIndicator, ScrollView, StyleSheet } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { DatabaseService } from "../services/DatabaseService";
 
@@ -66,7 +60,7 @@ export default function SettingsScreen() {
   return (
     <SafeAreaView style={styles.container}>
       <ScrollView contentContainerStyle={styles.content}>
-        <Text style={styles.sectionTitle}>Database File</Text>
+        {/* <Text style={styles.sectionTitle}>Database File</Text>
         <View style={styles.pickerContainer}>
           <Picker
             selectedValue={selected ?? files[0]}
@@ -79,7 +73,9 @@ export default function SettingsScreen() {
         </View>
         <Text style={styles.helperText}>
           Switching the database will reload your app’s data.
-        </Text>
+        </Text> */}
+
+        <SettingsDatabaseManager />
       </ScrollView>
     </SafeAreaView>
   );
