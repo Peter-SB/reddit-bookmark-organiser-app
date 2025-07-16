@@ -1,5 +1,6 @@
+import * as Linking from "expo-linking";
 import { useFocusEffect, useRouter } from "expo-router";
-import React, { useCallback, useState } from "react";
+import React, { useCallback, useEffect, useState } from "react";
 import {
   ActivityIndicator,
   Alert,
@@ -9,6 +10,7 @@ import {
   TouchableOpacity,
   View,
 } from "react-native";
+
 import { SafeAreaView } from "react-native-safe-area-context";
 import Icon from "react-native-vector-icons/MaterialIcons";
 
@@ -89,6 +91,33 @@ export default function HomeScreen() {
   const renderPost = ({ item }: { item: Post }) => <PostCard post={item} />;
 
   const isLoading = postsLoading || redditApiLoading || isAdding;
+
+  useEffect(() => {
+    async function handleIncoming() {
+      const url = await Linking.getInitialURL();
+      if (!url) return;
+
+      const { queryParams } = Linking.parse(url);
+      const shared = queryParams?.text as string | undefined;
+      if (shared && shared.startsWith("http")) {
+        // auto‑add and then clear it so you don’t re‑add on hot reload:
+        try {
+          await handleAddPost(shared);
+        } catch (e) {
+          Alert.alert("Error importing shared post", (e as Error).message);
+        }
+      }
+    }
+
+    handleIncoming();
+
+    // also listen for deep‑link events when the app is already running:
+    const sub = Linking.addEventListener("url", ({ url }) => {
+      const { queryParams } = Linking.parse(url);
+      if (queryParams?.text) handleAddPost(queryParams?.text as string);
+    });
+    return () => sub.remove();
+  }, []);
 
   return (
     <SafeAreaView style={styles.container}>

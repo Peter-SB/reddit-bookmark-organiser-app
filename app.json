@@ -16,6 +16,10 @@
         "foregroundImage": "./assets/images/adaptive-icon.png",
         "backgroundColor": "#ffffff"
       },
+            "permissions": [
+        "READ_EXTERNAL_STORAGE",
+        "WRITE_EXTERNAL_STORAGE"
+      ],
       "edgeToEdgeEnabled": true,
       "package": "com.peterbs.redditpostorganiserapp",
       "intentFilters": [
@@ -41,6 +45,13 @@
           "action": "SEND",
           "data": "text/plain",
           "category": ["DEFAULT"]
+        },
+        {
+          "action": "android.intent.action.SEND",
+          "data": {
+            "mimeType": "text/plain"
+          },
+          "category": ["android.intent.category.DEFAULT"]
         }
       ]
     },

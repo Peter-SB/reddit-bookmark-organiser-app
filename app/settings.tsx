@@ -1,4 +1,5 @@
 // app/settings.tsx
+import SettingsCredentialsManager from "@/components/SettingsCredentialsManager";
 import SettingsDatabaseManager from "@/components/SettingsDatabaseManager";
 import { palette } from "@/constants/Colors";
 import { spacing } from "@/constants/spacing";
@@ -76,6 +77,7 @@ export default function SettingsScreen() {
         </Text> */}
 
         <SettingsDatabaseManager />
+        <SettingsCredentialsManager />
       </ScrollView>
     </SafeAreaView>
   );

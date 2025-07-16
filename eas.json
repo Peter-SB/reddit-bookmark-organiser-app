@@ -27,3 +27,5 @@
     "production": {}
   }
 }
+
+// cd android && ./gradlew app:processReleaseManifest --stacktrace --info && ./gradlew clean assembleRelease
