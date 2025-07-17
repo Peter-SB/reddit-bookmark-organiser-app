@@ -108,9 +108,9 @@ export function useRedditApi(): UseRedditApiResult {
     // fetch new token
     const basic = btoa(`${creds.clientId}:${creds.clientSecret}`);
     const form  = new URLSearchParams({
-      grant_type: 'password',
-      username:   creds.username,
-      password:   creds.password,
+      grant_type: 'client_credentials',
+      username:   '',
+      password:   '',
     });
 
     const resp = await fetch(TOKEN_URL, {
@@ -138,6 +138,7 @@ export function useRedditApi(): UseRedditApiResult {
     // cache
     tokenRef.current  = token;
     expiryRef.current = expiryMs;
+
     await SecureStore.setItemAsync(TOKEN_KEY, token);
     await SecureStore.setItemAsync(EXPIRY_KEY, expiryMs.toString());
 

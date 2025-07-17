@@ -138,7 +138,7 @@ export default function SettingsDatabaseManager() {
       const src = asset.uri;
       const name = asset.name;
       const dest = FileSystem.documentDirectory + "SQLite/" + name;
-      await FileSystem.copyAsync({ from: src, to: dest });
+      await FileSystem.copyAsync({ from: src, to: dest }); // Copy to app's SQLite directory necessary for consistency
       await DatabaseService.switchDatabase(name);
       Alert.alert("Imported", `Switched to ${name}`);
       await loadDbs();
