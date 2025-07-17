@@ -2,7 +2,6 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import type { SQLiteDatabase } from 'expo-sqlite';
 import * as SQLite from 'expo-sqlite';
 
-
 const STORAGE_KEY = 'DB_FILENAME';
 export const DEFAULT_DB = 'reddit_posts.db';
 
@@ -16,44 +15,33 @@ export class DatabaseService {
     this.filename = filename;
   }
 
-  /** call this at app-start to get the ready DB */
   public static async getInstance(): Promise<DatabaseService> {
     console.debug('DatabaseService.getInstance() called');
+
     if (DatabaseService.instance) {
       return DatabaseService.instance;
     }
+
     const stored = await AsyncStorage.getItem(STORAGE_KEY);
     const filename = stored ?? DEFAULT_DB;
-    
+
     const db = await SQLite.openDatabaseAsync(
-      filename,
-      //{ enableChangeListener: false },
-      // iOS / Android: directory can be omitted (uses defaultDatabaseDirectory)
+      filename, 
+      { useNewConnection: true } // stops null pointer exceptions caused by shared connection being automatically closed
     );
 
-    const svc = new DatabaseService(db, filename);
-    await svc.init();
-    DatabaseService.instance = svc;
-    return svc;
-
-    // console.log('Creating new DatabaseService instance');
-    // const db = await SQLite.openDatabaseAsync('reddit_posts.db', { enableChangeListener: false });
-    // const svc = new DatabaseService(db);
-    // await svc.init();
-    // DatabaseService.instance = svc;
-    // console.log('DatabaseService instance created and initialized');
-
+    const dbService = new DatabaseService(db, filename);
+    await dbService.init();
+    DatabaseService.instance = dbService;
+    return dbService;
   }
 
-    public static async switchDatabase(filename: string): Promise<void> {
-    // clear old instance
+  public static async switchDatabase(filename: string): Promise<void> {
     if (DatabaseService.instance) {
       await DatabaseService.instance.db.closeAsync();
       DatabaseService.instance = null;
     }
-    // persist choice
     await AsyncStorage.setItem(STORAGE_KEY, filename);
-    // re-create
     await DatabaseService.getInstance();   
   }
 
@@ -110,7 +98,7 @@ export class DatabaseService {
     return this.db;
   }
 
-    public getFilename(): string {
+  public getFilename(): string {
     return this.filename;
   }
 }
