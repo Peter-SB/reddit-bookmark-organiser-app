@@ -1,6 +1,6 @@
 import * as Linking from "expo-linking";
 import { useFocusEffect, useRouter } from "expo-router";
-import React, { useCallback, useEffect, useState } from "react";
+import React, { useCallback, useEffect, useRef, useState } from "react";
 import {
   ActivityIndicator,
   Alert,
@@ -22,19 +22,51 @@ import { fontSizes, fontWeights } from "@/constants/typography";
 import { Post } from "@/models/models";
 
 import { MenuSidebar } from "@/components/MenuSidebar";
+import { SearchBar } from "@/components/SearchBar";
 import { useFolders } from "@/hooks/useFolders";
 import { usePosts } from "@/hooks/usePosts";
 import { useRedditApi } from "@/hooks/useRedditApi";
+
+const LIST_HEADER_HEIGHT = 44 + 2 * spacing.m; //
 
 export default function HomeScreen() {
   const router = useRouter();
   const { posts, loading: postsLoading, addPost, refresh } = usePosts();
   const { getPostData, loading: redditApiLoading } = useRedditApi();
-  const { folders } = useFolders(); // <-- new
+  const { folders } = useFolders();
 
   const [isAdding, setIsAdding] = useState(false);
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [isInputVisible, setIsInputVisible] = useState(false);
+  const [search, setSearch] = useState("");
+
+  // Filter posts by search string
+  const filteredPosts = posts.filter((post) => {
+    const q = search.trim().toLowerCase();
+    if (!q) return true;
+    return (
+      (post.title ?? "").toLowerCase().includes(q) ||
+      (post.customTitle ?? "").toLowerCase().includes(q) ||
+      (post.bodyText ?? "").toLowerCase().includes(q) ||
+      (post.customBody ?? "").toLowerCase().includes(q) ||
+      (post.notes ?? "").toLowerCase().includes(q) ||
+      (post.author ?? "").toLowerCase().includes(q) ||
+      (post.subreddit ?? "").toLowerCase().includes(q)
+    );
+  });
+
+  const postsListRef = useRef<FlatList<Post>>(null);
+
+  // Hide header on first render
+  useEffect(() => {
+    // wait a tick for FlatList to mount
+    requestAnimationFrame(() => {
+      postsListRef.current?.scrollToOffset({
+        offset: LIST_HEADER_HEIGHT,
+        animated: true,
+      });
+    });
+  }, []);
 
   const total = posts.length;
   const unread = posts.filter((p) => !p.isRead).length;
@@ -90,7 +122,7 @@ export default function HomeScreen() {
 
   const renderPost = ({ item }: { item: Post }) => <PostCard post={item} />;
 
-  const isLoading = postsLoading || redditApiLoading || isAdding;
+  const isLoading = false; //postsLoading || redditApiLoading || isAdding;
 
   useEffect(() => {
     async function handleIncoming() {
@@ -161,16 +193,21 @@ export default function HomeScreen() {
       </View>
 
       <FlatList
-        data={posts.sort(
+        ref={postsListRef}
+        style={{ flex: 1 }}
+        data={filteredPosts.sort(
           (a, b) =>
             new Date(b.addedAt).getTime() - new Date(a.addedAt).getTime()
         )}
         keyExtractor={(item) => item.id.toString()}
         renderItem={renderPost}
         showsVerticalScrollIndicator={true}
-        contentContainerStyle={
-          posts.length === 0 ? styles.listContentCentered : styles.listContent
-        }
+        contentContainerStyle={[
+          { paddingTop: -LIST_HEADER_HEIGHT },
+          filteredPosts.length === 0
+            ? styles.listContentCentered
+            : styles.listContent,
+        ]}
         ListEmptyComponent={() => (
           <View style={styles.emptyState}>
             <Text style={styles.emptyTitle}>No bookmarks yet</Text>
@@ -180,14 +217,12 @@ export default function HomeScreen() {
           </View>
         )}
         ListHeaderComponent={
-          <View
-          // style={{
-          //   borderBottomWidth: 1,
-          //   borderColor: palette.border,
-          //   backgroundColor: palette.backgroundLight,
-          // }}
-          >
-            {/* <InputBar onSubmit={handleAddPost} /> */}
+          <View style={styles.listHeader}>
+            <SearchBar
+              value={search}
+              onChangeText={setSearch}
+              placeholder="Search posts…"
+            />
           </View>
         }
       />
@@ -221,8 +256,8 @@ const styles = StyleSheet.create({
   list: { flex: 1 },
   listContent: { paddingBottom: spacing.l },
   listContentCentered: {
-    flexGrow: 1,
-    justifyContent: "center",
+    // flexGrow: 1,
+    justifyContent: "flex-start", // align top
     paddingBottom: spacing.l,
   },
   emptyState: { alignItems: "center", paddingHorizontal: spacing.l },
@@ -248,5 +283,14 @@ const styles = StyleSheet.create({
     fontSize: fontSizes.body,
     color: palette.muted,
     marginLeft: spacing.s,
+  },
+  listHeader: {
+    height: LIST_HEADER_HEIGHT,
+    padding: spacing.m,
+    backgroundColor: palette.backgroundMidLight,
+    borderBottomWidth: 1,
+    borderColor: palette.border,
+    marginBottom: spacing.m,
+    justifyContent: "center",
   },
 });
