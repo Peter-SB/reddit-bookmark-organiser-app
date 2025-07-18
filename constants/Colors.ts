@@ -28,7 +28,8 @@ export const Colors = {
 // POC color palette
 export const palette = {
   background: '#FFF',
-  backgroundLight: '#fcfcfc',//'#fafafa',
+  backgroundMidLight: '#fcfcfc',//'#fafafa',
+  backgroundDarker: '#f8f8f8',
   foreground: '#111',
   foregroundLight: '#323232',
   accent: '#007AFF',  // iOS blue
