@@ -1,3 +1,4 @@
+import { LinearGradient } from "expo-linear-gradient";
 import * as Linking from "expo-linking";
 import { useFocusEffect, useRouter } from "expo-router";
 import React, { useCallback, useEffect, useRef, useState } from "react";
@@ -194,6 +195,11 @@ export default function HomeScreen() {
         )}
       </View>
 
+      <LinearGradient
+        colors={["rgba(0,0,0,0.06)", "transparent"]}
+        style={styles.headerOuterShadow}
+        pointerEvents="none"
+      />
       <FlatList
         ref={postsListRef}
         style={{ flex: 1 }}
@@ -204,8 +210,12 @@ export default function HomeScreen() {
         keyExtractor={(item) => item.id.toString()}
         renderItem={renderPost}
         showsVerticalScrollIndicator={true}
-        snapToOffsets={[0, LIST_HEADER_HEIGHT]} // snap to posts start and hide search header
-        snapToEnd={false} // stops snapping in post area
+        snapToOffsets={[LIST_HEADER_HEIGHT]} // snap to posts start and hide search header
+        snapToStart={false}
+        snapToEnd={false}
+        snapToAlignment="start"
+        decelerationRate="fast"
+        disableIntervalMomentum={false}
         contentContainerStyle={[
           filteredPosts.length === 0
             ? styles.listContentCentered
@@ -226,6 +236,11 @@ export default function HomeScreen() {
               value={search}
               onChangeText={setSearch}
               placeholder="Search posts…"
+            />
+            <LinearGradient
+              colors={["transparent", "rgba(0, 0, 0, 0.04)"]}
+              style={styles.headerInnerShadow}
+              pointerEvents="none"
             />
           </View>
         }
@@ -296,5 +311,24 @@ const styles = StyleSheet.create({
     borderColor: palette.border,
     marginBottom: spacing.m,
     justifyContent: "center",
+    overflow: "hidden", // add this to clip the shadow
+  },
+  headerInnerShadow: {
+    position: "absolute",
+    left: 0,
+    right: 0,
+    bottom: 0,
+    height: 4, // increase for a stronger shadow
+    zIndex: 2,
+    // no border needed for inner shadow
+  },
+  headerOuterShadow: {
+    position: "absolute",
+    left: 0,
+    right: 0,
+    top: 116,
+    bottom: undefined,
+    height: 4,
+    zIndex: 50,
   },
 });

@@ -187,7 +187,7 @@ const styles = StyleSheet.create({
   backdrop: {
     ...StyleSheet.absoluteFillObject,
     backgroundColor: "#000",
-    zIndex: 10,
+    zIndex: 100,
   },
   sidebar: {
     position: "absolute",
@@ -195,7 +195,7 @@ const styles = StyleSheet.create({
     top: 0,
     bottom: 0,
     backgroundColor: palette.background,
-    zIndex: 11,
+    zIndex: 101,
     shadowColor: "#000",
     shadowOpacity: 0.3,
     shadowOffset: { width: 3, height: 0 },

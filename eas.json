@@ -27,5 +27,17 @@
     "production": {}
   }
 }
+// eas build -p android --profile preview --local
 
-// cd android && ./gradlew app:processReleaseManifest --stacktrace --info && ./gradlew clean assembleRelease
+// wsl --install -d Ubuntu
+
+// $ANDROID_SDK_ROOT/cmdline-tools/latest/bin/sdkmanager --sdk_root=$ANDROID_SDK_ROOT   "platform-tools"   "platforms;android-33"   "build-tools;33.0.2"
+// export JAVA_HOME=/usr/lib/jvm/java-11-openjdk-amd64 && export ANDROID_SDK_ROOT=$HOME/Android/Sdk && export PATH=$ANDROID_SDK_ROOT/emulator:$ANDROID_SDK_ROOT/platform-tools:$ANDROID_SDK_ROOT/cmdline-tools/latest/bin:$PATH
+// export JAVA_HOME=/usr/lib/jvm/java-17-openjdk-amd64 && export PATH=$JAVA_HOME/bin:$PATH
+// echo "sdk.dir=/mnt/c/Users/Peter/AppData/Local/Android/Sdk" > local.properties
+
+// export JAVA_HOME=/usr/lib/jvm/java-17-openjdk-amd64 && export PATH=$JAVA_HOME/bin:$PATH && source ~/.bashrc
+// org.gradle.java.home=/usr/lib/jvm/java-17-openjdk-amd64
+
+
+// cd /mnt/e/Code/App/reddit-post-organiser-app/android && ./gradlew app:processReleaseManifest --stacktrace --info && ./gradlew clean assembleRelease
