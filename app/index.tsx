@@ -5,6 +5,7 @@ import {
   ActivityIndicator,
   Alert,
   FlatList,
+  InteractionManager,
   StyleSheet,
   Text,
   TouchableOpacity,
@@ -58,15 +59,22 @@ export default function HomeScreen() {
   const postsListRef = useRef<FlatList<Post>>(null);
 
   // Hide header on first render
-  useEffect(() => {
-    // wait a tick for FlatList to mount
-    requestAnimationFrame(() => {
-      postsListRef.current?.scrollToOffset({
-        offset: LIST_HEADER_HEIGHT,
-        animated: true,
-      });
+  // useEffect(() => {
+  //   // wait a tick for FlatList to mount
+  //   requestAnimationFrame(() => {
+  //     postsListRef.current?.scrollToOffset({
+  //       offset: LIST_HEADER_HEIGHT,
+  //       animated: false,
+  //     });
+  //   });
+  // }, []);
+
+  InteractionManager.runAfterInteractions(() => {
+    postsListRef.current?.scrollToOffset({
+      offset: LIST_HEADER_HEIGHT,
+      animated: true,
     });
-  }, []);
+  });
 
   const total = posts.length;
   const unread = posts.filter((p) => !p.isRead).length;
@@ -202,8 +210,9 @@ export default function HomeScreen() {
         keyExtractor={(item) => item.id.toString()}
         renderItem={renderPost}
         showsVerticalScrollIndicator={true}
+        snapToOffsets={[0, LIST_HEADER_HEIGHT]} // snap to posts start and hide search header
+        snapToEnd={false} // stops snapping in post area
         contentContainerStyle={[
-          { paddingTop: -LIST_HEADER_HEIGHT },
           filteredPosts.length === 0
             ? styles.listContentCentered
             : styles.listContent,
