@@ -4,8 +4,8 @@ import React, { useCallback, useEffect, useRef, useState } from "react";
 import {
   ActivityIndicator,
   Alert,
+  Dimensions,
   FlatList,
-  InteractionManager,
   StyleSheet,
   Text,
   TouchableOpacity,
@@ -58,23 +58,17 @@ export default function HomeScreen() {
 
   const postsListRef = useRef<FlatList<Post>>(null);
 
-  // Hide header on first render
-  // useEffect(() => {
-  //   // wait a tick for FlatList to mount
-  //   requestAnimationFrame(() => {
-  //     postsListRef.current?.scrollToOffset({
-  //       offset: LIST_HEADER_HEIGHT,
-  //       animated: false,
-  //     });
-  //   });
-  // }, []);
-
-  InteractionManager.runAfterInteractions(() => {
-    postsListRef.current?.scrollToOffset({
-      offset: LIST_HEADER_HEIGHT,
-      animated: true,
+  // Hide header on first render. Using this over InteractionManager because this only runs once.
+  // InteractionManager would run every time the screen is focused, making searching ui glitch.
+  useEffect(() => {
+    // wait a tick for FlatList to mount.
+    requestAnimationFrame(() => {
+      postsListRef.current?.scrollToOffset({
+        offset: LIST_HEADER_HEIGHT,
+        animated: true,
+      });
     });
-  });
+  }, []);
 
   const total = posts.length;
   const unread = posts.filter((p) => !p.isRead).length;
@@ -216,6 +210,7 @@ export default function HomeScreen() {
           filteredPosts.length === 0
             ? styles.listContentCentered
             : styles.listContent,
+          { minHeight: Dimensions.get("window").height },
         ]}
         ListEmptyComponent={() => (
           <View style={styles.emptyState}>
