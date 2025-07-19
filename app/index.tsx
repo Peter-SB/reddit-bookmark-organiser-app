@@ -214,8 +214,6 @@ export default function HomeScreen() {
         snapToStart={false}
         snapToEnd={false}
         snapToAlignment="start"
-        decelerationRate="fast"
-        disableIntervalMomentum={false}
         contentContainerStyle={[
           filteredPosts.length === 0
             ? styles.listContentCentered

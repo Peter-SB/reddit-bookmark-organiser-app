@@ -11,7 +11,10 @@
     "ios": {
       "supportsTablet": true
     },
+
+    "sdkVersion": "53.0.0",
     "android": {
+
       "adaptiveIcon": {
         "foregroundImage": "./assets/images/adaptive-icon.png",
         "backgroundColor": "#ffffff"
@@ -43,15 +46,10 @@
         },
         {
           "action": "SEND",
-          "data": "text/plain",
+          "data": [
+            { "mimeType": "text/plain" }
+          ],
           "category": ["DEFAULT"]
-        },
-        {
-          "action": "android.intent.action.SEND",
-          "data": {
-            "mimeType": "text/plain"
-          },
-          "category": ["android.intent.category.DEFAULT"]
         }
       ]
     },

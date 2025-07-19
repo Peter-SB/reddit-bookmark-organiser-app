@@ -27,7 +27,7 @@
     "production": {}
   }
 }
-// eas build -p android --profile preview --local
+// npx eas build -p android --profile preview --local
 
 // wsl --install -d Ubuntu
 
@@ -41,3 +41,8 @@
 
 
 // cd /mnt/e/Code/App/reddit-post-organiser-app/android && ./gradlew app:processReleaseManifest --stacktrace --info && ./gradlew clean assembleRelease
+
+// export ANDROID_SDK_ROOT="/mnt/c/Users/peter/AppData/Local/Android/Sdk" &&
+// export ANDROID_HOME="$ANDROID_SDK_ROOT" &&
+// export PATH="$PATH:$ANDROID_SDK_ROOT/emulator:$ANDROID_SDK_ROOT/tools:$ANDROID_SDK_ROOT/tools/bin:$ANDROID_SDK_ROOT/platform-tools" &&
+// source ~/.bashrc
