@@ -1,6 +1,6 @@
-// app/settings.tsx
 import SettingsCredentialsManager from "@/components/SettingsCredentialsManager";
 import SettingsDatabaseManager from "@/components/SettingsDatabaseManager";
+import SettingsExportToJson from "@/components/SettingsExportToJson";
 import { palette } from "@/constants/Colors";
 import { spacing } from "@/constants/spacing";
 import { fontSizes, fontWeights } from "@/constants/typography";
@@ -76,8 +76,9 @@ export default function SettingsScreen() {
           Switching the database will reload your app’s data.
         </Text> */}
 
-        <SettingsDatabaseManager />
         <SettingsCredentialsManager />
+        <SettingsDatabaseManager />
+        <SettingsExportToJson />
       </ScrollView>
     </SafeAreaView>
   );
