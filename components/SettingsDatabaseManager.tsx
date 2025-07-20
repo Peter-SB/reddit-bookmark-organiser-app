@@ -40,7 +40,11 @@ export default function SettingsDatabaseManager() {
       const dir = FileSystem.documentDirectory + "SQLite";
       await FileSystem.makeDirectoryAsync(dir, { intermediates: true });
       const all = await FileSystem.readDirectoryAsync(dir);
-      setFiles(all.filter((f) => f.endsWith(".db")));
+      setFiles(
+        all.filter(
+          (f) => f.includes(".db") && !f.includes("wal") && !f.includes("shm")
+        )
+      );
 
       const svc = await DatabaseService.getInstance();
       setSelected(svc.getFilename());
@@ -63,11 +67,20 @@ export default function SettingsDatabaseManager() {
     router.replace("/");
   };
 
-  const exportDatabase = async () => {
+  // Makes sure WAL checkpoint is merged before sharing
+  const checkpointDbAndGetSrc = async (filename: string) => {
+    console.debug("Checkpointing database:", filename);
+    const svc = await DatabaseService.getInstance();
+    await svc.getDb().execAsync("PRAGMA wal_checkpoint(TRUNCATE)");
+    return FileSystem.documentDirectory + "SQLite/" + filename;
+  };
+
+  const shareDatabase = async () => {
     if (!selected) return;
     setLoading(true);
     try {
-      const src = FileSystem.documentDirectory + "SQLite/" + selected;
+      console.debug("Sharing database:", selected);
+      const src = await checkpointDbAndGetSrc(selected);
       const dest = FileSystem.cacheDirectory + selected;
       await FileSystem.copyAsync({ from: src, to: dest });
       await Sharing.shareAsync(dest, {
@@ -82,11 +95,11 @@ export default function SettingsDatabaseManager() {
     }
   };
 
-  const saveToFileSystem = async () => {
+  const exportDatabase = async () => {
     if (!selected) return;
     setLoading(true);
     try {
-      const src = FileSystem.documentDirectory + "SQLite/" + selected;
+      const src = await checkpointDbAndGetSrc(selected);
       if (Platform.OS === "android" && FileSystem.StorageAccessFramework) {
         const permission =
           await FileSystem.StorageAccessFramework.requestDirectoryPermissionsAsync();
@@ -109,7 +122,7 @@ export default function SettingsDatabaseManager() {
         );
         Alert.alert("Success", `Saved to ${fileUri}`);
       } else {
-        await exportDatabase();
+        await shareDatabase();
       }
     } catch (err) {
       console.error("Save failed:", err);
@@ -265,10 +278,10 @@ export default function SettingsDatabaseManager() {
         <TouchableOpacity style={styles.button} onPress={importDatabase}>
           <Text style={styles.buttonText}>Import</Text>
         </TouchableOpacity>
-        <TouchableOpacity style={styles.button} onPress={saveToFileSystem}>
+        <TouchableOpacity style={styles.button} onPress={exportDatabase}>
           <Text style={styles.buttonText}>Export</Text>
         </TouchableOpacity>
-        <TouchableOpacity style={styles.button} onPress={exportDatabase}>
+        <TouchableOpacity style={styles.button} onPress={shareDatabase}>
           <Text style={styles.buttonText}>Share</Text>
         </TouchableOpacity>
       </View>

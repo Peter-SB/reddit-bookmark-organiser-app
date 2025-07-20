@@ -12,3 +12,10 @@ export const fontWeights = {
   semibold: '600' as const,
   bold: '700' as const,
 };
+
+export const fontColours = {
+  foreground: '#000',
+  muted: '#666',
+  accent: '#007AFF',
+  background: '#FFF',
+};

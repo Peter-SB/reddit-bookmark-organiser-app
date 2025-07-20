@@ -41,6 +41,7 @@ export default function HomeScreen() {
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [isInputVisible, setIsInputVisible] = useState(false);
   const [search, setSearch] = useState("");
+  const [headerHeight, setHeaderHeight] = useState(LIST_HEADER_HEIGHT);
 
   // Filter posts by search string
   const filteredPosts = posts.filter((post) => {
@@ -125,8 +126,6 @@ export default function HomeScreen() {
 
   const renderPost = ({ item }: { item: Post }) => <PostCard post={item} />;
 
-  const isLoading = false; //postsLoading || redditApiLoading || isAdding;
-
   useEffect(() => {
     async function handleIncoming() {
       const url = await Linking.getInitialURL();
@@ -154,6 +153,8 @@ export default function HomeScreen() {
     return () => sub.remove();
   }, []);
 
+  const isLoading = redditApiLoading || isAdding; // || postsLoading;
+
   return (
     <SafeAreaView style={styles.container}>
       <MenuSidebar
@@ -163,7 +164,10 @@ export default function HomeScreen() {
         folders={folders}
       />
 
-      <View style={styles.header}>
+      <View
+        style={styles.header}
+        onLayout={(e) => setHeaderHeight(e.nativeEvent.layout.height)}
+      >
         <View style={{ flexDirection: "row", alignItems: "center" }}>
           <TouchableOpacity onPress={() => setSidebarOpen(true)}>
             <Icon
@@ -197,7 +201,7 @@ export default function HomeScreen() {
 
       <LinearGradient
         colors={["rgba(0,0,0,0.06)", "transparent"]}
-        style={styles.headerOuterShadow}
+        style={[styles.headerOuterShadow, { top: headerHeight + 30 }]}
         pointerEvents="none"
       />
       <FlatList
@@ -294,7 +298,8 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     justifyContent: "center",
     alignItems: "center",
-    marginTop: spacing.m,
+    marginTop: spacing.l,
+    height: 30,
   },
   loadingText: {
     fontSize: fontSizes.body,
@@ -324,7 +329,6 @@ const styles = StyleSheet.create({
     position: "absolute",
     left: 0,
     right: 0,
-    top: 116,
     bottom: undefined,
     height: 4,
     zIndex: 50,

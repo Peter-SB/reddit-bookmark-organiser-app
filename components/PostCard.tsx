@@ -61,7 +61,8 @@ export const PostCard: React.FC<PostCardProps> = ({ post }) => {
           </Text>
           <Text style={styles.separator}>•</Text>
           <Text style={styles.metadataText}>
-            Words: {post.bodyText.trim().split(/\s+/).length}
+            Words:{" "}
+            {(post.customBody ?? post.bodyText).trim().split(/\s+/).length}
           </Text>
         </View>
 

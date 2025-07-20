@@ -42,5 +42,8 @@ app-example
 
 *.env
 *.secrets.json
+*.db
+
 _bin/
 android/
+ios/

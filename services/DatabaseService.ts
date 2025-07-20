@@ -13,6 +13,8 @@ export class DatabaseService {
   private constructor(db: SQLiteDatabase, filename: string) {
     this.db = db;
     this.filename = filename;
+    console.debug('DatabaseService.getFilename() called: ' + this.filename);
+
   }
 
   public static async getInstance(): Promise<DatabaseService> {
