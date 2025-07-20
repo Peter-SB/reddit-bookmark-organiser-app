@@ -146,6 +146,13 @@ export default function SettingsExportToJson() {
           style={[styles.button]}
           disabled={loading}
         >
+          <TouchableOpacity
+            onPress={importFromJson}
+            style={[styles.button]}
+            disabled={loading}
+          >
+            <Text style={styles.buttonText}>Import</Text>
+          </TouchableOpacity>
           {loading ? (
             <ActivityIndicator color={palette.accent} />
           ) : (
@@ -158,13 +165,6 @@ export default function SettingsExportToJson() {
           disabled={loading}
         >
           <Text style={styles.buttonText}>Share</Text>
-        </TouchableOpacity>
-        <TouchableOpacity
-          onPress={importFromJson}
-          style={[styles.button]}
-          disabled={loading}
-        >
-          <Text style={styles.buttonText}>Import</Text>
         </TouchableOpacity>
       </View>
     </SafeAreaView>

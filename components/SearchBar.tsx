@@ -9,15 +9,18 @@ interface SearchBarProps {
   value: string;
   onChangeText: (text: string) => void;
   placeholder?: string;
+  cancelButtonCallback?: () => void;
 }
 
 export function SearchBar({
   value,
   onChangeText,
   placeholder = "Search posts...",
+  cancelButtonCallback = () => {},
 }: SearchBarProps) {
   const handleClear = () => {
     onChangeText("");
+    cancelButtonCallback();
   };
 
   return (

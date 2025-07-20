@@ -238,6 +238,12 @@ export default function HomeScreen() {
               value={search}
               onChangeText={setSearch}
               placeholder="Search posts…"
+              cancelButtonCallback={() =>
+                postsListRef.current?.scrollToOffset({
+                  offset: LIST_HEADER_HEIGHT,
+                  animated: true,
+                })
+              }
             />
             <LinearGradient
               colors={["transparent", "rgba(0, 0, 0, 0.04)"]}
