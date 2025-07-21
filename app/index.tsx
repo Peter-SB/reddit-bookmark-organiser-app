@@ -13,7 +13,10 @@ import {
   View,
 } from "react-native";
 
-import { SafeAreaView } from "react-native-safe-area-context";
+import {
+  SafeAreaView,
+  useSafeAreaInsets,
+} from "react-native-safe-area-context";
 import Icon from "react-native-vector-icons/MaterialIcons";
 
 import { InputBar } from "@/components/InputBar";
@@ -29,34 +32,61 @@ import { useFolders } from "@/hooks/useFolders";
 import { usePosts } from "@/hooks/usePosts";
 import { useRedditApi } from "@/hooks/useRedditApi";
 
+type TripleFilter = "all" | "yes" | "no";
+
 const LIST_HEADER_HEIGHT = 44 + 2 * spacing.m; //
 
 export default function HomeScreen() {
   const router = useRouter();
-  const { posts, loading: postsLoading, addPost, refresh } = usePosts();
+  const {
+    posts,
+    loading: postsLoading,
+    addPost,
+    refresh,
+    checkForSimilarPosts,
+    recomputeMissingMinHashes,
+  } = usePosts();
   const { getPostData, loading: redditApiLoading } = useRedditApi();
   const { folders } = useFolders();
 
   const [isAdding, setIsAdding] = useState(false);
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [isInputVisible, setIsInputVisible] = useState(false);
+
+  const [favouritesFilter, setFavouritesFilter] = useState<TripleFilter>("all");
+  const [readFilter, setReadFilter] = useState<TripleFilter>("all");
   const [search, setSearch] = useState("");
-  const [headerHeight, setHeaderHeight] = useState(LIST_HEADER_HEIGHT);
+
+  const insets = useSafeAreaInsets();
 
   // Filter posts by search string
-  const filteredPosts = posts.filter((post) => {
-    const q = search.trim().toLowerCase();
-    if (!q) return true;
-    return (
-      (post.title ?? "").toLowerCase().includes(q) ||
-      (post.customTitle ?? "").toLowerCase().includes(q) ||
-      (post.bodyText ?? "").toLowerCase().includes(q) ||
-      (post.customBody ?? "").toLowerCase().includes(q) ||
-      (post.notes ?? "").toLowerCase().includes(q) ||
-      (post.author ?? "").toLowerCase().includes(q) ||
-      (post.subreddit ?? "").toLowerCase().includes(q)
-    );
-  });
+  const filteredPosts = posts
+    // text search
+    .filter((post) => {
+      const q = search.trim().toLowerCase();
+      if (!q) return true;
+      return (
+        (post.title ?? "").toLowerCase().includes(q) ||
+        (post.customTitle ?? "").toLowerCase().includes(q) ||
+        (post.bodyText ?? "").toLowerCase().includes(q) ||
+        (post.customBody ?? "").toLowerCase().includes(q) ||
+        (post.notes ?? "").toLowerCase().includes(q) ||
+        (post.author ?? "").toLowerCase().includes(q) ||
+        (post.subreddit ?? "").toLowerCase().includes(q)
+      );
+    })
+    // favourites filter
+    .filter((post) => {
+      if (favouritesFilter === "all") return true;
+      const isFav = Boolean(post.isFavorite);
+      return favouritesFilter === "yes" ? isFav : !isFav;
+    })
+    // read filter
+    .filter((post) => {
+      if (readFilter === "all") return true;
+      const isRead = Boolean(post.isRead);
+      return readFilter === "yes" ? isRead : !isRead;
+    });
 
   const postsListRef = useRef<FlatList<Post>>(null);
 
@@ -70,7 +100,9 @@ export default function HomeScreen() {
         animated: true,
       });
     });
-  }, []);
+
+    recomputeMissingMinHashes(); // todo - remove this after initial run
+  }, [recomputeMissingMinHashes]);
 
   const total = posts.length;
   const unread = posts.filter((p) => !p.isRead).length;
@@ -82,19 +114,47 @@ export default function HomeScreen() {
     }, [refresh])
   );
 
-  const detectDuplicates = (redditId: string) =>
-    posts.filter((p) => p.redditId === redditId);
-
   const handleAddPost = async (url: string) => {
     if (isAdding) return;
     setIsAdding(true);
     try {
       const postData = await getPostData(url);
-      const duplicates = detectDuplicates(postData.redditId);
-      if (duplicates.length) {
+
+      // Check for exact duplicates (existing logic)
+      const exactDuplicates = posts.filter(
+        (p) => p.redditId === postData.redditId
+      );
+
+      // Check for similar content
+      const similarPosts = await checkForSimilarPosts(
+        postData.bodyText || "",
+        0.8
+      );
+
+      if (exactDuplicates.length > 0) {
         Alert.alert(
           "Duplicate Post",
           "This post appears to already exist. Add anyway?",
+          [
+            { text: "Cancel", style: "cancel" },
+            {
+              text: "Add Anyway",
+              onPress: () => addPost(postData),
+            },
+          ]
+        );
+      } else if (similarPosts.length > 0) {
+        const similarTitles = similarPosts
+          .slice(0, 2)
+          .map((p) => `"${p.title}"`)
+          .join("\n");
+        Alert.alert(
+          "Similar Content Found",
+          `Found ${
+            similarPosts.length
+          } post(s) with similar content:\n\n${similarTitles}${
+            similarPosts.length > 3 ? "\n...and more" : ""
+          }\n\nAdd anyway?`,
           [
             { text: "Cancel", style: "cancel" },
             {
@@ -118,7 +178,23 @@ export default function HomeScreen() {
     // key is "home" | "search" | "tags" | "favorites" | "unread" | "settings"
     // or a folder.id number
     console.log("Selected:", key);
+    if (key === "home") {
+      // Hide searchbar and clear
+      setSearch("");
+      setFavouritesFilter("all");
+      setReadFilter("all");
+      postsListRef.current?.scrollToOffset({
+        offset: LIST_HEADER_HEIGHT,
+        animated: true,
+      });
+    }
     if (key === "settings") router.push("/settings");
+    else if (key === "search") {
+      postsListRef.current?.scrollToOffset({
+        offset: 0,
+        animated: true,
+      });
+    }
 
     // TODO: navigate or filter your list based on key
     setSidebarOpen(false);
@@ -162,12 +238,13 @@ export default function HomeScreen() {
         onClose={() => setSidebarOpen(false)}
         onSelect={handleSelect}
         folders={folders}
+        favouritesFilter={favouritesFilter}
+        readFilter={readFilter}
+        onFavouritesFilterChange={setFavouritesFilter}
+        onReadFilterChange={setReadFilter}
       />
 
-      <View
-        style={styles.header}
-        onLayout={(e) => setHeaderHeight(e.nativeEvent.layout.height)}
-      >
+      <View style={styles.header}>
         <View style={{ flexDirection: "row", alignItems: "center" }}>
           <TouchableOpacity onPress={() => setSidebarOpen(true)}>
             <Icon
@@ -199,11 +276,9 @@ export default function HomeScreen() {
         )}
       </View>
 
-      <LinearGradient
-        colors={["rgba(0,0,0,0.06)", "transparent"]}
-        style={[styles.headerOuterShadow, { top: headerHeight + 30 }]}
-        pointerEvents="none"
-      />
+      {/* Mask the shadow of the top bar from bleeding into the system status bar */}
+      <View style={[styles.topBarMask, { height: insets.top }]} />
+
       <FlatList
         ref={postsListRef}
         style={{ flex: 1 }}
@@ -269,6 +344,13 @@ const styles = StyleSheet.create({
     padding: spacing.m,
     borderBottomWidth: 1.5,
     borderColor: palette.border,
+    backgroundColor: palette.background,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.8,
+    shadowRadius: 6,
+    elevation: 3,
+    zIndex: 20,
   },
   headerText: { marginLeft: spacing.s },
   title: {
@@ -338,5 +420,12 @@ const styles = StyleSheet.create({
     bottom: undefined,
     height: 4,
     zIndex: 50,
+  },
+  topBarMask: {
+    position: "absolute",
+    top: 0,
+    zIndex: 50,
+    backgroundColor: palette.background,
+    width: "100%",
   },
 });

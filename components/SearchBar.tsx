@@ -39,11 +39,10 @@ export function SearchBar({
         placeholderTextColor={palette.muted}
         returnKeyType="search"
       />
-      {value.length > 0 && (
-        <TouchableOpacity onPress={handleClear} style={styles.clearButton}>
-          <Icon name="close" size={20} color={palette.muted} />
-        </TouchableOpacity>
-      )}
+
+      <TouchableOpacity onPress={handleClear} style={styles.clearButton}>
+        <Icon name="close" size={20} color={palette.muted} />
+      </TouchableOpacity>
     </View>
   );
 }

@@ -2,6 +2,8 @@ export const fontSizes = {
   title: 18, 
   body: 14, 
   small: 12,
+  xsmall: 10,
+  xxsmall: 8,
   large: 20,
   xlarge: 24 
 };

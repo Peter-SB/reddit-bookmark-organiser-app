@@ -81,56 +81,59 @@ export default function SettingsCredentialsManager() {
   }
 
   return (
-    <View style={styles.container}>
-      <Text style={styles.label}>Username*</Text>
-      <TextInput
-        style={styles.input}
-        value={username}
-        onChangeText={setUsername}
-        placeholder="Username"
-        autoCapitalize="none"
-      />
+    <>
+      <Text style={styles.title}>Reddit API Credentials</Text>
+      <View style={styles.container}>
+        <Text style={styles.label}>Username*</Text>
+        <TextInput
+          style={styles.input}
+          value={username}
+          onChangeText={setUsername}
+          placeholder="Username"
+          autoCapitalize="none"
+        />
 
-      <Text style={styles.label}>Password</Text>
-      <TextInput
-        style={styles.input}
-        value={password}
-        onChangeText={setPassword}
-        placeholder="Password"
-        secureTextEntry
-      />
+        <Text style={styles.label}>Password</Text>
+        <TextInput
+          style={styles.input}
+          value={password}
+          onChangeText={setPassword}
+          placeholder="Password"
+          secureTextEntry
+        />
 
-      <Text style={styles.label}>Client ID*</Text>
-      <TextInput
-        style={styles.input}
-        value={clientId}
-        onChangeText={setClientId}
-        placeholder="Client ID"
-        autoCapitalize="none"
-      />
+        <Text style={styles.label}>Client ID*</Text>
+        <TextInput
+          style={styles.input}
+          value={clientId}
+          onChangeText={setClientId}
+          placeholder="Client ID"
+          autoCapitalize="none"
+        />
 
-      <Text style={styles.label}>Client Secret*</Text>
-      <TextInput
-        style={styles.input}
-        value={clientSecret}
-        onChangeText={setClientSecret}
-        placeholder="Client Secret"
-        autoCapitalize="none"
-      />
+        <Text style={styles.label}>Client Secret*</Text>
+        <TextInput
+          style={styles.input}
+          value={clientSecret}
+          onChangeText={setClientSecret}
+          placeholder="Client Secret"
+          autoCapitalize="none"
+        />
 
-      <Text style={styles.label}>User Agent*</Text>
-      <TextInput
-        style={styles.input}
-        value={userAgent}
-        onChangeText={setUserAgent}
-        placeholder="User Agent"
-        autoCapitalize="none"
-      />
+        <Text style={styles.label}>User Agent*</Text>
+        <TextInput
+          style={styles.input}
+          value={userAgent}
+          onChangeText={setUserAgent}
+          placeholder="User Agent"
+          autoCapitalize="none"
+        />
 
-      <TouchableOpacity style={styles.button} onPress={save}>
-        <Text style={styles.buttonText}>Save Credentials</Text>
-      </TouchableOpacity>
-    </View>
+        <TouchableOpacity style={styles.button} onPress={save}>
+          <Text style={styles.buttonText}>Save Credentials</Text>
+        </TouchableOpacity>
+      </View>
+    </>
   );
 }
 
@@ -138,7 +141,14 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     padding: spacing.m,
+    paddingTop: 0,
     backgroundColor: palette.background,
+  },
+  title: {
+    fontSize: fontSizes.title,
+    fontWeight: fontWeights.semibold,
+    color: palette.foreground,
+    margin: spacing.m,
   },
   label: {
     fontSize: fontSizes.body,

@@ -1,6 +1,7 @@
 // src/hooks/usePosts.ts
 import { Post } from '@/models/models';
 import { PostRepository } from '@/repository/PostRepository';
+import { MinHashService } from '@/services/MinHashService';
 import { useCallback, useEffect, useState } from 'react';
 
 export interface UsePostsResult {
@@ -14,6 +15,8 @@ export interface UsePostsResult {
   toggleFavorite: (id: number) => Promise<void>;
   addTagToPost: (postId: number, tagId: number) => Promise<void>;
   removeTagFromPost: (postId: number, tagId: number) => Promise<void>;
+  checkForSimilarPosts: (bodyText: string, threshold?: number) => Promise<Post[]>;
+  recomputeMissingMinHashes: () => Promise<number>;
 }
 
 export function usePosts(): UsePostsResult {
@@ -47,8 +50,14 @@ export function usePosts(): UsePostsResult {
 
   const refresh = useCallback(() => loadPosts(), [loadPosts]);
 
-  const addPost = useCallback(async (data: Omit<Post, 'id' | 'tagIds'> & { tagIds?: number[] }) => {
+  const checkForSimilarPosts = useCallback(async (bodyText: string, threshold: number = 0.75): Promise<Post[]> => {
     if (!repo) throw new Error('PostRepository not ready');
+    console.debug('Checking for similar posts with threshold:', threshold);
+    return await repo.findSimilarPosts(bodyText, threshold);
+  }, [repo]);
+
+  const addPost = useCallback(async (data: Omit<Post, 'id' | 'tagIds'> & { tagIds?: number[] }) => {
+    if (!repo) throw new Error('PostRepository not ready');   
     const id = await repo.create(data);
     const newPost = await repo.getById(id);
     await loadPosts();
@@ -102,6 +111,23 @@ export function usePosts(): UsePostsResult {
     await loadPosts();
   }, [repo, loadPosts]);
 
+  const recomputeMissingMinHashes = useCallback(async () => {
+    if (!repo) throw new Error('PostRepository not ready');
+    const allPosts = await repo.getAll();
+    let updatedCount = 0;
+    for (const post of allPosts) {
+      if (!post.bodyMinHash) {
+        console.log(`Recomputing MinHash for post ${post.id}`);
+        const bodyMinHashArr = MinHashService.generateSignature(post.bodyText || '');
+        const bodyMinHash = JSON.stringify(bodyMinHashArr);
+        await repo.update({ ...post, bodyMinHash });
+        updatedCount++;
+      }
+    }
+    await loadPosts();
+    return updatedCount;
+  }, [repo, loadPosts]);
+
   return {
     posts,
     loading,
@@ -113,5 +139,7 @@ export function usePosts(): UsePostsResult {
     toggleFavorite,
     addTagToPost,
     removeTagFromPost,
+    checkForSimilarPosts,
+    recomputeMissingMinHashes,
   };
 }

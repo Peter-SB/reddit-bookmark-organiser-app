@@ -2,6 +2,7 @@
 import { Post } from '@/models/models';
 import type { SQLiteDatabase } from 'expo-sqlite';
 import { DatabaseService } from '../services/DatabaseService';
+import { MinHashService } from '../services/MinHashService';
 
 export class PostRepository {
   private db: SQLiteDatabase;
@@ -31,6 +32,7 @@ export class PostRepository {
       url: string;
       title: string;
       bodyText: string | null;
+      bodyMinHash: string | null;
       author: string;
       subreddit: string;
       redditCreatedAt: string;
@@ -53,6 +55,7 @@ export class PostRepository {
         url: r.url,
         title: r.title,
         bodyText: r.bodyText ?? '',
+        bodyMinHash: r.bodyMinHash ?? undefined,
         author: r.author,
         subreddit: r.subreddit,
         redditCreatedAt: new Date(r.redditCreatedAt),
@@ -78,6 +81,7 @@ export class PostRepository {
       url: string;
       title: string;
       bodyText: string | null;
+      bodyMinHash: string | null;
       author: string;
       subreddit: string;
       redditCreatedAt: string;
@@ -98,6 +102,7 @@ export class PostRepository {
       url: r.url,
       title: r.title,
       bodyText: r.bodyText ?? '',
+      bodyMinHash: r.bodyMinHash ?? undefined,
       author: r.author,
       subreddit: r.subreddit,
       redditCreatedAt: new Date(r.redditCreatedAt),
@@ -122,17 +127,22 @@ export class PostRepository {
       isRead, isFavorite, folderId, extraFields, tagIds = []
     } = post;
 
+    // Generate MinHash signature for body text
+    const bodyMinHashArr = MinHashService.generateSignature(bodyText || '');
+    const bodyMinHash = JSON.stringify(bodyMinHashArr);
+
     const result = await this.db.runAsync(
       `INSERT INTO posts (
-         redditId, url, title, bodyText, author, subreddit,
+         redditId, url, title, bodyText, bodyMinHash, author, subreddit,
          redditCreatedAt, addedAt,
          customTitle, customBody, notes, rating,
          isRead, isFavorite, folderId, extraFields
-       ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+       ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
       redditId,
       url,
       title,
       bodyText ?? null,
+      bodyMinHash ?? null,
       author,
       subreddit,
       redditCreatedAt.toISOString(),
@@ -155,18 +165,65 @@ export class PostRepository {
     return newId;
   }
 
+  /**
+   * Find potential duplicates based on minHash similarity
+   */
+  public async findSimilarPosts(bodyText: string, threshold: number = 0.75): Promise<Post[]> {
+    const start = Date.now();
+
+    if (!bodyText || bodyText.trim().length < 10) {
+      return [];
+    }
+
+    const inputHash = MinHashService.generateSignature(bodyText);
+    if (!inputHash) return [];
+
+    let elapsed = Date.now() - start;
+    console.debug(`generating data took ${elapsed}ms`);
+
+    // Get all posts with minhash - todo: optimise this query
+    const rows = await this.db.getAllAsync<{
+      id: number;
+      bodyMinHash: string | null;
+    }>(`SELECT id, bodyMinHash
+        FROM posts WHERE bodyMinHash IS NOT NULL AND bodyMinHash != ''`);
+
+    const similarPosts: Post[] = [];
+    
+    elapsed = Date.now() - start;
+    console.debug(`querying data took ${elapsed}ms`);
+
+    for (const row of rows) {
+      if (row.bodyMinHash) {
+        const similarity = MinHashService.similarity(inputHash, JSON.parse(row.bodyMinHash));
+        console.debug(`Comparing with post ${row.id}: similarity = ${similarity}`);
+        if (similarity >= threshold) {
+          // Load full post data for similar posts
+          const fullPost = await this.getById(row.id);
+          if (fullPost) {
+            similarPosts.push(fullPost);
+          }
+        }
+      }
+    }
+
+    elapsed = Date.now() - start;
+    console.debug(`findSimilarPosts took ${elapsed}ms`);
+
+    return similarPosts;
+  }
+
   public async update(post: Post): Promise<number> {
     const {
       id, title, bodyText, customTitle, customBody,
-      notes, rating, isRead, isFavorite, folderId, extraFields
+      notes, rating, isRead, isFavorite, folderId, extraFields, bodyMinHash
     } = post;
-
-    console.debug(`Updating post ${id} with data:`)
 
     const result = await this.db.runAsync(
       `UPDATE posts SET
          title         = ?,
          bodyText      = ?,
+         bodyMinHash   = ?,
          customTitle   = ?,
          customBody    = ?,
          notes         = ?,
@@ -179,6 +236,7 @@ export class PostRepository {
        WHERE id = ?`,
       title,
       bodyText,
+      bodyMinHash ?? null,
       customTitle ?? null,
       customBody ?? null,
       notes ?? null,

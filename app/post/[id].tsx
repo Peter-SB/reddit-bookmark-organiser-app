@@ -5,7 +5,8 @@ import { spacing } from "@/constants/spacing";
 import { fontSizes, fontWeights } from "@/constants/typography";
 import { usePosts } from "@/hooks/usePosts";
 import { Post } from "@/models/models";
-import { Ionicons } from "@expo/vector-icons";
+import { Ionicons, MaterialCommunityIcons } from "@expo/vector-icons";
+import AsyncStorage from "@react-native-async-storage/async-storage";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import React, { useCallback, useEffect, useState } from "react";
 import {
@@ -26,6 +27,8 @@ import {
   SafeAreaView,
   useSafeAreaInsets,
 } from "react-native-safe-area-context";
+
+const FONT_INDEX_KEY = "preferredFontOptionIdx";
 
 const { width: screenWidth } = Dimensions.get("window");
 
@@ -56,6 +59,8 @@ export default function PostScreen() {
 
   const [ratingModalVisible, setRatingModalVisible] = useState(false);
   const [ratingInput, setRatingInput] = useState<string>("");
+
+  const [fontOptionIdx, setFontOptionIdx] = useState(0);
 
   const hasUnsavedChanges = useCallback(() => {
     if (!post) return false;
@@ -165,6 +170,30 @@ export default function PostScreen() {
       }
     }
   }, [id, posts, loading]);
+
+  const fontOptions = [
+    { fontSize: fontSizes.xsmall, lineHeight: 13 },
+    { fontSize: fontSizes.small, lineHeight: 16 },
+    { fontSize: fontSizes.body, lineHeight: 20 },
+    { fontSize: fontSizes.large, lineHeight: 26 },
+    { fontSize: fontSizes.xxsmall, lineHeight: 10 },
+  ];
+  const currentFont = fontOptions[fontOptionIdx];
+
+  const toggleFontOption = () => {
+    setFontOptionIdx((idx) => (idx + 1) % fontOptions.length);
+  };
+
+  useEffect(() => {
+    (async () => {
+      const storedIdx = await AsyncStorage.getItem(FONT_INDEX_KEY);
+      if (storedIdx !== null) setFontOptionIdx(Number(storedIdx));
+    })();
+  }, []);
+
+  useEffect(() => {
+    AsyncStorage.setItem(FONT_INDEX_KEY, String(fontOptionIdx));
+  }, [fontOptionIdx]);
 
   // slide in
   useEffect(() => {
@@ -338,9 +367,25 @@ export default function PostScreen() {
               />
             </TouchableOpacity>
           </View>
-          <TouchableOpacity onPress={toggleSidebar} style={styles.actionButton}>
-            <Ionicons name="menu" size={24} color={palette.foreground} />
-          </TouchableOpacity>
+          <View style={[styles.headerActions, { alignItems: "center" }]}>
+            <TouchableOpacity
+              onPress={toggleFontOption}
+              style={styles.actionButton}
+              hitSlop={1}
+            >
+              <MaterialCommunityIcons
+                name="format-size"
+                size={22}
+                color={palette.foreground}
+              />
+            </TouchableOpacity>
+            <TouchableOpacity
+              onPress={toggleSidebar}
+              style={styles.actionButton}
+            >
+              <Ionicons name="menu" size={24} color={palette.foreground} />
+            </TouchableOpacity>
+          </View>
         </View>
 
         {/* Content */}
@@ -411,7 +456,7 @@ export default function PostScreen() {
           <View style={styles.bodySection}>
             {isEditing ? (
               <TextInput
-                style={styles.body}
+                style={[styles.body, currentFont]}
                 value={editedBody}
                 onChangeText={setEditedBody}
                 multiline
@@ -419,7 +464,7 @@ export default function PostScreen() {
                 textAlignVertical="top"
               />
             ) : (
-              <Text style={styles.body}>{editedBody}</Text>
+              <Text style={[styles.body, currentFont]}>{editedBody}</Text>
             )}
           </View>
 
@@ -603,8 +648,8 @@ const styles = StyleSheet.create({
     padding: spacing.m - 4,
   },
   body: {
-    fontSize: fontSizes.body,
-    lineHeight: 24,
+    fontSize: fontSizes.small,
+    lineHeight: 16,
     color: palette.foreground,
     padding: 0,
   },

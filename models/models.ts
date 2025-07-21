@@ -36,6 +36,9 @@ export interface Post {
 
   /** Any extra custom fields */
   extraFields?: Record<string, any>;
+
+  /** MinHash for duplicate detection in-case of repost or reupload */
+  bodyMinHash?: string;
 }
 
 export interface Folder {

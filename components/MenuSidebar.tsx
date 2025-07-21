@@ -11,6 +11,7 @@ import {
   TouchableOpacity,
   TouchableWithoutFeedback,
   UIManager,
+  View,
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import Icon from "react-native-vector-icons/MaterialIcons";
@@ -33,6 +34,10 @@ interface MenuSidebarProps {
   onClose: () => void;
   onSelect: (key: string | number) => void;
   folders: Folder[];
+  favouritesFilter: "all" | "yes" | "no";
+  readFilter: "all" | "yes" | "no";
+  onFavouritesFilterChange: (val: "all" | "yes" | "no") => void;
+  onReadFilterChange: (val: "all" | "yes" | "no") => void;
 }
 
 export const MenuSidebar: React.FC<MenuSidebarProps> = ({
@@ -40,6 +45,10 @@ export const MenuSidebar: React.FC<MenuSidebarProps> = ({
   onClose,
   onSelect,
   folders,
+  favouritesFilter,
+  readFilter,
+  onFavouritesFilterChange,
+  onReadFilterChange,
 }) => {
   const insets = useSafeAreaInsets();
   const screenWidth = Dimensions.get("window").width;
@@ -63,7 +72,7 @@ export const MenuSidebar: React.FC<MenuSidebarProps> = ({
         useNativeDriver: true,
       }),
     ]).start();
-  }, [isOpen]);
+  }, [isOpen, translateX, backdropOpacity, sidebarWidth]);
 
   const toggleFolders = () => {
     // animate expand/collapse
@@ -71,17 +80,42 @@ export const MenuSidebar: React.FC<MenuSidebarProps> = ({
     setFoldersOpen((o) => !o);
   };
 
-  // top‐level menu items
-  const staticItems: { key: string; label: string; icon: string }[] = [
-    { key: "home", label: "Home", icon: "home" },
-    { key: "search", label: "Search", icon: "search" },
-    { key: "tags", label: "Tags", icon: "label" },
-    { key: "favorites", label: "Favorites", icon: "favorite" },
-    { key: "unread", label: "Unread", icon: "markunread" },
-    { key: "settings", label: "Settings", icon: "settings" },
-  ];
-
   if (!isOpen) return null;
+
+  // Segmented control component
+  const SegmentedControl = ({
+    value,
+    onChange,
+    scale = 0.9,
+  }: {
+    value: "all" | "yes" | "no";
+    onChange: (v: "all" | "yes" | "no") => void;
+    scale?: number;
+  }) => (
+    <View
+      style={[
+        styles.segmentedContainer,
+        { transform: [{ scale }], opacity: value === "all" ? 0.5 : 1 },
+      ]}
+    >
+      {(["all", "yes", "no"] as const).map((option) => (
+        <TouchableOpacity
+          key={option}
+          style={[styles.segment, value === option && styles.segmentActive]}
+          onPress={() => onChange(option)}
+        >
+          <Text
+            style={[
+              styles.segmentLabel,
+              value === option && styles.segmentLabelActive,
+            ]}
+          >
+            {option === "all" ? "All" : option === "yes" ? "Yes" : "No"}
+          </Text>
+        </TouchableOpacity>
+      ))}
+    </View>
+  );
 
   return (
     <>
@@ -104,34 +138,102 @@ export const MenuSidebar: React.FC<MenuSidebarProps> = ({
         ]}
       >
         <SafeAreaView style={styles.container}>
-          {/* Static items up to Folders */}
-          {staticItems.slice(0, 2).map((item) => (
-            <TouchableOpacity
-              key={item.key}
-              style={styles.item}
-              onPress={() => {
-                onSelect(item.key);
-                onClose();
-              }}
-            >
+          {/* Home */}
+          <TouchableOpacity
+            style={[styles.item, { paddingTop: 20 }]}
+            onPress={() => {
+              onSelect("home");
+              onClose();
+            }}
+          >
+            <View style={styles.iconContainer}>
               <Icon
-                name={item.icon}
+                name="home"
                 size={24}
                 style={styles.icon}
                 color={palette.foreground}
               />
-              <Text style={styles.label}>{item.label}</Text>
-            </TouchableOpacity>
-          ))}
+            </View>
+            <Text style={[styles.label, { fontSize: fontSizes.body * 1.15 }]}>
+              Home
+            </Text>
+          </TouchableOpacity>
+
+          <View style={styles.dividerContainer}>
+            <View style={styles.dividerLine} />
+          </View>
+
+          {/* Search */}
+          <TouchableOpacity
+            style={styles.item}
+            onPress={() => {
+              onSelect("search");
+              onClose();
+            }}
+          >
+            <View style={styles.iconContainer}>
+              <Icon
+                name="search"
+                size={24}
+                style={styles.icon}
+                color={palette.foreground}
+              />
+            </View>
+            <Text style={styles.label}>Search</Text>
+          </TouchableOpacity>
+
+          {/* Favorites segmented control */}
+          <View style={styles.filterRow}>
+            <View style={{ flexDirection: "row" }}>
+              <View style={styles.iconContainer}>
+                <Icon
+                  name="favorite"
+                  size={20}
+                  color={palette.foreground}
+                  style={styles.icon}
+                />
+              </View>
+              <Text style={styles.filterLabel}>Favorites:</Text>
+            </View>
+            <SegmentedControl
+              value={favouritesFilter}
+              onChange={onFavouritesFilterChange}
+            />
+          </View>
+
+          {/* Read segmented control */}
+          <View style={styles.filterRow}>
+            <View style={{ flexDirection: "row" }}>
+              <View style={styles.iconContainer}>
+                <Icon
+                  name="markunread"
+                  size={20}
+                  color={palette.foreground}
+                  style={styles.icon}
+                />
+              </View>
+              <Text style={styles.filterLabel}>Read:</Text>
+            </View>
+            <SegmentedControl
+              value={readFilter}
+              onChange={onReadFilterChange}
+            />
+          </View>
+
+          <View style={styles.dividerContainer}>
+            <View style={styles.dividerLine} />
+          </View>
 
           {/* Folders expandable */}
           <TouchableOpacity style={styles.item} onPress={toggleFolders}>
-            <Icon
-              name="folder"
-              size={24}
-              style={styles.icon}
-              color={palette.foreground}
-            />
+            <View style={styles.iconContainer}>
+              <Icon
+                name="folder"
+                size={24}
+                style={styles.icon}
+                color={palette.foreground}
+              />
+            </View>
             <Text style={styles.label}>Folders</Text>
             <Icon
               name={foldersOpen ? "expand-less" : "expand-more"}
@@ -158,25 +260,45 @@ export const MenuSidebar: React.FC<MenuSidebarProps> = ({
             />
           )}
 
-          {/* Remaining static items */}
-          {staticItems.slice(2).map((item) => (
-            <TouchableOpacity
-              key={item.key}
-              style={styles.item}
-              onPress={() => {
-                onSelect(item.key);
-                onClose();
-              }}
-            >
+          {/* Tags */}
+          <TouchableOpacity
+            style={styles.item}
+            onPress={() => {
+              onSelect("tags");
+              onClose();
+            }}
+          >
+            <View style={styles.iconContainer}>
               <Icon
-                name={item.icon}
+                name="label"
                 size={24}
                 style={styles.icon}
                 color={palette.foreground}
               />
-              <Text style={styles.label}>{item.label}</Text>
+            </View>
+            <Text style={styles.label}>Tags</Text>
+          </TouchableOpacity>
+          {/* Spacer to push settings to bottom, accounting for navigation bar */}
+          <View style={{ flex: 1 }} />
+          <View style={{ paddingBottom: insets.bottom }}>
+            <TouchableOpacity
+              style={[styles.item]}
+              onPress={() => {
+                onSelect("settings");
+                onClose();
+              }}
+            >
+              <View style={styles.iconContainer}>
+                <Icon
+                  name="settings"
+                  size={24}
+                  style={styles.icon}
+                  color={palette.foreground}
+                />
+              </View>
+              <Text style={styles.label}>Settings</Text>
             </TouchableOpacity>
-          ))}
+          </View>
         </SafeAreaView>
       </Animated.View>
     </>
@@ -215,6 +337,11 @@ const styles = StyleSheet.create({
   icon: {
     marginRight: spacing.s,
   },
+  iconContainer: {
+    width: 36,
+    alignItems: "center",
+    justifyContent: "center",
+  },
   label: {
     fontSize: fontSizes.body,
     fontWeight: fontWeights.medium,
@@ -230,5 +357,52 @@ const styles = StyleSheet.create({
   folderLabel: {
     fontSize: fontSizes.body,
     color: palette.foreground,
+  },
+  filterRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    marginVertical: 4,
+    justifyContent: "space-between", // align icon+label left, segment right
+  },
+  filterLabel: {
+    fontSize: fontSizes.body,
+    color: palette.foreground,
+    marginRight: 8,
+    fontWeight: fontWeights.medium,
+  },
+  dividerContainer: {
+    marginVertical: spacing.m,
+    justifyContent: "center",
+    alignItems: "center",
+  },
+  dividerLine: {
+    height: 1,
+    width: "100%",
+    backgroundColor: palette.border,
+  },
+  segmentedContainer: {
+    flexDirection: "row",
+    backgroundColor: palette.backgroundMidLight,
+    borderRadius: 8,
+    overflow: "hidden",
+    marginLeft: 8,
+    // remove marginLeft if not needed
+  },
+  segment: {
+    paddingVertical: 3,
+    paddingHorizontal: 12,
+    backgroundColor: palette.backgroundMidLight,
+    minWidth: 48, // Ensure consistent width for each segment
+    alignItems: "center",
+  },
+  segmentActive: {
+    backgroundColor: palette.border,
+  },
+  segmentLabel: {
+    fontSize: fontSizes.body,
+    color: palette.foreground,
+  },
+  segmentLabelActive: {
+    fontWeight: fontWeights.bold,
   },
 });
