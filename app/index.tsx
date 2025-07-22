@@ -114,65 +114,68 @@ export default function HomeScreen() {
     }, [refresh])
   );
 
-  const handleAddPost = async (url: string) => {
-    if (isAdding) return;
-    setIsAdding(true);
-    try {
-      const postData = await getPostData(url);
+  const handleAddPost = useCallback(
+    async (url: string) => {
+      if (isAdding) return;
+      setIsAdding(true);
+      try {
+        const postData = await getPostData(url);
 
-      // Check for exact duplicates (existing logic)
-      const exactDuplicates = posts.filter(
-        (p) => p.redditId === postData.redditId
-      );
-
-      // Check for similar content
-      const similarPosts = await checkForSimilarPosts(
-        postData.bodyText || "",
-        0.8
-      );
-
-      if (exactDuplicates.length > 0) {
-        Alert.alert(
-          "Duplicate Post",
-          "This post appears to already exist. Add anyway?",
-          [
-            { text: "Cancel", style: "cancel" },
-            {
-              text: "Add Anyway",
-              onPress: () => addPost(postData),
-            },
-          ]
+        // Check for exact duplicates (existing logic)
+        const exactDuplicates = posts.filter(
+          (p) => p.redditId === postData.redditId
         );
-      } else if (similarPosts.length > 0) {
-        const similarTitles = similarPosts
-          .slice(0, 2)
-          .map((p) => `"${p.title}"`)
-          .join("\n");
-        Alert.alert(
-          "Similar Content Found",
-          `Found ${
-            similarPosts.length
-          } post(s) with similar content:\n\n${similarTitles}${
-            similarPosts.length > 3 ? "\n...and more" : ""
-          }\n\nAdd anyway?`,
-          [
-            { text: "Cancel", style: "cancel" },
-            {
-              text: "Add Anyway",
-              onPress: () => addPost(postData),
-            },
-          ]
+
+        // Check for similar content
+        const similarPosts = await checkForSimilarPosts(
+          postData.bodyText || "",
+          0.8
         );
-      } else {
-        await addPost(postData);
+
+        if (exactDuplicates.length > 0) {
+          Alert.alert(
+            "Duplicate Post",
+            "This post appears to already exist. Add anyway?",
+            [
+              { text: "Cancel", style: "cancel" },
+              {
+                text: "Add Anyway",
+                onPress: () => addPost(postData),
+              },
+            ]
+          );
+        } else if (similarPosts.length > 0) {
+          const similarTitles = similarPosts
+            .slice(0, 2)
+            .map((p) => `"${p.title}"`)
+            .join("\n");
+          Alert.alert(
+            "Similar Content Found",
+            `Found ${
+              similarPosts.length
+            } post(s) with similar content:\n\n${similarTitles}${
+              similarPosts.length > 3 ? "\n...and more" : ""
+            }\n\nAdd anyway?`,
+            [
+              { text: "Cancel", style: "cancel" },
+              {
+                text: "Add Anyway",
+                onPress: () => addPost(postData),
+              },
+            ]
+          );
+        } else {
+          await addPost(postData);
+        }
+        setIsInputVisible(false);
+      } catch (e) {
+        Alert.alert("Error", `Failed to add post: ${(e as Error).message}`);
+      } finally {
+        setIsAdding(false);
       }
-      setIsInputVisible(false);
-    } catch (e) {
-      Alert.alert("Error", `Failed to add post: ${(e as Error).message}`);
-    } finally {
-      setIsAdding(false);
-    }
-  };
+    },
+    [isAdding, getPostData, posts, checkForSimilarPosts, addPost]
+  );
 
   const handleSelect = (key: string | number) => {
     // key is "home" | "search" | "tags" | "favorites" | "unread" | "settings"
@@ -188,7 +191,7 @@ export default function HomeScreen() {
         animated: true,
       });
     }
-    if (key === "settings") router.push("/settings");
+    if (key === "settings") router.push("/settings" as any);
     else if (key === "search") {
       postsListRef.current?.scrollToOffset({
         offset: 0,
@@ -204,13 +207,26 @@ export default function HomeScreen() {
 
   useEffect(() => {
     async function handleIncoming() {
-      const url = await Linking.getInitialURL();
-      if (!url) return;
-
-      const { queryParams } = Linking.parse(url);
-      const shared = queryParams?.text as string | undefined;
+      let shared: string | undefined = undefined;
+      // Check for sharedUrl param from router (expo-router v2)
+      // Safely get params from router (expo-router v2+ or fallback)
+      const params =
+        router && "params" in router ? (router as any).params : undefined;
+      if (params?.sharedUrl && typeof params.sharedUrl === "string") {
+        shared = params.sharedUrl;
+        // Remove the param so it doesn't re-add on hot reload
+        if (typeof router.setParams === "function") {
+          router.setParams({ sharedUrl: undefined });
+        }
+      } else {
+        // Fallback to Linking.getInitialURL for legacy/other cases
+        const url = await Linking.getInitialURL();
+        if (url) {
+          const { queryParams } = Linking.parse(url);
+          shared = queryParams?.text as string | undefined;
+        }
+      }
       if (shared && shared.startsWith("http")) {
-        // auto‑add and then clear it so you don’t re‑add on hot reload:
         try {
           await handleAddPost(shared);
         } catch (e) {
@@ -227,7 +243,7 @@ export default function HomeScreen() {
       if (queryParams?.text) handleAddPost(queryParams?.text as string);
     });
     return () => sub.remove();
-  }, []);
+  }, [router, handleAddPost]);
 
   const isLoading = redditApiLoading || isAdding; // || postsLoading;
 

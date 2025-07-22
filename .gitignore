@@ -47,3 +47,4 @@ app-example
 _bin/
 android/
 ios/
+.vscode
