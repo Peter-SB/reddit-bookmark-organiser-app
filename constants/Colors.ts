@@ -24,3 +24,19 @@ export const Colors = {
     tabIconSelected: tintColorDark,
   },
 };
+
+// POC color palette
+export const palette = {
+  background: '#FFF',
+  backgroundMidLight: '#fcfcfc',//'#fafafa',
+  backgroundDarker: '#f8f8f8',
+  foreground: '#111',
+  foregroundLight: '#323232',
+  accent: '#007AFF',  // iOS blue
+  muted: '#888',
+  cardShadow: '#00000010',
+  border: '#E5E5E5',
+
+  favHeartRed: '#FF4500', 
+  starYellow: '#FFB700',
+};
