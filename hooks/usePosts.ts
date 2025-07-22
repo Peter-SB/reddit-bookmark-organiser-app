@@ -1,5 +1,6 @@
 // src/hooks/usePosts.ts
 import { Post } from '@/models/models';
+import { PostFolderRepository } from '@/repository/PostFolderRepository';
 import { PostRepository } from '@/repository/PostRepository';
 import { MinHashService } from '@/services/MinHashService';
 import { useCallback, useEffect, useState } from 'react';
@@ -16,6 +17,7 @@ export interface UsePostsResult {
   addTagToPost: (postId: number, tagId: number) => Promise<void>;
   removeTagFromPost: (postId: number, tagId: number) => Promise<void>;
   checkForSimilarPosts: (bodyText: string, threshold?: number) => Promise<Post[]>;
+  setFolders: (postId: number, newFolderIds: number[]) => Promise<void>;
   recomputeMissingMinHashes: () => Promise<number>;
 }
 
@@ -111,6 +113,20 @@ export function usePosts(): UsePostsResult {
     await loadPosts();
   }, [repo, loadPosts]);
 
+  const setFolders = useCallback(
+    async (postId: number, newFolderIds: number[]) => {
+      console.debug('Setting folders for post:', postId + " ids:" + newFolderIds);
+      if (!repo) throw new Error('Repo not ready');
+      const pf = await PostFolderRepository.create();
+      await pf.removeAllFoldersFromPost(postId);
+      for (const fid of newFolderIds) {
+        await pf.addPostToFolder(postId, fid);
+      }
+      await loadPosts();
+    },
+    [repo, loadPosts]
+  );
+
   const recomputeMissingMinHashes = useCallback(async () => {
     if (!repo) throw new Error('PostRepository not ready');
     const allPosts = await repo.getAll();
@@ -140,6 +156,7 @@ export function usePosts(): UsePostsResult {
     addTagToPost,
     removeTagFromPost,
     checkForSimilarPosts,
+    setFolders,
     recomputeMissingMinHashes,
   };
 }

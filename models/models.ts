@@ -29,7 +29,7 @@ export interface Post {
   isFavorite: boolean;
 
   /** Folder association (one per post) */
-  folderId?: number;
+  folderIds: number[];
 
   /** Tag associations (many per post) */
   tagIds: number[];
@@ -50,6 +50,13 @@ export interface Folder {
   parentId?: number;
   /** When the folder was created */
   createdAt: Date;
+}
+
+export interface PostFolder {
+  /** Post ID (FK) */
+  postId: number;
+  /** Folder ID (FK) */
+  folderId: number;
 }
 
 export interface Tag {

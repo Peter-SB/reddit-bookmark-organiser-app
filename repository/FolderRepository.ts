@@ -10,6 +10,7 @@ export class FolderRepository {
   }
 
   public static async create(): Promise<FolderRepository> {
+    console.debug('Creating FolderRepository instance');
     const svc = await DatabaseService.getInstance();
     return new FolderRepository(svc.getDb());
   }
@@ -46,11 +47,12 @@ export class FolderRepository {
   }
 
   public async create(name: string, parentId?: number): Promise<number> {
-    const params = parentId != null ? [name, parentId] : [name];
-    const placeholders = parentId != null ? '(?, ?)' : '(?)';
+    const createdAt = new Date().toISOString();
     const result = await this.db.runAsync(
-      `INSERT INTO folders (name, parentId) VALUES ${placeholders}`,
-      ...params
+      `INSERT INTO folders (name, parentId, createdAt) VALUES (?, ?, ?)`,
+      name,
+      parentId ?? null,
+      createdAt
     );
     return result.lastInsertRowId;
   }

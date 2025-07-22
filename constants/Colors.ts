@@ -39,4 +39,6 @@ export const palette = {
 
   favHeartRed: '#FF4500', 
   starYellow: '#FFB700',
+
+  saveGreen: '#008000', // iOS system green
 };

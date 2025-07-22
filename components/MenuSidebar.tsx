@@ -254,14 +254,20 @@ export const MenuSidebar: React.FC<MenuSidebarProps> = ({
                     onClose();
                   }}
                 >
-                  <Text style={styles.folderLabel}>{item.name}</Text>
+                  <View style={styles.folderContent}>
+                    <Text style={styles.folderLabel}>{item.name}</Text>
+                    <Text style={styles.folderCount}>
+                      {/* You'll need to pass post counts per folder */}
+                      {/* {getFolderPostCount(item.id)} */}
+                    </Text>
+                  </View>
                 </TouchableOpacity>
               )}
             />
           )}
 
           {/* Tags */}
-          <TouchableOpacity
+          {/* <TouchableOpacity
             style={styles.item}
             onPress={() => {
               onSelect("tags");
@@ -277,7 +283,7 @@ export const MenuSidebar: React.FC<MenuSidebarProps> = ({
               />
             </View>
             <Text style={styles.label}>Tags</Text>
-          </TouchableOpacity>
+          </TouchableOpacity> */}
           {/* Spacer to push settings to bottom, accounting for navigation bar */}
           <View style={{ flex: 1 }} />
           <View style={{ paddingBottom: insets.bottom }}>
@@ -354,9 +360,19 @@ const styles = StyleSheet.create({
     paddingVertical: spacing.s / 2,
     paddingLeft: spacing.l,
   },
+  folderContent: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+  },
   folderLabel: {
     fontSize: fontSizes.body,
     color: palette.foreground,
+  },
+  folderCount: {
+    fontSize: fontSizes.body,
+    color: palette.foreground,
+    marginLeft: spacing.s,
   },
   filterRow: {
     flexDirection: "row",

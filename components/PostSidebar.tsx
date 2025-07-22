@@ -8,7 +8,7 @@ import {
   openRedditUser,
 } from "@/utils/redditLinks";
 import { Ionicons } from "@expo/vector-icons";
-import React from "react";
+import React, { useEffect, useState } from "react";
 import {
   Animated,
   ScrollView,
@@ -18,6 +18,7 @@ import {
   TouchableOpacity,
   View,
 } from "react-native";
+import { FolderSelector } from "./FolderSelector";
 
 interface SidebarProps {
   sidebarAnim: Animated.Value;
@@ -31,9 +32,10 @@ interface SidebarProps {
   editedNotes: string;
   setEditedNotes: (notes: string) => void;
   formatDate: (dt: Date) => string;
+  setFolders: (postId: number, folderIds: number[]) => Promise<void>;
 }
 
-export const Sidebar: React.FC<SidebarProps> = ({
+export const PostSidebar: React.FC<SidebarProps> = ({
   sidebarAnim,
   sidebarWidth,
   insets,
@@ -45,8 +47,24 @@ export const Sidebar: React.FC<SidebarProps> = ({
   editedNotes,
   setEditedNotes,
   formatDate,
+  setFolders,
 }) => {
+  const [postFolderIds, setPostFolderIds] = useState<number[]>([]);
+
+  const handleFolderChange = async (folderIds: number[]) => {
+    console.debug("Updating folders for post:", post.id, "to", folderIds);
+    setPostFolderIds(folderIds);
+    await setFolders(post.id, folderIds);
+  };
+
+  useEffect(() => {
+    if (post) {
+      setPostFolderIds(post.folderIds);
+    }
+  }, [post]);
+
   if (!sidebarVisible) return null;
+
   return (
     <>
       {/* Sidebar overlay */}
@@ -96,21 +114,15 @@ export const Sidebar: React.FC<SidebarProps> = ({
             />
           </View>
           {/* Tags */}
-          <View style={styles.sidebarSection}>
+          {/* <View style={styles.sidebarSection}>
             <Text style={styles.sidebarSectionTitle}>Tags</Text>
             <Text style={styles.sidebarText}>
               {post.tagIds.length > 0
                 ? post.tagIds.join(", ")
                 : "No tags added"}
             </Text>
-          </View>
-          {/* Folder */}
-          <View style={styles.sidebarSection}>
-            <Text style={styles.sidebarSectionTitle}>Folder</Text>
-            <Text style={styles.sidebarText}>
-              {post.folderId ? `#${post.folderId}` : "No folder assigned"}
-            </Text>
-          </View>
+          </View> */}
+
           {/* Post Info */}
           <View style={styles.sidebarSection}>
             <Text style={styles.sidebarSectionTitle}>Post Info</Text>
@@ -156,6 +168,19 @@ export const Sidebar: React.FC<SidebarProps> = ({
             <Text style={styles.sidebarText}>
               Posted: {formatDate(post.redditCreatedAt)}
             </Text>
+          </View>
+
+          {/* Folder */}
+          <View style={styles.sidebarSection}>
+            <Text style={styles.sidebarSectionTitle}>Folder</Text>
+            <FolderSelector
+              postId={post?.id || 0}
+              selectedFolderIds={postFolderIds}
+              onFoldersChange={handleFolderChange}
+            />
+            {/* {postFolderIds.length == 0 && (
+              <Text style={styles.sidebarText}>No folders selected</Text>
+            )} */}
           </View>
         </ScrollView>
       </Animated.View>

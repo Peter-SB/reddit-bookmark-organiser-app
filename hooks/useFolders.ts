@@ -46,7 +46,7 @@ export function useFolders(): UseFoldersResult {
   // create
   const createFolder = useCallback(async (name: string, parentId?: number) => {
     if (!repo) throw new Error('FolderRepository not ready');
-    const id = await repo.create(name, parentId);
+    const id = await repo.create(name, parentId ?? undefined);
     const newFolder = await repo.getById(id);
     await loadFolders();
     if (!newFolder) throw new Error('Failed to load new folder');

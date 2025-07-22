@@ -12,6 +12,7 @@ export class PostRepository {
   }
 
   public static async create(): Promise<PostRepository> {
+    console.debug('Creating PostRepository instance');
     const svc = await DatabaseService.getInstance();
     return new PostRepository(svc.getDb());
   }
@@ -66,8 +67,8 @@ export class PostRepository {
         rating: r.rating ?? undefined,
         isRead: r.isRead === 1,
         isFavorite: r.isFavorite === 1,
-        folderId: r.folderId ?? undefined,
         extraFields: r.extraFields ? JSON.parse(r.extraFields) : undefined,
+        folderIds: await this.loadFolderIds(r.id),
         tagIds: await this.loadTagIds(r.id),
       }))
     );
@@ -113,9 +114,9 @@ export class PostRepository {
       rating: r.rating ?? undefined,
       isRead: r.isRead === 1,
       isFavorite: r.isFavorite === 1,
-      folderId: r.folderId ?? undefined,
       extraFields: r.extraFields ? JSON.parse(r.extraFields) : undefined,
       tagIds: await this.loadTagIds(r.id),
+      folderIds: await this.loadFolderIds(r.id),
     };
   }
 
@@ -124,7 +125,7 @@ export class PostRepository {
       redditId, url, title, bodyText, author, subreddit,
       redditCreatedAt, addedAt,
       customTitle, customBody, notes, rating,
-      isRead, isFavorite, folderId, extraFields, tagIds = []
+      isRead, isFavorite, folderIds, extraFields, tagIds = []
     } = post;
 
     // Generate MinHash signature for body text
@@ -136,7 +137,7 @@ export class PostRepository {
          redditId, url, title, bodyText, bodyMinHash, author, subreddit,
          redditCreatedAt, addedAt,
          customTitle, customBody, notes, rating,
-         isRead, isFavorite, folderId, extraFields
+         isRead, isFavorite, extraFields
        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
       redditId,
       url,
@@ -153,8 +154,7 @@ export class PostRepository {
       rating ?? null,
       isRead ? 1 : 0,
       isFavorite ? 1 : 0,
-      folderId ?? null,
-      extraFields ? JSON.stringify(extraFields) : null
+      extraFields ? JSON.stringify(extraFields) : null,
     );
     const newId = result.lastInsertRowId;
 
@@ -216,8 +216,8 @@ export class PostRepository {
   public async update(post: Post): Promise<number> {
     const {
       id, title, bodyText, customTitle, customBody,
-      notes, rating, isRead, isFavorite, folderId, extraFields, bodyMinHash
-    } = post;
+      notes, rating, isRead, isFavorite, extraFields, bodyMinHash
+    } = post; // todo: clean this up. Remove and use post. bellow
 
     const result = await this.db.runAsync(
       `UPDATE posts SET
@@ -230,7 +230,6 @@ export class PostRepository {
          rating        = ?,
          isRead        = ?,
          isFavorite    = ?,
-         folderId      = ?,
          extraFields   = ?,
          updatedAt    = CURRENT_TIMESTAMP
        WHERE id = ?`,
@@ -243,10 +242,16 @@ export class PostRepository {
       rating ?? null,
       post.isRead ? 1 : 0,
       post.isFavorite ? 1 : 0,
-      folderId ?? null,
       post.extraFields ? JSON.stringify(post.extraFields) : null,
       id
     );
+
+    for (const fid of post.folderIds ?? []) {
+      await this.db.runAsync(
+        `INSERT OR IGNORE INTO post_folders (post_id, folder_id) VALUES (?, ?)`,
+        id, fid
+      );
+    }
 
     console.debug(`Updated post ${id}:`, result);
 
@@ -281,5 +286,13 @@ export class PostRepository {
       tagId
     );
     return r.changes;
+  }
+
+  private async loadFolderIds(postId: number): Promise<number[]> {
+    const rows = await this.db.getAllAsync<{ folder_id: number }>(
+      `SELECT folder_id FROM post_folders WHERE post_id = ?`,
+      postId
+    );
+    return rows.map(row => row.folder_id);
   }
 }

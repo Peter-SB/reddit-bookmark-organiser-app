@@ -59,6 +59,12 @@ export class DatabaseService {
         createdAt   TEXT    NOT NULL DEFAULT CURRENT_TIMESTAMP
       );
 
+      CREATE TABLE IF NOT EXISTS post_folders (
+        post_id   INTEGER NOT NULL REFERENCES posts(id) ON DELETE CASCADE,
+        folder_id INTEGER NOT NULL REFERENCES folders(id) ON DELETE CASCADE,
+        PRIMARY KEY (post_id, folder_id)
+      );
+
       CREATE TABLE IF NOT EXISTS posts (
         id                INTEGER PRIMARY KEY AUTOINCREMENT,
         redditId          TEXT    NOT NULL UNIQUE,
@@ -76,7 +82,6 @@ export class DatabaseService {
         rating            REAL,
         isRead            INTEGER NOT NULL DEFAULT 0,
         isFavorite        INTEGER NOT NULL DEFAULT 0,
-        folderId          INTEGER REFERENCES folders(id) ON DELETE SET NULL,
         extraFields       TEXT,
         bodyMinHash       TEXT
       );
