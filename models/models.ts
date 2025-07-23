@@ -50,6 +50,8 @@ export interface Folder {
   parentId?: number;
   /** When the folder was created */
   createdAt: Date;
+  /** List of post IDs associated with this folder */
+  folderPostIds: number[];
 }
 
 export interface PostFolder {

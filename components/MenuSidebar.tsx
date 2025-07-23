@@ -29,15 +29,17 @@ if (
   UIManager.setLayoutAnimationEnabledExperimental(true);
 }
 
-interface MenuSidebarProps {
+export interface MenuSidebarProps {
   isOpen: boolean;
   onClose: () => void;
-  onSelect: (key: string | number) => void;
+  onSelect: (key: string | number | (number | string)[]) => void;
   folders: Folder[];
   favouritesFilter: "all" | "yes" | "no";
   readFilter: "all" | "yes" | "no";
   onFavouritesFilterChange: (val: "all" | "yes" | "no") => void;
   onReadFilterChange: (val: "all" | "yes" | "no") => void;
+  selectedFolders?: number[];
+  onSelectedFoldersChange?: (ids: number[]) => void;
 }
 
 export const MenuSidebar: React.FC<MenuSidebarProps> = ({
@@ -49,6 +51,8 @@ export const MenuSidebar: React.FC<MenuSidebarProps> = ({
   readFilter,
   onFavouritesFilterChange,
   onReadFilterChange,
+  selectedFolders = [],
+  onSelectedFoldersChange,
 }) => {
   const insets = useSafeAreaInsets();
   const screenWidth = Dimensions.get("window").width;
@@ -235,34 +239,62 @@ export const MenuSidebar: React.FC<MenuSidebarProps> = ({
               />
             </View>
             <Text style={styles.label}>Folders</Text>
-            <Icon
+            {/* <Icon
               name={foldersOpen ? "expand-less" : "expand-more"}
               size={24}
               style={styles.expandIcon}
               color={palette.foreground}
-            />
+            /> */}
           </TouchableOpacity>
-          {foldersOpen && (
+          {!foldersOpen && (
             <FlatList
               data={folders}
               keyExtractor={(f) => f.id.toString()}
-              renderItem={({ item }) => (
-                <TouchableOpacity
-                  style={styles.folderItem}
-                  onPress={() => {
-                    onSelect(item.id);
-                    onClose();
-                  }}
-                >
-                  <View style={styles.folderContent}>
-                    <Text style={styles.folderLabel}>{item.name}</Text>
-                    <Text style={styles.folderCount}>
-                      {/* You'll need to pass post counts per folder */}
-                      {/* {getFolderPostCount(item.id)} */}
-                    </Text>
-                  </View>
-                </TouchableOpacity>
-              )}
+              renderItem={({ item }) => {
+                const isSelected = selectedFolders.includes(item.id);
+                return (
+                  <TouchableOpacity
+                    style={[
+                      styles.folderItem,
+                      isSelected && {
+                        backgroundColor: palette.backgroundMidLight,
+                      },
+                    ]}
+                    onPress={() => {
+                      let newSelected: number[];
+                      if (isSelected) {
+                        newSelected = selectedFolders.filter(
+                          (id) => id !== item.id
+                        );
+                      } else {
+                        newSelected = [...selectedFolders, item.id];
+                      }
+                      if (onSelectedFoldersChange)
+                        onSelectedFoldersChange(newSelected);
+                      onSelect(newSelected.length === 0 ? [] : newSelected);
+                    }}
+                  >
+                    <View style={styles.folderContent}>
+                      <Text
+                        style={[
+                          styles.folderLabel,
+                          isSelected && { fontWeight: "bold" },
+                        ]}
+                      >
+                        {item.name}
+                      </Text>
+                      <View>
+                        <Text style={[styles.folderCount, { opacity: 0.5 }]}>
+                          {item.folderPostIds.length}
+                        </Text>
+                      </View>
+                      <Text style={styles.folderCount}>
+                        {/* {isSelected ? "" : ""} */}
+                      </Text>
+                    </View>
+                  </TouchableOpacity>
+                );
+              }}
             />
           )}
 
@@ -368,10 +400,12 @@ const styles = StyleSheet.create({
   folderLabel: {
     fontSize: fontSizes.body,
     color: palette.foreground,
+    flex: 1,
   },
   folderCount: {
+    width: 16,
     fontSize: fontSizes.body,
-    color: palette.foreground,
+    color: palette.foregroundMidLight,
     marginLeft: spacing.s,
   },
   filterRow: {

@@ -46,8 +46,8 @@ export default function HomeScreen() {
     checkForSimilarPosts,
     recomputeMissingMinHashes,
   } = usePosts();
-  const { getPostData, loading: redditApiLoading } = useRedditApi();
   const { folders } = useFolders();
+  const { getPostData, loading: redditApiLoading } = useRedditApi();
 
   const [isAdding, setIsAdding] = useState(false);
   const [sidebarOpen, setSidebarOpen] = useState(false);
@@ -56,10 +56,12 @@ export default function HomeScreen() {
   const [favouritesFilter, setFavouritesFilter] = useState<TripleFilter>("all");
   const [readFilter, setReadFilter] = useState<TripleFilter>("all");
   const [search, setSearch] = useState("");
+  // Track selected folders
+  const [selectedFolders, setSelectedFolders] = useState<number[]>([]);
 
   const insets = useSafeAreaInsets();
 
-  // Filter posts by search string
+  // Filter posts by search string and selected folders
   const filteredPosts = posts
     // text search
     .filter((post) => {
@@ -73,6 +75,15 @@ export default function HomeScreen() {
         (post.notes ?? "").toLowerCase().includes(q) ||
         (post.author ?? "").toLowerCase().includes(q) ||
         (post.subreddit ?? "").toLowerCase().includes(q)
+      );
+    })
+    // folder filter
+    .filter((post) => {
+      if (!selectedFolders || selectedFolders.length === 0) return true;
+      // post.folderIds may be undefined/null or an array
+      if (!post.folderIds || post.folderIds.length === 0) return false;
+      return post.folderIds.some((fid: number) =>
+        selectedFolders.includes(fid)
       );
     })
     // favourites filter
@@ -177,29 +188,32 @@ export default function HomeScreen() {
     [isAdding, getPostData, posts, checkForSimilarPosts, addPost]
   );
 
-  const handleSelect = (key: string | number) => {
-    // key is "home" | "search" | "tags" | "favorites" | "unread" | "settings"
-    // or a folder.id number
+  const handleSelect = (key: string | number | (number | string)[]) => {
+    // key can be "home" | "search" | "tags" | "favorites" | "unread" | "settings" | folder.id | array of folder ids
     console.log("Selected:", key);
     if (key === "home") {
-      // Hide searchbar and clear
       setSearch("");
       setFavouritesFilter("all");
       setReadFilter("all");
+      setSelectedFolders([]);
       postsListRef.current?.scrollToOffset({
         offset: LIST_HEADER_HEIGHT,
         animated: true,
       });
-    }
-    if (key === "settings") router.push("/settings" as any);
-    else if (key === "search") {
+    } else if (key === "settings") {
+      router.push("/settings" as any);
+    } else if (key === "search") {
       postsListRef.current?.scrollToOffset({
         offset: 0,
         animated: true,
       });
+    } else if (Array.isArray(key)) {
+      setSelectedFolders(key as number[]);
+      return;
+    } else if (typeof key === "number") {
+      setSelectedFolders([key]);
+      return;
     }
-
-    // TODO: navigate or filter your list based on key
     setSidebarOpen(false);
   };
 
@@ -258,6 +272,8 @@ export default function HomeScreen() {
         readFilter={readFilter}
         onFavouritesFilterChange={setFavouritesFilter}
         onReadFilterChange={setReadFilter}
+        selectedFolders={selectedFolders}
+        onSelectedFoldersChange={setSelectedFolders}
       />
 
       <View style={styles.header}>

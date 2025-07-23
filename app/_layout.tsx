@@ -32,7 +32,7 @@ export default function RootLayout() {
     const handleUrl = (url: string) => {
       if (url && url.includes("reddit.com")) {
         // Pass the shared URL as a param to index
-        router.replace({ pathname: "/index", params: { sharedUrl: url } });
+        router.replace({ pathname: "/", params: { sharedUrl: url } });
       }
     };
 

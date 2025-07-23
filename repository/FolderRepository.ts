@@ -1,4 +1,4 @@
-import { Folder } from '@/models/models';
+import { Folder, Post } from '@/models/models';
 import type { SQLiteDatabase } from 'expo-sqlite';
 import { DatabaseService } from '../services/DatabaseService';
 
@@ -22,12 +22,14 @@ export class FolderRepository {
       parentId: number | null;
       createdAt: string;
     }>(`SELECT id, name, parentId, createdAt FROM folders`);
-    return rows.map(r => ({
+    return Promise.all(rows.map(async r => ({
       id: r.id,
       name: r.name,
       parentId: r.parentId ?? undefined,
       createdAt: new Date(r.createdAt),
-    }));
+      folderPostIds: await this.getFolderPostIds(r.id),
+
+    })));
   }
 
   public async getById(id: number): Promise<Folder | null> {
@@ -43,6 +45,7 @@ export class FolderRepository {
       name: r.name,
       parentId: r.parentId ?? undefined,
       createdAt: new Date(r.createdAt),
+      folderPostIds: await this.getFolderPostIds(r.id),
     };
   }
 
@@ -70,5 +73,13 @@ export class FolderRepository {
   public async delete(id: number): Promise<number> {
     const result = await this.db.runAsync(`DELETE FROM folders WHERE id = ?`, id);
     return result.changes;
+  }
+
+  public async getFolderPostIds(folderId: number): Promise<number[]> {
+    const rows = await this.db.getAllAsync<{ post_id: number }>(
+      `SELECT post_id FROM post_folders WHERE folder_id = ?`,
+      folderId
+    );
+    return rows.map(r => r.post_id);
   }
 }
