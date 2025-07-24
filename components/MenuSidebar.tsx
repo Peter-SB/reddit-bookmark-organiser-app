@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from "react";
 import {
+  Alert,
   Animated,
   Dimensions,
   FlatList,
@@ -40,6 +41,7 @@ export interface MenuSidebarProps {
   onReadFilterChange: (val: "all" | "yes" | "no") => void;
   selectedFolders?: number[];
   onSelectedFoldersChange?: (ids: number[]) => void;
+  onDeleteFolder?: (id: number) => void;
 }
 
 export const MenuSidebar: React.FC<MenuSidebarProps> = ({
@@ -53,6 +55,7 @@ export const MenuSidebar: React.FC<MenuSidebarProps> = ({
   onReadFilterChange,
   selectedFolders = [],
   onSelectedFoldersChange,
+  onDeleteFolder,
 }) => {
   const insets = useSafeAreaInsets();
   const screenWidth = Dimensions.get("window").width;
@@ -82,6 +85,29 @@ export const MenuSidebar: React.FC<MenuSidebarProps> = ({
     // animate expand/collapse
     LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
     setFoldersOpen((o) => !o);
+  };
+
+  const confirmDelete = (id: number) => {
+    Alert.alert(
+      "Delete Folder?",
+      "Deleting a folder won't delete the bookmarks in it.",
+      [
+        { text: "Cancel", style: "cancel" },
+        {
+          text: "Delete",
+          style: "destructive",
+          onPress: () => {
+            onDeleteFolder && onDeleteFolder(id);
+            if (onSelectedFoldersChange) {
+              const newSelected = selectedFolders.filter((fid) => fid !== id);
+              onSelectedFoldersChange(newSelected);
+              onSelect(newSelected.length === 0 ? [] : newSelected);
+            }
+          },
+        },
+      ],
+      { cancelable: true }
+    );
   };
 
   if (!isOpen) return null;
@@ -260,6 +286,7 @@ export const MenuSidebar: React.FC<MenuSidebarProps> = ({
                         backgroundColor: palette.backgroundMidLight,
                       },
                     ]}
+                    onLongPress={() => confirmDelete(item.id)}
                     onPress={() => {
                       let newSelected: number[];
                       if (isSelected) {

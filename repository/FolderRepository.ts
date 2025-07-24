@@ -72,6 +72,7 @@ export class FolderRepository {
 
   public async delete(id: number): Promise<number> {
     const result = await this.db.runAsync(`DELETE FROM folders WHERE id = ?`, id);
+    await this.db.runAsync(`DELETE FROM post_folders WHERE folder_id = ?`, id);
     return result.changes;
   }
 

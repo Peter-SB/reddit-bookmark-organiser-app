@@ -46,7 +46,7 @@ export default function HomeScreen() {
     checkForSimilarPosts,
     recomputeMissingMinHashes,
   } = usePosts();
-  const { folders, refreshFolders } = useFolders();
+  const { folders, deleteFolder, refreshFolders } = useFolders();
   const { getPostData, loading: redditApiLoading } = useRedditApi();
 
   const [isAdding, setIsAdding] = useState(false);
@@ -275,6 +275,7 @@ export default function HomeScreen() {
         onReadFilterChange={setReadFilter}
         selectedFolders={selectedFolders}
         onSelectedFoldersChange={setSelectedFolders}
+        onDeleteFolder={deleteFolder}
       />
 
       <View style={styles.header}>

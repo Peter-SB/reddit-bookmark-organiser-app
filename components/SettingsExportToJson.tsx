@@ -3,7 +3,6 @@ import { spacing } from "@/constants/spacing";
 import { fontColours, fontSizes, fontWeights } from "@/constants/typography";
 import { FolderRepository } from "@/repository/FolderRepository";
 import { PostRepository } from "@/repository/PostRepository";
-import { TagRepository } from "@/repository/TagsRepository";
 import * as DocumentPicker from "expo-document-picker";
 import * as FileSystem from "expo-file-system";
 import * as Sharing from "expo-sharing";
@@ -25,17 +24,14 @@ export default function SettingsExportToJson() {
   const getExportData = async () => {
     const postRepo = await PostRepository.create();
     const folderRepo = await FolderRepository.create();
-    const tagRepo = await TagRepository.create();
-    const [posts, folders, tags] = await Promise.all([
+    const [posts, folders] = await Promise.all([
       postRepo.getAll(),
       folderRepo.getAll(),
-      tagRepo.getAll(),
     ]);
 
     const exportData = {
       posts,
       folders,
-      tags,
       exportedAt: new Date().toISOString(),
     };
 
