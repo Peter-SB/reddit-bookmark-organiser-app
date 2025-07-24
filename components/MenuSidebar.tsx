@@ -63,7 +63,7 @@ export const MenuSidebar: React.FC<MenuSidebarProps> = ({
 
   const [translateX] = useState(new Animated.Value(-sidebarWidth));
   const [backdropOpacity] = useState(new Animated.Value(0));
-  const [foldersOpen, setFoldersOpen] = useState(false);
+  const [foldersOpen, setFoldersOpen] = useState(true);
 
   // slide + fade animations
   useEffect(() => {
@@ -265,14 +265,14 @@ export const MenuSidebar: React.FC<MenuSidebarProps> = ({
               />
             </View>
             <Text style={styles.label}>Folders</Text>
-            {/* <Icon
+            <Icon
               name={foldersOpen ? "expand-less" : "expand-more"}
               size={24}
               style={styles.expandIcon}
               color={palette.foreground}
-            /> */}
+            />
           </TouchableOpacity>
-          {!foldersOpen && (
+          {foldersOpen && (
             <FlatList
               data={folders}
               keyExtractor={(f) => f.id.toString()}
@@ -414,6 +414,7 @@ const styles = StyleSheet.create({
   },
   expandIcon: {
     marginLeft: "auto",
+    opacity: 0.2,
   },
   folderItem: {
     paddingVertical: spacing.s / 2,

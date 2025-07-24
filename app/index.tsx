@@ -115,8 +115,13 @@ export default function HomeScreen() {
     recomputeMissingMinHashes(); // todo - remove this after initial run
   }, [recomputeMissingMinHashes]);
 
-  const total = posts.length;
-  const unread = posts.filter((p) => !p.isRead).length;
+  const [total, setTotal] = useState(0);
+  const [unread, setUnread] = useState(0);
+
+  useEffect(() => {
+    setTotal(filteredPosts.length);
+    setUnread(filteredPosts.filter((p) => !p.isRead).length);
+  }, [filteredPosts]);
 
   // Every time HomeScreen comes into focus, reload posts
   useFocusEffect(
