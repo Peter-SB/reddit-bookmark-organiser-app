@@ -6,7 +6,7 @@ import { useCallback, useEffect, useState } from 'react';
 export interface UseFoldersResult {
   folders: Folder[];
   loading: boolean;
-  refresh: () => Promise<void>;
+  refreshFolders: () => Promise<void>;
   createFolder: (name: string, parentId?: number) => Promise<Folder>;
   updateFolder: (id: number, name: string, parentId?: number) => Promise<Folder>;
   deleteFolder: (id: number) => Promise<void>;
@@ -41,7 +41,7 @@ export function useFolders(): UseFoldersResult {
   }, [repo]);
 
   // expose manual refresh
-  const refresh = useCallback(() => loadFolders(), [loadFolders]);
+  const refreshFolders = useCallback(() => loadFolders(), [loadFolders]);
 
   // create
   const createFolder = useCallback(async (name: string, parentId?: number) => {
@@ -73,7 +73,7 @@ export function useFolders(): UseFoldersResult {
   return {
     folders,
     loading,
-    refresh,
+    refreshFolders,
     createFolder,
     updateFolder,
     deleteFolder,

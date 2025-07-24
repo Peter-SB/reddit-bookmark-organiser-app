@@ -295,4 +295,19 @@ export class PostRepository {
     );
     return rows.map(row => row.folder_id);
   }
+
+  public async addPostToFolder(postId: number, folderId: number): Promise<void> {
+    await this.db.runAsync(
+      'INSERT OR IGNORE INTO post_folders (post_id, folder_id) VALUES (?, ?)',
+      postId,
+      folderId
+    );
+  }
+
+  public async removeAllFoldersFromPost(postId: number): Promise<void> {
+    await this.db.runAsync(
+      'DELETE FROM post_folders WHERE post_id = ?',
+      postId
+    );
+  }
 }

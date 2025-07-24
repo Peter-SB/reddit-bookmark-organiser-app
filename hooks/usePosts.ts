@@ -1,6 +1,5 @@
 // src/hooks/usePosts.ts
 import { Post } from '@/models/models';
-import { PostFolderRepository } from '@/repository/PostFolderRepository';
 import { PostRepository } from '@/repository/PostRepository';
 import { MinHashService } from '@/services/MinHashService';
 import { useCallback, useEffect, useState } from 'react';
@@ -8,7 +7,7 @@ import { useCallback, useEffect, useState } from 'react';
 export interface UsePostsResult {
   posts: Post[];
   loading: boolean;
-  refresh: () => Promise<void>;
+  refreshPosts: () => Promise<void>;
   addPost: (postData: Omit<Post, 'id' | 'tagIds'> & { tagIds?: number[] }) => Promise<Post>;
   updatePost: (post: Post) => Promise<Post>;
   deletePost: (id: number) => Promise<void>;
@@ -50,7 +49,7 @@ export function usePosts(): UsePostsResult {
     setLoading(false);
   }, [repo]);
 
-  const refresh = useCallback(() => loadPosts(), [loadPosts]);
+  const refreshPosts = useCallback(() => loadPosts(), [loadPosts]);
 
   const checkForSimilarPosts = useCallback(async (bodyText: string, threshold: number = 0.75): Promise<Post[]> => {
     if (!repo) throw new Error('PostRepository not ready');
@@ -117,10 +116,9 @@ export function usePosts(): UsePostsResult {
     async (postId: number, newFolderIds: number[]) => {
       console.debug('Setting folders for post:', postId + " ids:" + newFolderIds);
       if (!repo) throw new Error('Repo not ready');
-      const pf = await PostFolderRepository.create();
-      await pf.removeAllFoldersFromPost(postId);
+      await repo.removeAllFoldersFromPost(postId);
       for (const fid of newFolderIds) {
-        await pf.addPostToFolder(postId, fid);
+        await repo.addPostToFolder(postId, fid);
       }
       await loadPosts();
     },
@@ -147,7 +145,7 @@ export function usePosts(): UsePostsResult {
   return {
     posts,
     loading,
-    refresh,
+    refreshPosts,
     addPost,
     updatePost,
     deletePost,

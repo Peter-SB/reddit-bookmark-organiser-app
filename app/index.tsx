@@ -42,11 +42,11 @@ export default function HomeScreen() {
     posts,
     loading: postsLoading,
     addPost,
-    refresh,
+    refreshPosts,
     checkForSimilarPosts,
     recomputeMissingMinHashes,
   } = usePosts();
-  const { folders } = useFolders();
+  const { folders, refreshFolders } = useFolders();
   const { getPostData, loading: redditApiLoading } = useRedditApi();
 
   const [isAdding, setIsAdding] = useState(false);
@@ -121,8 +121,9 @@ export default function HomeScreen() {
   // Every time HomeScreen comes into focus, reload posts
   useFocusEffect(
     useCallback(() => {
-      refresh();
-    }, [refresh])
+      refreshPosts();
+      refreshFolders();
+    }, [refreshPosts, refreshFolders])
   );
 
   const handleAddPost = useCallback(
