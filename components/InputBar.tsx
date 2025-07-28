@@ -83,7 +83,7 @@ export const InputBar: React.FC<InputBarProps> = ({
       // Focus the input and open the keyboard when bar is expanded
       setTimeout(() => {
         inputRef.current?.focus();
-      }, 1); // Wait for animation to finish
+      }, 10);
     }
   }, [visible]);
 

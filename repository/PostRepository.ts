@@ -48,7 +48,6 @@ export class PostRepository {
       extraFields: string | null;
     }>(`SELECT * FROM posts ORDER BY addedAt DESC`);
 
-    // hydrate Dates, booleans & JSON
     const posts = await Promise.all(
       rows.map(async r => ({
         id: r.id,
@@ -125,7 +124,7 @@ export class PostRepository {
       redditId, url, title, bodyText, author, subreddit,
       redditCreatedAt, addedAt,
       customTitle, customBody, notes, rating,
-      isRead, isFavorite, folderIds, extraFields, tagIds = []
+      isRead, isFavorite, extraFields, tagIds = []
     } = post;
 
     // Generate MinHash signature for body text
@@ -138,7 +137,7 @@ export class PostRepository {
          redditCreatedAt, addedAt,
          customTitle, customBody, notes, rating,
          isRead, isFavorite, extraFields
-       ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+       ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
       redditId,
       url,
       title,

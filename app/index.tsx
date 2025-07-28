@@ -186,6 +186,7 @@ export default function HomeScreen() {
         }
         setIsInputVisible(false);
       } catch (e) {
+        console.error("Failed to add post:", e);
         Alert.alert("Error", `Failed to add post: ${(e as Error).message}`);
       } finally {
         setIsAdding(false);
