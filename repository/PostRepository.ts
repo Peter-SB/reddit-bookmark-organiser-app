@@ -114,7 +114,7 @@ export class PostRepository {
       isRead: r.isRead === 1,
       isFavorite: r.isFavorite === 1,
       extraFields: r.extraFields ? JSON.parse(r.extraFields) : undefined,
-      tagIds: await this.loadTagIds(r.id),
+      tagIds: [],
       folderIds: await this.loadFolderIds(r.id),
     };
   }
@@ -149,11 +149,6 @@ export class PostRepository {
       post.extraFields ? JSON.stringify(post.extraFields) : null,
     );
     const newId = result.lastInsertRowId;
-
-    // attach tags
-    for (const tagId of post.tagIds ?? []) {
-      await this.db.runAsync(`INSERT INTO post_tags (postId, tagId) VALUES (?, ?)`, newId, tagId);
-    }
     return newId;
   }
 
