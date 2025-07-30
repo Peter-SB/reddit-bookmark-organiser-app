@@ -44,7 +44,6 @@ export default function HomeScreen() {
     addPost,
     refreshPosts,
     checkForSimilarPosts,
-    recomputeMissingMinHashes,
   } = usePosts();
   const { folders, deleteFolder, refreshFolders } = useFolders();
   const { getPostData, loading: redditApiLoading } = useRedditApi();
@@ -111,9 +110,7 @@ export default function HomeScreen() {
         animated: true,
       });
     });
-
-    recomputeMissingMinHashes(); // todo - remove this after initial run
-  }, [recomputeMissingMinHashes]);
+  }, []);
 
   const [total, setTotal] = useState(0);
   const [unread, setUnread] = useState(0);
@@ -143,7 +140,7 @@ export default function HomeScreen() {
           (p) => p.redditId === postData.redditId
         );
 
-        // Check for similar content
+        // Check for similar content using MinHash
         const similarPosts = await checkForSimilarPosts(
           postData.bodyText || "",
           0.8
