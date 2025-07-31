@@ -12,6 +12,7 @@ import "react-native-reanimated";
 
 import { useColorScheme } from "@/hooks/useColorScheme";
 import { DatabaseService } from "../services/DatabaseService";
+import { AppState, AppStateStatus } from "react-native";
 
 export default function RootLayout() {
   const colorScheme = useColorScheme();
@@ -19,6 +20,26 @@ export default function RootLayout() {
     SpaceMono: require("../assets/fonts/SpaceMono-Regular.ttf"),
   });
   const router = useRouter();
+
+  // Initialize the database service on state change
+  useEffect(() => {
+    const sub = AppState.addEventListener(
+      "change",
+      async (state: AppStateStatus) => {
+        if (state === "background") {
+          // close & reset
+          if (DatabaseService["instance"]) {
+            await DatabaseService["instance"].getDb().closeAsync();
+            DatabaseService["instance"] = null;
+          }
+        } else if (state === "active") {
+          // re-open so next getInstance() call is fresh
+          await DatabaseService.getInstance();
+        }
+      }
+    );
+    return () => sub.remove();
+  }, []);
 
   useEffect(() => {
     DatabaseService.getInstance().catch((err) => {

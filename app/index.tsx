@@ -31,6 +31,7 @@ import { SearchBar } from "@/components/SearchBar";
 import { useFolders } from "@/hooks/useFolders";
 import { usePosts } from "@/hooks/usePosts";
 import { useRedditApi } from "@/hooks/useRedditApi";
+import { AppState } from "react-native";
 
 type TripleFilter = "all" | "yes" | "no";
 
@@ -97,6 +98,16 @@ export default function HomeScreen() {
       const isRead = Boolean(post.isRead);
       return readFilter === "yes" ? isRead : !isRead;
     });
+
+  useEffect(() => {
+    const sub = AppState.addEventListener("change", (state) => {
+      if (state === "active") {
+        refreshPosts();
+        refreshFolders();
+      }
+    });
+    return () => sub.remove();
+  }, [refreshPosts, refreshFolders]);
 
   const postsListRef = useRef<FlatList<Post>>(null);
 
