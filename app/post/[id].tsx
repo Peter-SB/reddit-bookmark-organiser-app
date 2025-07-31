@@ -43,6 +43,8 @@ export default function PostScreen() {
     updatePost: savePost,
     deletePost,
     setFolders,
+    toggleRead,
+    toggleFavorite,
   } = usePosts();
 
   const [post, setPost] = useState<Post | null>(null);
@@ -165,15 +167,18 @@ export default function PostScreen() {
   useEffect(() => {
     if (id && !loading) {
       const found = posts.find((p) => p.id === parseInt(id, 10));
-      if (found) {
-        setPost(found);
+      if (!found) return;
+
+      setPost(found);
+
+      if (!hasUnsavedChanges()) {
         setEditedTitle(found.customTitle ?? found.title);
         setEditedBody(found.customBody ?? found.bodyText);
         setEditedNotes(found.notes ?? "");
         setEditedRating(found.rating ?? null);
-        setEditedIsRead(found.isRead);
-        setEditedIsFavorite(found.isFavorite);
       }
+      setEditedIsRead(found.isRead);
+      setEditedIsFavorite(found.isFavorite);
     }
   }, [id, posts, loading]);
 
@@ -247,16 +252,16 @@ export default function PostScreen() {
     setRatingModalVisible(true);
   };
 
-  const handleSetRating = async (rating: number | null) => {
-    setEditedRating(rating);
-  };
-
   const handleToggleRead = async () => {
-    setEditedIsRead((prev) => !prev);
+    toggleRead(post!.id);
   };
 
   const handleToggleFavorite = async () => {
-    setEditedIsFavorite((prev) => !prev);
+    toggleFavorite(post!.id);
+  };
+
+  const handleSetRating = async (rating: number | null) => {
+    setEditedRating(rating); // Not saving instantly like read and fav because we want to allow user to cancel
   };
 
   const toggleSidebar = () => {
