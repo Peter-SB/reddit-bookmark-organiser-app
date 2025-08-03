@@ -324,25 +324,6 @@ export const MenuSidebar: React.FC<MenuSidebarProps> = ({
               }}
             />
           )}
-
-          {/* Tags */}
-          {/* <TouchableOpacity
-            style={styles.item}
-            onPress={() => {
-              onSelect("tags");
-              onClose();
-            }}
-          >
-            <View style={styles.iconContainer}>
-              <Icon
-                name="label"
-                size={24}
-                style={styles.icon}
-                color={palette.foreground}
-              />
-            </View>
-            <Text style={styles.label}>Tags</Text>
-          </TouchableOpacity> */}
           {/* Spacer to push settings to bottom, accounting for navigation bar */}
           <View style={{ flex: 1 }} />
           <View style={{ paddingBottom: insets.bottom }}>

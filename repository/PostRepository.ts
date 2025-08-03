@@ -17,15 +17,6 @@ export class PostRepository {
     return new PostRepository(svc.getDb());
   }
 
-  /** load tags separately */
-  private async loadTagIds(postId: number): Promise<number[]> {
-    const rows = await this.db.getAllAsync<{ tagId: number }>(
-      `SELECT tagId FROM post_tags WHERE postId = ?`,
-      postId
-    );
-    return rows.map(r => r.tagId);
-  }
-
   public async getAll(): Promise<Post[]> {
     const rows = await this.db.getAllAsync<{
       id: number;
@@ -68,7 +59,6 @@ export class PostRepository {
         isFavorite: r.isFavorite === 1,
         extraFields: r.extraFields ? JSON.parse(r.extraFields) : undefined,
         folderIds: await this.loadFolderIds(r.id),
-        tagIds: await this.loadTagIds(r.id),
       }))
     );
     return posts;
@@ -114,12 +104,11 @@ export class PostRepository {
       isRead: r.isRead === 1,
       isFavorite: r.isFavorite === 1,
       extraFields: r.extraFields ? JSON.parse(r.extraFields) : undefined,
-      tagIds: [],
       folderIds: await this.loadFolderIds(r.id),
     };
   }
 
-  public async create(post: Omit<Post,'id'|'tagIds'> & { tagIds?: number[] }): Promise<number> {
+  public async create(post: Omit<Post,'id'>): Promise<number> {
     // Generate MinHash signature for body text
     const bodyMinHashArr = MinHashService.generateSignature(post.bodyText || '');
     const bodyMinHash = JSON.stringify(bodyMinHashArr);
@@ -236,38 +225,12 @@ export class PostRepository {
     }
 
     console.debug(`Updated post ${post.id}:`, result);
-
-    // sync tags: delete all + reinsert
-    await this.db.runAsync(`DELETE FROM post_tags WHERE postId = ?`, post.id);
-    for (const tagId of post.tagIds) {
-      await this.db.runAsync(`INSERT INTO post_tags (postId, tagId) VALUES (?, ?)`, post.id, tagId);
-    }
-
-    console.debug(`Updated tags for post ${post.id}:`, post.tagIds);
     return result.changes;
   }
 
   public async delete(id: number): Promise<number> {
     const result = await this.db.runAsync(`DELETE FROM posts WHERE id = ?`, id);
     return result.changes;
-  }
-
-  /** helpers */
-  public async addTag(postId: number, tagId: number): Promise<void> {
-    await this.db.runAsync(
-      `INSERT OR IGNORE INTO post_tags (postId, tagId) VALUES (?, ?)`,
-      postId,
-      tagId
-    );
-  }
-
-  public async removeTag(postId: number, tagId: number): Promise<number> {
-    const r = await this.db.runAsync(
-      `DELETE FROM post_tags WHERE postId = ? AND tagId = ?`,
-      postId,
-      tagId
-    );
-    return r.changes;
   }
 
   private async loadFolderIds(postId: number): Promise<number[]> {

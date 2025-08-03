@@ -38,7 +38,7 @@ One main reason this app was built was because of the immense size of saved Redd
 Features:
 
 - Save Reddit posts locally. Enter a post URL and the app will fetch the post data for offline local storage
-- Organise and Edit. Favourite, tag, notes, rating, read-status, and local editing of posts.
+- Organise and Edit. Favourite, notes, rating, read-status, and local editing of posts.
 - De-duplication. Avoid resaving posts with checks of matching content in your library
 - Export posts for backups or other uses
 - Simple intuitive ui
@@ -73,7 +73,7 @@ This POC focuses on core bookmark management. Future versions will include:
 - Real Reddit API integration (currently uses mock data)
 - User authentication and cloud sync
 - Advanced filtering and search
-- Categories and tags
+- Categories 
 - Export/import functionality
 - Dark mode theme switching
 

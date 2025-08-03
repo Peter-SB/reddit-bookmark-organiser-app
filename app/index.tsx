@@ -204,7 +204,7 @@ export default function HomeScreen() {
   );
 
   const handleSelect = (key: string | number | (number | string)[]) => {
-    // key can be "home" | "search" | "tags" | "favorites" | "unread" | "settings" | folder.id | array of folder ids
+    // key can be "home" | "search" | "favorites" | "unread" | "settings" | folder.id | array of folder ids
     console.log("Selected:", key);
     if (key === "home") {
       setSearch("");

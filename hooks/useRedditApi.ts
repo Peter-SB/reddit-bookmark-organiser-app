@@ -207,7 +207,6 @@ export function useRedditApi(): UseRedditApiResult {
       isRead:         false,
       isFavorite:     false,
       folderIds:     [],
-      tagIds:         [],
       extraFields:    {},
     };
   }

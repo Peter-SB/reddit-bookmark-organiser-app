@@ -31,9 +31,6 @@ export interface Post {
   /** Folder association (one per post) */
   folderIds: number[];
 
-  /** Tag associations (many per post) */
-  tagIds: number[];
-
   /** Any extra custom fields */
   extraFields?: Record<string, any>;
 
@@ -59,25 +56,4 @@ export interface PostFolder {
   postId: number;
   /** Folder ID (FK) */
   folderId: number;
-}
-
-export interface Tag {
-  /** Internal primary key */
-  id: number;
-  /** Tag name (unique) */
-  name: string;
-  /** When the tag was created */
-  createdAt: Date;
-    /** Optional color for UI representation */
-    color?: string;
-    /** Optional description for the tag */
-    description?: string;
-
-}
-
-export interface PostTag {
-  /** Post ID (FK) */
-  postId: number;
-  /** Tag ID (FK) */
-  tagId: number;
 }

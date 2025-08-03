@@ -113,16 +113,6 @@ export const PostSidebar: React.FC<SidebarProps> = ({
               textAlignVertical="top"
             />
           </View>
-          {/* Tags */}
-          {/* <View style={styles.sidebarSection}>
-            <Text style={styles.sidebarSectionTitle}>Tags</Text>
-            <Text style={styles.sidebarText}>
-              {post.tagIds.length > 0
-                ? post.tagIds.join(", ")
-                : "No tags added"}
-            </Text>
-          </View> */}
-
           {/* Post Info */}
           <View style={styles.sidebarSection}>
             <Text style={styles.sidebarSectionTitle}>Post Info</Text>
