@@ -31,6 +31,7 @@ import { SearchBar } from "@/components/SearchBar";
 import { useFolders } from "@/hooks/useFolders";
 import { usePosts } from "@/hooks/usePosts";
 import { useRedditApi } from "@/hooks/useRedditApi";
+import { AppState } from "react-native";
 
 type TripleFilter = "all" | "yes" | "no";
 
@@ -42,12 +43,11 @@ export default function HomeScreen() {
     posts,
     loading: postsLoading,
     addPost,
-    refresh,
+    refreshPosts,
     checkForSimilarPosts,
-    recomputeMissingMinHashes,
   } = usePosts();
+  const { folders, deleteFolder, refreshFolders } = useFolders();
   const { getPostData, loading: redditApiLoading } = useRedditApi();
-  const { folders } = useFolders();
 
   const [isAdding, setIsAdding] = useState(false);
   const [sidebarOpen, setSidebarOpen] = useState(false);
@@ -56,10 +56,12 @@ export default function HomeScreen() {
   const [favouritesFilter, setFavouritesFilter] = useState<TripleFilter>("all");
   const [readFilter, setReadFilter] = useState<TripleFilter>("all");
   const [search, setSearch] = useState("");
+  // Track selected folders
+  const [selectedFolders, setSelectedFolders] = useState<number[]>([]);
 
   const insets = useSafeAreaInsets();
 
-  // Filter posts by search string
+  // Filter posts by search string and selected folders
   const filteredPosts = posts
     // text search
     .filter((post) => {
@@ -75,6 +77,15 @@ export default function HomeScreen() {
         (post.subreddit ?? "").toLowerCase().includes(q)
       );
     })
+    // folder filter
+    .filter((post) => {
+      if (!selectedFolders || selectedFolders.length === 0) return true;
+      // post.folderIds may be undefined/null or an array
+      if (!post.folderIds || post.folderIds.length === 0) return false;
+      return post.folderIds.some((fid: number) =>
+        selectedFolders.includes(fid)
+      );
+    })
     // favourites filter
     .filter((post) => {
       if (favouritesFilter === "all") return true;
@@ -88,6 +99,16 @@ export default function HomeScreen() {
       return readFilter === "yes" ? isRead : !isRead;
     });
 
+  useEffect(() => {
+    const sub = AppState.addEventListener("change", (state) => {
+      if (state === "active") {
+        refreshPosts();
+        refreshFolders();
+      }
+    });
+    return () => sub.remove();
+  }, [refreshPosts, refreshFolders]);
+
   const postsListRef = useRef<FlatList<Post>>(null);
 
   // Hide header on first render. Using this over InteractionManager because this only runs once.
@@ -100,18 +121,22 @@ export default function HomeScreen() {
         animated: true,
       });
     });
+  }, []);
 
-    recomputeMissingMinHashes(); // todo - remove this after initial run
-  }, [recomputeMissingMinHashes]);
+  const [total, setTotal] = useState(0);
+  const [unread, setUnread] = useState(0);
 
-  const total = posts.length;
-  const unread = posts.filter((p) => !p.isRead).length;
+  useEffect(() => {
+    setTotal(filteredPosts.length);
+    setUnread(filteredPosts.filter((p) => !p.isRead).length);
+  }, [filteredPosts]);
 
   // Every time HomeScreen comes into focus, reload posts
   useFocusEffect(
     useCallback(() => {
-      refresh();
-    }, [refresh])
+      refreshPosts();
+      refreshFolders();
+    }, [refreshPosts, refreshFolders])
   );
 
   const handleAddPost = useCallback(
@@ -126,7 +151,7 @@ export default function HomeScreen() {
           (p) => p.redditId === postData.redditId
         );
 
-        // Check for similar content
+        // Check for similar content using MinHash
         const similarPosts = await checkForSimilarPosts(
           postData.bodyText || "",
           0.8
@@ -169,6 +194,7 @@ export default function HomeScreen() {
         }
         setIsInputVisible(false);
       } catch (e) {
+        console.error("Failed to add post:", e);
         Alert.alert("Error", `Failed to add post: ${(e as Error).message}`);
       } finally {
         setIsAdding(false);
@@ -177,29 +203,32 @@ export default function HomeScreen() {
     [isAdding, getPostData, posts, checkForSimilarPosts, addPost]
   );
 
-  const handleSelect = (key: string | number) => {
-    // key is "home" | "search" | "tags" | "favorites" | "unread" | "settings"
-    // or a folder.id number
+  const handleSelect = (key: string | number | (number | string)[]) => {
+    // key can be "home" | "search" | "favorites" | "unread" | "settings" | folder.id | array of folder ids
     console.log("Selected:", key);
     if (key === "home") {
-      // Hide searchbar and clear
       setSearch("");
       setFavouritesFilter("all");
       setReadFilter("all");
+      setSelectedFolders([]);
       postsListRef.current?.scrollToOffset({
         offset: LIST_HEADER_HEIGHT,
         animated: true,
       });
-    }
-    if (key === "settings") router.push("/settings" as any);
-    else if (key === "search") {
+    } else if (key === "settings") {
+      router.push("/settings" as any);
+    } else if (key === "search") {
       postsListRef.current?.scrollToOffset({
         offset: 0,
         animated: true,
       });
+    } else if (Array.isArray(key)) {
+      setSelectedFolders(key as number[]);
+      return;
+    } else if (typeof key === "number") {
+      setSelectedFolders([key]);
+      return;
     }
-
-    // TODO: navigate or filter your list based on key
     setSidebarOpen(false);
   };
 
@@ -258,6 +287,9 @@ export default function HomeScreen() {
         readFilter={readFilter}
         onFavouritesFilterChange={setFavouritesFilter}
         onReadFilterChange={setReadFilter}
+        selectedFolders={selectedFolders}
+        onSelectedFoldersChange={setSelectedFolders}
+        onDeleteFolder={deleteFolder}
       />
 
       <View style={styles.header}>

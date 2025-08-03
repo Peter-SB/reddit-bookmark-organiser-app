@@ -12,17 +12,9 @@ export class PostRepository {
   }
 
   public static async create(): Promise<PostRepository> {
+    console.debug('Creating PostRepository instance');
     const svc = await DatabaseService.getInstance();
     return new PostRepository(svc.getDb());
-  }
-
-  /** load tags separately */
-  private async loadTagIds(postId: number): Promise<number[]> {
-    const rows = await this.db.getAllAsync<{ tagId: number }>(
-      `SELECT tagId FROM post_tags WHERE postId = ?`,
-      postId
-    );
-    return rows.map(r => r.tagId);
   }
 
   public async getAll(): Promise<Post[]> {
@@ -47,7 +39,6 @@ export class PostRepository {
       extraFields: string | null;
     }>(`SELECT * FROM posts ORDER BY addedAt DESC`);
 
-    // hydrate Dates, booleans & JSON
     const posts = await Promise.all(
       rows.map(async r => ({
         id: r.id,
@@ -66,9 +57,8 @@ export class PostRepository {
         rating: r.rating ?? undefined,
         isRead: r.isRead === 1,
         isFavorite: r.isFavorite === 1,
-        folderId: r.folderId ?? undefined,
         extraFields: r.extraFields ? JSON.parse(r.extraFields) : undefined,
-        tagIds: await this.loadTagIds(r.id),
+        folderIds: await this.loadFolderIds(r.id),
       }))
     );
     return posts;
@@ -113,22 +103,14 @@ export class PostRepository {
       rating: r.rating ?? undefined,
       isRead: r.isRead === 1,
       isFavorite: r.isFavorite === 1,
-      folderId: r.folderId ?? undefined,
       extraFields: r.extraFields ? JSON.parse(r.extraFields) : undefined,
-      tagIds: await this.loadTagIds(r.id),
+      folderIds: await this.loadFolderIds(r.id),
     };
   }
 
-  public async create(post: Omit<Post,'id'|'tagIds'> & { tagIds?: number[] }): Promise<number> {
-    const {
-      redditId, url, title, bodyText, author, subreddit,
-      redditCreatedAt, addedAt,
-      customTitle, customBody, notes, rating,
-      isRead, isFavorite, folderId, extraFields, tagIds = []
-    } = post;
-
+  public async create(post: Omit<Post,'id'>): Promise<number> {
     // Generate MinHash signature for body text
-    const bodyMinHashArr = MinHashService.generateSignature(bodyText || '');
+    const bodyMinHashArr = MinHashService.generateSignature(post.bodyText || '');
     const bodyMinHash = JSON.stringify(bodyMinHashArr);
 
     const result = await this.db.runAsync(
@@ -136,32 +118,26 @@ export class PostRepository {
          redditId, url, title, bodyText, bodyMinHash, author, subreddit,
          redditCreatedAt, addedAt,
          customTitle, customBody, notes, rating,
-         isRead, isFavorite, folderId, extraFields
-       ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-      redditId,
-      url,
-      title,
-      bodyText ?? null,
+         isRead, isFavorite, extraFields
+       ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+      post.redditId,
+      post.url,
+      post.title,
+      post.bodyText ?? null,
       bodyMinHash ?? null,
-      author,
-      subreddit,
-      redditCreatedAt.toISOString(),
-      addedAt.toISOString(),
-      customTitle ?? null,
-      customBody ?? null,
-      notes ?? null,
-      rating ?? null,
-      isRead ? 1 : 0,
-      isFavorite ? 1 : 0,
-      folderId ?? null,
-      extraFields ? JSON.stringify(extraFields) : null
+      post.author,
+      post.subreddit,
+      post.redditCreatedAt.toISOString(),
+      post.addedAt.toISOString(),
+      post.customTitle ?? null,
+      post.customBody ?? null,
+      post.notes ?? null,
+      post.rating ?? null,
+      post.isRead ? 1 : 0,
+      post.isFavorite ? 1 : 0,
+      post.extraFields ? JSON.stringify(post.extraFields) : null,
     );
     const newId = result.lastInsertRowId;
-
-    // attach tags
-    for (const tagId of tagIds) {
-      await this.db.runAsync(`INSERT INTO post_tags (postId, tagId) VALUES (?, ?)`, newId, tagId);
-    }
     return newId;
   }
 
@@ -214,11 +190,6 @@ export class PostRepository {
   }
 
   public async update(post: Post): Promise<number> {
-    const {
-      id, title, bodyText, customTitle, customBody,
-      notes, rating, isRead, isFavorite, folderId, extraFields, bodyMinHash
-    } = post;
-
     const result = await this.db.runAsync(
       `UPDATE posts SET
          title         = ?,
@@ -230,33 +201,30 @@ export class PostRepository {
          rating        = ?,
          isRead        = ?,
          isFavorite    = ?,
-         folderId      = ?,
          extraFields   = ?,
          updatedAt    = CURRENT_TIMESTAMP
        WHERE id = ?`,
-      title,
-      bodyText,
-      bodyMinHash ?? null,
-      customTitle ?? null,
-      customBody ?? null,
-      notes ?? null,
-      rating ?? null,
+      post.title,
+      post.bodyText,
+      post.bodyMinHash ?? null,
+      post.customTitle ?? null,
+      post.customBody ?? null,
+      post.notes ?? null,
+      post.rating ?? null,
       post.isRead ? 1 : 0,
       post.isFavorite ? 1 : 0,
-      folderId ?? null,
       post.extraFields ? JSON.stringify(post.extraFields) : null,
-      id
+      post.id
     );
 
-    console.debug(`Updated post ${id}:`, result);
-
-    // sync tags: delete all + reinsert
-    await this.db.runAsync(`DELETE FROM post_tags WHERE postId = ?`, id);
-    for (const tagId of post.tagIds) {
-      await this.db.runAsync(`INSERT INTO post_tags (postId, tagId) VALUES (?, ?)`, id, tagId);
+    for (const fid of post.folderIds ?? []) {
+      await this.db.runAsync(
+        `INSERT OR IGNORE INTO post_folders (post_id, folder_id) VALUES (?, ?)`,
+        post.id, fid
+      );
     }
 
-    console.debug(`Updated tags for post ${id}:`, post.tagIds);
+    console.debug(`Updated post ${post.id}:`, result);
     return result.changes;
   }
 
@@ -265,21 +233,26 @@ export class PostRepository {
     return result.changes;
   }
 
-  /** helpers */
-  public async addTag(postId: number, tagId: number): Promise<void> {
+  private async loadFolderIds(postId: number): Promise<number[]> {
+    const rows = await this.db.getAllAsync<{ folder_id: number }>(
+      `SELECT folder_id FROM post_folders WHERE post_id = ?`,
+      postId
+    );
+    return rows.map(row => row.folder_id);
+  }
+
+  public async addPostToFolder(postId: number, folderId: number): Promise<void> {
     await this.db.runAsync(
-      `INSERT OR IGNORE INTO post_tags (postId, tagId) VALUES (?, ?)`,
+      'INSERT OR IGNORE INTO post_folders (post_id, folder_id) VALUES (?, ?)',
       postId,
-      tagId
+      folderId
     );
   }
 
-  public async removeTag(postId: number, tagId: number): Promise<number> {
-    const r = await this.db.runAsync(
-      `DELETE FROM post_tags WHERE postId = ? AND tagId = ?`,
-      postId,
-      tagId
+  public async removeAllFoldersFromPost(postId: number): Promise<void> {
+    await this.db.runAsync(
+      'DELETE FROM post_folders WHERE post_id = ?',
+      postId
     );
-    return r.changes;
   }
 }

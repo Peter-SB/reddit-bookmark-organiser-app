@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from "react";
 import {
+  Alert,
   Animated,
   Dimensions,
   FlatList,
@@ -29,15 +30,18 @@ if (
   UIManager.setLayoutAnimationEnabledExperimental(true);
 }
 
-interface MenuSidebarProps {
+export interface MenuSidebarProps {
   isOpen: boolean;
   onClose: () => void;
-  onSelect: (key: string | number) => void;
+  onSelect: (key: string | number | (number | string)[]) => void;
   folders: Folder[];
   favouritesFilter: "all" | "yes" | "no";
   readFilter: "all" | "yes" | "no";
   onFavouritesFilterChange: (val: "all" | "yes" | "no") => void;
   onReadFilterChange: (val: "all" | "yes" | "no") => void;
+  selectedFolders?: number[];
+  onSelectedFoldersChange?: (ids: number[]) => void;
+  onDeleteFolder?: (id: number) => void;
 }
 
 export const MenuSidebar: React.FC<MenuSidebarProps> = ({
@@ -49,6 +53,9 @@ export const MenuSidebar: React.FC<MenuSidebarProps> = ({
   readFilter,
   onFavouritesFilterChange,
   onReadFilterChange,
+  selectedFolders = [],
+  onSelectedFoldersChange,
+  onDeleteFolder,
 }) => {
   const insets = useSafeAreaInsets();
   const screenWidth = Dimensions.get("window").width;
@@ -56,7 +63,7 @@ export const MenuSidebar: React.FC<MenuSidebarProps> = ({
 
   const [translateX] = useState(new Animated.Value(-sidebarWidth));
   const [backdropOpacity] = useState(new Animated.Value(0));
-  const [foldersOpen, setFoldersOpen] = useState(false);
+  const [foldersOpen, setFoldersOpen] = useState(true);
 
   // slide + fade animations
   useEffect(() => {
@@ -78,6 +85,29 @@ export const MenuSidebar: React.FC<MenuSidebarProps> = ({
     // animate expand/collapse
     LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
     setFoldersOpen((o) => !o);
+  };
+
+  const confirmDelete = (id: number) => {
+    Alert.alert(
+      "Delete Folder?",
+      "Deleting a folder won't delete the bookmarks in it.",
+      [
+        { text: "Cancel", style: "cancel" },
+        {
+          text: "Delete",
+          style: "destructive",
+          onPress: () => {
+            onDeleteFolder && onDeleteFolder(id);
+            if (onSelectedFoldersChange) {
+              const newSelected = selectedFolders.filter((fid) => fid !== id);
+              onSelectedFoldersChange(newSelected);
+              onSelect(newSelected.length === 0 ? [] : newSelected);
+            }
+          },
+        },
+      ],
+      { cancelable: true }
+    );
   };
 
   if (!isOpen) return null;
@@ -246,38 +276,54 @@ export const MenuSidebar: React.FC<MenuSidebarProps> = ({
             <FlatList
               data={folders}
               keyExtractor={(f) => f.id.toString()}
-              renderItem={({ item }) => (
-                <TouchableOpacity
-                  style={styles.folderItem}
-                  onPress={() => {
-                    onSelect(item.id);
-                    onClose();
-                  }}
-                >
-                  <Text style={styles.folderLabel}>{item.name}</Text>
-                </TouchableOpacity>
-              )}
+              renderItem={({ item }) => {
+                const isSelected = selectedFolders.includes(item.id);
+                return (
+                  <TouchableOpacity
+                    style={[
+                      styles.folderItem,
+                      isSelected && {
+                        backgroundColor: palette.backgroundMidLight,
+                      },
+                    ]}
+                    onLongPress={() => confirmDelete(item.id)}
+                    onPress={() => {
+                      let newSelected: number[];
+                      if (isSelected) {
+                        newSelected = selectedFolders.filter(
+                          (id) => id !== item.id
+                        );
+                      } else {
+                        newSelected = [...selectedFolders, item.id];
+                      }
+                      if (onSelectedFoldersChange)
+                        onSelectedFoldersChange(newSelected);
+                      onSelect(newSelected.length === 0 ? [] : newSelected);
+                    }}
+                  >
+                    <View style={styles.folderContent}>
+                      <Text
+                        style={[
+                          styles.folderLabel,
+                          isSelected && { fontWeight: "bold" },
+                        ]}
+                      >
+                        {item.name}
+                      </Text>
+                      <View>
+                        <Text style={[styles.folderCount, { opacity: 0.5 }]}>
+                          {item.folderPostIds.length}
+                        </Text>
+                      </View>
+                      <Text style={styles.folderCount}>
+                        {/* {isSelected ? "" : ""} */}
+                      </Text>
+                    </View>
+                  </TouchableOpacity>
+                );
+              }}
             />
           )}
-
-          {/* Tags */}
-          <TouchableOpacity
-            style={styles.item}
-            onPress={() => {
-              onSelect("tags");
-              onClose();
-            }}
-          >
-            <View style={styles.iconContainer}>
-              <Icon
-                name="label"
-                size={24}
-                style={styles.icon}
-                color={palette.foreground}
-              />
-            </View>
-            <Text style={styles.label}>Tags</Text>
-          </TouchableOpacity>
           {/* Spacer to push settings to bottom, accounting for navigation bar */}
           <View style={{ flex: 1 }} />
           <View style={{ paddingBottom: insets.bottom }}>
@@ -349,14 +395,27 @@ const styles = StyleSheet.create({
   },
   expandIcon: {
     marginLeft: "auto",
+    opacity: 0.2,
   },
   folderItem: {
     paddingVertical: spacing.s / 2,
     paddingLeft: spacing.l,
   },
+  folderContent: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+  },
   folderLabel: {
     fontSize: fontSizes.body,
     color: palette.foreground,
+    flex: 1,
+  },
+  folderCount: {
+    width: 16,
+    fontSize: fontSizes.body,
+    color: palette.foregroundMidLight,
+    marginLeft: spacing.s,
   },
   filterRow: {
     flexDirection: "row",

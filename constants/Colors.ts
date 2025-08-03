@@ -32,11 +32,15 @@ export const palette = {
   backgroundDarker: '#f8f8f8',
   foreground: '#111',
   foregroundLight: '#323232',
+  foregroundMidLight: '#5a5a5aff',
   accent: '#007AFF',  // iOS blue
+  accentOrange: "#FF5700",
   muted: '#888',
   cardShadow: '#00000010',
   border: '#E5E5E5',
 
   favHeartRed: '#FF4500', 
   starYellow: '#FFB700',
+
+  saveGreen: '#008000', // iOS system green
 };

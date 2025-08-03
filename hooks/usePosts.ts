@@ -7,15 +7,14 @@ import { useCallback, useEffect, useState } from 'react';
 export interface UsePostsResult {
   posts: Post[];
   loading: boolean;
-  refresh: () => Promise<void>;
-  addPost: (postData: Omit<Post, 'id' | 'tagIds'> & { tagIds?: number[] }) => Promise<Post>;
+  refreshPosts: () => Promise<void>;
+  addPost: (postData: Omit<Post, 'id'>) => Promise<Post>;
   updatePost: (post: Post) => Promise<Post>;
   deletePost: (id: number) => Promise<void>;
   toggleRead: (id: number) => Promise<void>;
   toggleFavorite: (id: number) => Promise<void>;
-  addTagToPost: (postId: number, tagId: number) => Promise<void>;
-  removeTagFromPost: (postId: number, tagId: number) => Promise<void>;
   checkForSimilarPosts: (bodyText: string, threshold?: number) => Promise<Post[]>;
+  setFolders: (postId: number, newFolderIds: number[]) => Promise<void>;
   recomputeMissingMinHashes: () => Promise<number>;
 }
 
@@ -48,7 +47,7 @@ export function usePosts(): UsePostsResult {
     setLoading(false);
   }, [repo]);
 
-  const refresh = useCallback(() => loadPosts(), [loadPosts]);
+  const refreshPosts = useCallback(() => loadPosts(), [loadPosts]);
 
   const checkForSimilarPosts = useCallback(async (bodyText: string, threshold: number = 0.75): Promise<Post[]> => {
     if (!repo) throw new Error('PostRepository not ready');
@@ -56,7 +55,7 @@ export function usePosts(): UsePostsResult {
     return await repo.findSimilarPosts(bodyText, threshold);
   }, [repo]);
 
-  const addPost = useCallback(async (data: Omit<Post, 'id' | 'tagIds'> & { tagIds?: number[] }) => {
+  const addPost = useCallback(async (data: Omit<Post, 'id'>) => {
     if (!repo) throw new Error('PostRepository not ready');   
     const id = await repo.create(data);
     const newPost = await repo.getById(id);
@@ -99,17 +98,18 @@ export function usePosts(): UsePostsResult {
     await loadPosts();
   }, [repo, loadPosts]);
 
-  const addTagToPost = useCallback(async (postId: number, tagId: number) => {
-    if (!repo) throw new Error('PostRepository not ready');
-    await repo.addTag(postId, tagId);
-    await loadPosts();
-  }, [repo, loadPosts]);
-
-  const removeTagFromPost = useCallback(async (postId: number, tagId: number) => {
-    if (!repo) throw new Error('PostRepository not ready');
-    await repo.removeTag(postId, tagId);
-    await loadPosts();
-  }, [repo, loadPosts]);
+  const setFolders = useCallback(
+    async (postId: number, newFolderIds: number[]) => {
+      console.debug('Setting folders for post:', postId + " ids:" + newFolderIds);
+      if (!repo) throw new Error('Repo not ready');
+      await repo.removeAllFoldersFromPost(postId);
+      for (const fid of newFolderIds) {
+        await repo.addPostToFolder(postId, fid);
+      }
+      await loadPosts();
+    },
+    [repo, loadPosts]
+  );
 
   const recomputeMissingMinHashes = useCallback(async () => {
     if (!repo) throw new Error('PostRepository not ready');
@@ -131,15 +131,14 @@ export function usePosts(): UsePostsResult {
   return {
     posts,
     loading,
-    refresh,
+    refreshPosts,
     addPost,
     updatePost,
     deletePost,
     toggleRead,
     toggleFavorite,
-    addTagToPost,
-    removeTagFromPost,
     checkForSimilarPosts,
+    setFolders,
     recomputeMissingMinHashes,
   };
 }

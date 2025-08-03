@@ -29,10 +29,7 @@ export interface Post {
   isFavorite: boolean;
 
   /** Folder association (one per post) */
-  folderId?: number;
-
-  /** Tag associations (many per post) */
-  tagIds: number[];
+  folderIds: number[];
 
   /** Any extra custom fields */
   extraFields?: Record<string, any>;
@@ -50,25 +47,13 @@ export interface Folder {
   parentId?: number;
   /** When the folder was created */
   createdAt: Date;
+  /** List of post IDs associated with this folder */
+  folderPostIds: number[];
 }
 
-export interface Tag {
-  /** Internal primary key */
-  id: number;
-  /** Tag name (unique) */
-  name: string;
-  /** When the tag was created */
-  createdAt: Date;
-    /** Optional color for UI representation */
-    color?: string;
-    /** Optional description for the tag */
-    description?: string;
-
-}
-
-export interface PostTag {
+export interface PostFolder {
   /** Post ID (FK) */
   postId: number;
-  /** Tag ID (FK) */
-  tagId: number;
+  /** Folder ID (FK) */
+  folderId: number;
 }

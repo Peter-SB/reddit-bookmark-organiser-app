@@ -1,4 +1,4 @@
-import { Sidebar } from "@/components/Sidebar";
+import { PostSidebar } from "@/components/PostSidebar";
 import { StarRating } from "@/components/StarRating";
 import { palette } from "@/constants/Colors";
 import { spacing } from "@/constants/spacing";
@@ -37,7 +37,15 @@ export default function PostScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const router = useRouter();
 
-  const { posts, loading, updatePost: savePost, deletePost } = usePosts();
+  const {
+    posts,
+    loading,
+    updatePost: savePost,
+    deletePost,
+    setFolders,
+    toggleRead,
+    toggleFavorite,
+  } = usePosts();
 
   const [post, setPost] = useState<Post | null>(null);
 
@@ -159,15 +167,18 @@ export default function PostScreen() {
   useEffect(() => {
     if (id && !loading) {
       const found = posts.find((p) => p.id === parseInt(id, 10));
-      if (found) {
-        setPost(found);
+      if (!found) return;
+
+      setPost(found);
+
+      if (!hasUnsavedChanges()) {
         setEditedTitle(found.customTitle ?? found.title);
         setEditedBody(found.customBody ?? found.bodyText);
         setEditedNotes(found.notes ?? "");
         setEditedRating(found.rating ?? null);
-        setEditedIsRead(found.isRead);
-        setEditedIsFavorite(found.isFavorite);
       }
+      setEditedIsRead(found.isRead);
+      setEditedIsFavorite(found.isFavorite);
     }
   }, [id, posts, loading]);
 
@@ -241,16 +252,16 @@ export default function PostScreen() {
     setRatingModalVisible(true);
   };
 
-  const handleSetRating = async (rating: number | null) => {
-    setEditedRating(rating);
-  };
-
   const handleToggleRead = async () => {
-    setEditedIsRead((prev) => !prev);
+    toggleRead(post!.id);
   };
 
   const handleToggleFavorite = async () => {
-    setEditedIsFavorite((prev) => !prev);
+    toggleFavorite(post!.id);
+  };
+
+  const handleSetRating = async (rating: number | null) => {
+    setEditedRating(rating); // Not saving instantly like read and fav because we want to allow user to cancel
   };
 
   const toggleSidebar = () => {
@@ -350,7 +361,7 @@ export default function PostScreen() {
                 style={styles.actionButton}
                 hitSlop={1}
               >
-                <Ionicons name="trash" size={22} color="#FF3B30" />
+                <Ionicons name="close" size={22} color="#FF3B30" />
               </TouchableOpacity>
             )}
             <TouchableOpacity
@@ -486,22 +497,65 @@ export default function PostScreen() {
           {/* Save / Delete */}
           {isEditing && (
             <View style={styles.actionSection}>
-              <TouchableOpacity style={styles.saveButton} onPress={handleSave}>
-                <Text style={styles.saveButtonText}>Save Changes</Text>
-              </TouchableOpacity>
-              <TouchableOpacity
-                style={styles.deleteButton}
-                onPress={handleDelete}
+              <View
+                style={{
+                  flexDirection: "row",
+                  gap: spacing.m,
+                  justifyContent: "center",
+                }}
               >
-                <Text style={styles.deleteButtonText}>Delete Post</Text>
-              </TouchableOpacity>
+                <TouchableOpacity
+                  style={[styles.deleteButton, { flex: 1 }]}
+                  onPress={handleDelete}
+                >
+                  <View
+                    style={{
+                      flexDirection: "row",
+                      alignItems: "center",
+                      justifyContent: "center",
+                    }}
+                  >
+                    <Ionicons
+                      name="trash"
+                      size={18}
+                      color="#FF3B30"
+                      style={{ marginRight: spacing.xs }}
+                    />
+                    <Text style={styles.deleteButtonText}>Delete Post</Text>
+                  </View>
+                </TouchableOpacity>
+                <TouchableOpacity
+                  style={[
+                    styles.saveButton,
+                    { flex: 1, opacity: hasUnsavedChanges() ? 1 : 0.5 },
+                  ]}
+                  onPress={handleSave}
+                  disabled={!hasUnsavedChanges()}
+                >
+                  <View
+                    style={{
+                      flexDirection: "row",
+                      alignItems: "center",
+                      justifyContent: "center",
+                    }}
+                  >
+                    <Ionicons
+                      name="save-outline"
+                      size={18}
+                      color={palette.accent}
+                      style={{ marginRight: spacing.xs }}
+                    />
+                    <Text style={styles.saveButtonText}>Save Changes</Text>
+                  </View>
+                </TouchableOpacity>
+              </View>
             </View>
           )}
         </ScrollView>
       </Animated.View>
 
       {/* Sidebar overlay & Sidebar extracted to component */}
-      <Sidebar
+      <PostSidebar
         sidebarAnim={sidebarAnim}
         sidebarWidth={sidebarWidth}
         insets={insets}
@@ -513,6 +567,7 @@ export default function PostScreen() {
         editedNotes={editedNotes}
         setEditedNotes={setEditedNotes}
         formatDate={formatDate}
+        setFolders={setFolders}
       />
       <Modal
         transparent
@@ -646,6 +701,7 @@ const styles = StyleSheet.create({
   },
   bodySection: {
     padding: spacing.m - 4,
+    paddingBottom: spacing.xxl,
   },
   body: {
     fontSize: fontSizes.small,
@@ -676,14 +732,14 @@ const styles = StyleSheet.create({
     gap: spacing.m,
   },
   saveButton: {
-    backgroundColor: palette.accent,
+    backgroundColor: "transparent",
     paddingVertical: spacing.m,
     paddingHorizontal: spacing.l,
-    borderRadius: 8,
+    // borderWidth: 1,
     alignItems: "center",
   },
   saveButtonText: {
-    color: palette.background,
+    color: palette.accent,
     fontSize: fontSizes.body,
     fontWeight: fontWeights.semibold,
   },
@@ -691,9 +747,8 @@ const styles = StyleSheet.create({
     backgroundColor: "transparent",
     paddingVertical: spacing.m,
     paddingHorizontal: spacing.l,
-    borderRadius: 8,
     alignItems: "center",
-    borderWidth: 1,
+    // borderWidth: 1,
     borderColor: "#FF3B30",
   },
   deleteButtonText: {

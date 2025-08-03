@@ -1,4 +1,4 @@
-import { Folder } from '@/models/models';
+import { Folder, Post } from '@/models/models';
 import type { SQLiteDatabase } from 'expo-sqlite';
 import { DatabaseService } from '../services/DatabaseService';
 
@@ -10,6 +10,7 @@ export class FolderRepository {
   }
 
   public static async create(): Promise<FolderRepository> {
+    console.debug('Creating FolderRepository instance');
     const svc = await DatabaseService.getInstance();
     return new FolderRepository(svc.getDb());
   }
@@ -21,12 +22,14 @@ export class FolderRepository {
       parentId: number | null;
       createdAt: string;
     }>(`SELECT id, name, parentId, createdAt FROM folders`);
-    return rows.map(r => ({
+    return Promise.all(rows.map(async r => ({
       id: r.id,
       name: r.name,
       parentId: r.parentId ?? undefined,
       createdAt: new Date(r.createdAt),
-    }));
+      folderPostIds: await this.getFolderPostIds(r.id),
+
+    })));
   }
 
   public async getById(id: number): Promise<Folder | null> {
@@ -42,15 +45,17 @@ export class FolderRepository {
       name: r.name,
       parentId: r.parentId ?? undefined,
       createdAt: new Date(r.createdAt),
+      folderPostIds: await this.getFolderPostIds(r.id),
     };
   }
 
   public async create(name: string, parentId?: number): Promise<number> {
-    const params = parentId != null ? [name, parentId] : [name];
-    const placeholders = parentId != null ? '(?, ?)' : '(?)';
+    const createdAt = new Date().toISOString();
     const result = await this.db.runAsync(
-      `INSERT INTO folders (name, parentId) VALUES ${placeholders}`,
-      ...params
+      `INSERT INTO folders (name, parentId, createdAt) VALUES (?, ?, ?)`,
+      name,
+      parentId ?? null,
+      createdAt
     );
     return result.lastInsertRowId;
   }
@@ -67,6 +72,15 @@ export class FolderRepository {
 
   public async delete(id: number): Promise<number> {
     const result = await this.db.runAsync(`DELETE FROM folders WHERE id = ?`, id);
+    await this.db.runAsync(`DELETE FROM post_folders WHERE folder_id = ?`, id);
     return result.changes;
+  }
+
+  public async getFolderPostIds(folderId: number): Promise<number[]> {
+    const rows = await this.db.getAllAsync<{ post_id: number }>(
+      `SELECT post_id FROM post_folders WHERE folder_id = ?`,
+      folderId
+    );
+    return rows.map(r => r.post_id);
   }
 }
