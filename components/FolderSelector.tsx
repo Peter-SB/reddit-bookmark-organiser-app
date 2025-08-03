@@ -45,7 +45,12 @@ export function FolderSelector({
   };
 
   const handleCreateAndAdd = async () => {
-    console.log(folders + "Creating folder:", searchText.trim());
+    console.log(
+      "Creating folder:",
+      searchText.trim(),
+      "Current folders:",
+      folders
+    );
     if (!searchText.trim() || exactMatch) return;
 
     try {
