@@ -1,8 +1,10 @@
-# Reddit Bookmark Manager - POC 📱
+# Reddit Bookmark Manager
 
 A modern React Native app built with Expo for saving and organizing Reddit posts. This POC demonstrates the core functionality of adding, rating, and managing Reddit bookmarks with a clean, minimalist UI.
 
-## Features ✨
+One main reason this app was built was because of the immense size of saved Reddit posts I have, and that I've had issues with my phone’s clipboard truncating long posts when trying to save to a generic notes app.
+
+## Features 
 
 - **Add Reddit Posts**: Paste any Reddit URL to save posts
 - **Star Rating System**: Rate posts from 0-5 stars with half-star precision
@@ -11,29 +13,38 @@ A modern React Native app built with Expo for saving and organizing Reddit posts
 - **Modern UI**: Clean card-based design with consistent spacing and typography
 - **Cross-Platform**: Works on iOS, Android, and Web
 
-## Project Structure 📁
+## Project Structure 
+
 
 ```
-/app                   ← Expo Router entry points
-  /(tabs)/
-    index.tsx          ← Main bookmarks screen
-    explore.tsx        ← Settings/about screen
-/components            ← Reusable UI components
-  InputBar.tsx         ← URL input with validation
-  PostCard.tsx         ← Bookmark card component
-  StarRating.tsx       ← Interactive star rating
-/constants             ← Design tokens (colors, spacing, typography)
-/hooks                 ← Custom React hooks
-  usePostStore.ts      ← SQLite data management
-  useScraper.ts        ← Reddit URL data extraction (stubbed)
-/models                ← TypeScript interfaces
-  Post.ts              ← Post data model
+reddit-post-organiser-app/
+├── components/             # Reusable UI components (cards, sidebar, etc.)
+├── constants/              # Design system: colors, spacing, typography
+├── hooks/                  # Custom React hooks (business logic, data fetching)
+├── models/                 # TypeScript models & types
+├── repository/             # Data access layer (Repository Pattern, SQLite)
+├── services/               # App services (Database, MinHash, etc.)
+├── utils/                  # Helper functions (Reddit links, general utils)
+├── app/                    # Expo Router pages (navigation, screens)
+|   └── post/               # Dynamic post pages
+├── app.json                # Expo app config
+├── eas.json                # EAS build config
+├── package.json            # NPM dependencies & scripts
+├── tsconfig.json           # TypeScript config
+└── README.md       
+
 ```
 
+### Technical Highlights
 
- 
+- **Repository Pattern**: All database access goes through `repository/`, making it easy to swap SQLite for cloud storage later.
+- **Custom Hooks**: Business logic (fetching, state) lives in `hooks/`, keeping UI components code clean.
+- **Expo Router**: Navigation handled in `app/` using file-based routing.
+- **Type Safety**: All models/types in `models/` for typesafe data handling.
+- **Testing**: Tested in `/__tests__/` folders.
+- **Design System**: Consistent look via `constants/` (colors, spacing, typography).
 
-One main reason this app was built was because of the immense size of saved Reddit posts I have, and that I've had issues with my phone’s clipboard truncating long posts when trying to save to a generic notes app.
+
 
 Features:
 
