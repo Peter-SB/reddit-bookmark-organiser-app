@@ -99,15 +99,16 @@ export default function HomeScreen() {
       return readFilter === "yes" ? isRead : !isRead;
     });
 
-  useEffect(() => {
-    const sub = AppState.addEventListener("change", (state) => {
-      if (state === "active") {
-        refreshPosts();
-        refreshFolders();
-      }
-    });
-    return () => sub.remove();
-  }, [refreshPosts, refreshFolders]);
+  // Was causing a bug when adding posts, todo: revisit later
+  // useEffect(() => {
+  //   const sub = AppState.addEventListener("change", (state) => {
+  //     if (state === "active") {
+  //       refreshPosts();
+  //       refreshFolders();
+  //     }
+  //   });
+  //   return () => sub.remove();
+  // }, [refreshPosts, refreshFolders]);
 
   const postsListRef = useRef<FlatList<Post>>(null);
 

@@ -21,25 +21,25 @@ export default function RootLayout() {
   });
   const router = useRouter();
 
-  // Initialize the database service on state change
-  useEffect(() => {
-    const sub = AppState.addEventListener(
-      "change",
-      async (state: AppStateStatus) => {
-        if (state === "background") {
-          // close & reset
-          if (DatabaseService["instance"]) {
-            await DatabaseService["instance"].getDb().closeAsync();
-            DatabaseService["instance"] = null;
-          }
-        } else if (state === "active") {
-          // re-open so next getInstance() call is fresh
-          await DatabaseService.getInstance();
-        }
-      }
-    );
-    return () => sub.remove();
-  }, []);
+  // Initialize the database service on state change - Caused a bug when adding posts. todo: revisit later
+  // useEffect(() => {
+  //   const sub = AppState.addEventListener(
+  //     "change",
+  //     async (state: AppStateStatus) => {
+  //       if (state === "background") {
+  //         // close & reset
+  //         if (DatabaseService["instance"]) {
+  //           await DatabaseService["instance"].getDb().closeAsync();
+  //           DatabaseService["instance"] = null;
+  //         }
+  //       } else if (state === "active") {
+  //         // re-open so next getInstance() call is fresh
+  //         await DatabaseService.getInstance();
+  //       }
+  //     }
+  //   );
+  //   return () => sub.remove();
+  // }, []);
 
   useEffect(() => {
     DatabaseService.getInstance().catch((err) => {
