@@ -61,7 +61,7 @@ export class DatabaseService {
 
       CREATE TABLE IF NOT EXISTS posts (
         id                INTEGER PRIMARY KEY AUTOINCREMENT,
-        redditId          TEXT    NOT NULL UNIQUE,
+        redditId          TEXT    NOT NULL,
         url               TEXT    NOT NULL,
         title             TEXT    NOT NULL,
         bodyText          TEXT,

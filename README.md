@@ -22,9 +22,9 @@ reddit-post-organiser-app/
 ├── constants/              # Design system: colors, spacing, typography
 ├── hooks/                  # Custom React hooks (business logic, data fetching)
 ├── models/                 # TypeScript models & types
-├── repository/             # Data access layer (Repository Pattern, SQLite)
+├── repository/             # Data access layer (Repository Pattern)
 ├── services/               # App services (Database, MinHash, etc.)
-├── utils/                  # Helper functions (Reddit links, general utils)
+├── utils/                  # Helper functions
 ├── app/                    # Expo Router pages (navigation, screens)
 |   └── post/               # Dynamic post pages
 ├── app.json                # Expo app config
