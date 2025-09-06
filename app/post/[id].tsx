@@ -1,4 +1,5 @@
 import { PostSidebar } from "@/components/PostSidebar";
+import PostSummary from "@/components/PostSummary";
 import { StarRating } from "@/components/StarRating";
 import { palette } from "@/constants/Colors";
 import { spacing } from "@/constants/spacing";
@@ -56,6 +57,7 @@ export default function PostScreen() {
   const [editedRating, setEditedRating] = useState<number | null>(null);
   const [editedIsRead, setEditedIsRead] = useState<boolean>(false);
   const [editedIsFavorite, setEditedIsFavorite] = useState<boolean>(false);
+  const [editedSummary, setEditedSummary] = useState("");
 
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [sidebarVisible, setSidebarVisible] = useState(false);
@@ -111,6 +113,7 @@ export default function PostScreen() {
       rating: editedRating ?? undefined,
       isRead: editedIsRead,
       isFavorite: editedIsFavorite,
+      summary: editedSummary,
     };
     await savePost(updated);
   }, [
@@ -121,6 +124,7 @@ export default function PostScreen() {
     editedRating,
     editedIsRead,
     editedIsFavorite,
+    editedSummary,
     savePost,
   ]);
 
@@ -176,6 +180,7 @@ export default function PostScreen() {
         setEditedBody(found.customBody ?? found.bodyText);
         setEditedNotes(found.notes ?? "");
         setEditedRating(found.rating ?? null);
+        setEditedSummary(found.summary || "");
       }
       setEditedIsRead(found.isRead);
       setEditedIsFavorite(found.isFavorite);
@@ -462,6 +467,16 @@ export default function PostScreen() {
               </TouchableOpacity>
             </View>
           </View>
+          {/* Summary */}
+          <View style={styles.summarySection}>
+            <PostSummary
+              post={post}
+              onSave={setEditedSummary}
+              currentFont={currentFont}
+              editedSummary={editedSummary}
+              setEditedSummary={setEditedSummary}
+            />
+          </View>
 
           {/* Body */}
           <View style={styles.bodySection}>
@@ -661,6 +676,11 @@ const styles = StyleSheet.create({
   },
   titleSection: {
     padding: spacing.m,
+    borderBottomWidth: 1,
+    borderBottomColor: palette.border,
+  },
+  summarySection: {
+    padding: spacing.s,
     borderBottomWidth: 1,
     borderBottomColor: palette.border,
   },

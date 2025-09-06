@@ -36,6 +36,9 @@ export interface Post {
 
   /** MinHash for duplicate detection in-case of repost or reupload */
   bodyMinHash?: string;
+
+  /** AI-generated summary */
+  summary?: string;
 }
 
 export interface Folder {

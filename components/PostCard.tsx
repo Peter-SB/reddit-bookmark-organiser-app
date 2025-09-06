@@ -54,6 +54,8 @@ export const PostCard: React.FC<PostCardProps> = ({ post }) => {
       <View style={styles.rowMetaActions}>
         {/* Right: Date and subreddit */}
         <View style={styles.leftMeta}>
+          <Text style={styles.metadataText}>#{post.id}</Text>
+          <Text style={styles.separator}>•</Text>
           <Text style={styles.metadataText}>r/{post.subreddit}</Text>
           <Text style={styles.separator}>•</Text>
           <Text style={styles.metadataText}>

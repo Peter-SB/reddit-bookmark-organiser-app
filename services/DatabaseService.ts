@@ -7,6 +7,7 @@ export const DEFAULT_DB = 'reddit_posts.db';
 
 export class DatabaseService {
   private static instance: DatabaseService | null;
+  private static inFlight: Promise<DatabaseService> | null = null;
   private db: SQLiteDatabase;
   private filename: string;
 
@@ -20,22 +21,50 @@ export class DatabaseService {
   public static async getInstance(): Promise<DatabaseService> {
     console.debug('DatabaseService.getInstance() called');
 
-    if (DatabaseService.instance) {
+    if (DatabaseService.instance && await DatabaseService.instance.isConnectionValid()) {
       return DatabaseService.instance;
     }
 
-    const stored = await AsyncStorage.getItem(STORAGE_KEY);
-    const filename = stored ?? DEFAULT_DB;
+    if (DatabaseService.inFlight) return DatabaseService.inFlight;
 
-    const db = await SQLite.openDatabaseAsync(
-      filename, 
-      { useNewConnection: true } // stops null pointer exceptions caused by shared connection being automatically closed
-    );
+    DatabaseService.inFlight = (async () => {
+      const stored = await AsyncStorage.getItem(STORAGE_KEY);
+      const filename = stored ?? DEFAULT_DB;
+      const db = await SQLite.openDatabaseAsync(filename, { useNewConnection: true });
 
-    const dbService = new DatabaseService(db, filename);
-    await dbService.init();
-    DatabaseService.instance = dbService;
-    return dbService;
+      const svc = new DatabaseService(db, filename);
+      await svc.init();
+      DatabaseService.instance = svc;
+      DatabaseService.inFlight = null;
+      return svc;
+    })().catch((e) => {
+      DatabaseService.inFlight = null;
+      throw e;
+    });
+
+    return DatabaseService.inFlight;
+
+    // const stored = await AsyncStorage.getItem(STORAGE_KEY);
+    // const filename = stored ?? DEFAULT_DB;
+
+    // const db = await SQLite.openDatabaseAsync(
+    //   filename, 
+    //   { useNewConnection: true } // stops null pointer exceptions caused by shared connection being automatically closed
+    // );
+
+    // const dbService = new DatabaseService(db, filename);
+    // await dbService.init();
+    // DatabaseService.instance = dbService;
+    // return dbService;
+  }
+
+  private async isConnectionValid(): Promise<boolean> {
+    try {
+      await this.db.getFirstAsync('SELECT 1 as ok');
+      return true;
+    } catch {
+      return false;
+    }
   }
 
   public static async switchDatabase(filename: string): Promise<void> {
