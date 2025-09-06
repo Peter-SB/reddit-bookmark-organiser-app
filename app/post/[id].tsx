@@ -83,7 +83,8 @@ export default function PostScreen() {
       editedNotes !== originalNotes ||
       (editedRating ?? undefined) !== post.rating ||
       editedIsRead !== post.isRead ||
-      editedIsFavorite !== post.isFavorite
+      editedIsFavorite !== post.isFavorite ||
+      editedSummary !== (post.summary || "")
     );
   }, [
     post,
@@ -93,6 +94,7 @@ export default function PostScreen() {
     editedRating,
     editedIsRead,
     editedIsFavorite,
+    editedSummary,
   ]);
   // animates out then goes back
   const animateAndGoBack = useCallback(() => {
@@ -210,6 +212,10 @@ export default function PostScreen() {
   useEffect(() => {
     AsyncStorage.setItem(FONT_INDEX_KEY, String(fontOptionIdx));
   }, [fontOptionIdx]);
+
+  useEffect(() => {
+    console.log("editedSummary:", editedSummary);
+  }, [editedSummary]);
 
   // slide in
   useEffect(() => {

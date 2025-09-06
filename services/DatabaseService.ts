@@ -106,7 +106,8 @@ export class DatabaseService {
         isRead            INTEGER NOT NULL DEFAULT 0,
         isFavorite        INTEGER NOT NULL DEFAULT 0,
         extraFields       TEXT,
-        bodyMinHash       TEXT
+        bodyMinHash       TEXT,
+        summary           TEXT
       );
 
       CREATE TABLE IF NOT EXISTS post_folders (
@@ -121,6 +122,11 @@ export class DatabaseService {
     const hasBodyMinHash = columns.some((col: any) => col.name === 'bodyMinHash');
     if (!hasBodyMinHash) {
       await this.db.execAsync(`ALTER TABLE posts ADD COLUMN bodyMinHash TEXT;`);
+    }
+    // Migration: add summary column if it doesn't exist
+    const hasSummary = columns.some((col: any) => col.name === 'summary');
+    if (!hasSummary) {
+      await this.db.execAsync(`ALTER TABLE posts ADD COLUMN summary TEXT;`);
     }
   }
 

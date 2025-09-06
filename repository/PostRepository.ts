@@ -37,6 +37,7 @@ export class PostRepository {
       isFavorite: number;
       folderId: number | null;
       extraFields: string | null;
+      summary: string | null;
     }>(`SELECT * FROM posts ORDER BY addedAt DESC`);
 
     const posts = await Promise.all(
@@ -58,6 +59,7 @@ export class PostRepository {
         isRead: r.isRead === 1,
         isFavorite: r.isFavorite === 1,
         extraFields: r.extraFields ? JSON.parse(r.extraFields) : undefined,
+        summary: r.summary ?? undefined,
         folderIds: await this.loadFolderIds(r.id),
       }))
     );
@@ -84,6 +86,7 @@ export class PostRepository {
       isFavorite: number;
       folderId: number | null;
       extraFields: string | null;
+      summary: string | null;
     }>(`SELECT * FROM posts WHERE id = ?`, id);
     if (!r) return null;
     return {
@@ -104,6 +107,7 @@ export class PostRepository {
       isRead: r.isRead === 1,
       isFavorite: r.isFavorite === 1,
       extraFields: r.extraFields ? JSON.parse(r.extraFields) : undefined,
+      summary: r.summary ?? undefined,
       folderIds: await this.loadFolderIds(r.id),
     };
   }
@@ -118,8 +122,8 @@ export class PostRepository {
          redditId, url, title, bodyText, bodyMinHash, author, subreddit,
          redditCreatedAt, addedAt,
          customTitle, customBody, notes, rating,
-         isRead, isFavorite, extraFields
-       ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+         isRead, isFavorite, extraFields, summary
+       ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
       post.redditId,
       post.url,
       post.title,
@@ -136,6 +140,7 @@ export class PostRepository {
       post.isRead ? 1 : 0,
       post.isFavorite ? 1 : 0,
       post.extraFields ? JSON.stringify(post.extraFields) : null,
+      post.summary ?? null,
     );
     const newId = result.lastInsertRowId;
     return newId;
@@ -202,6 +207,7 @@ export class PostRepository {
          isRead        = ?,
          isFavorite    = ?,
          extraFields   = ?,
+         summary       = ?,
          updatedAt    = CURRENT_TIMESTAMP
        WHERE id = ?`,
       post.title,
@@ -214,6 +220,7 @@ export class PostRepository {
       post.isRead ? 1 : 0,
       post.isFavorite ? 1 : 0,
       post.extraFields ? JSON.stringify(post.extraFields) : null,
+      post.summary ?? null,
       post.id
     );
 
