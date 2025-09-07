@@ -2,7 +2,6 @@ import { palette } from "@/constants/Colors";
 import { spacing } from "@/constants/spacing";
 import { fontSizes, fontWeights } from "@/constants/typography";
 import React, { useEffect, useState } from "react";
-import AsyncStorage from "@react-native-async-storage/async-storage";
 import {
   ActivityIndicator,
   Alert,
@@ -13,6 +12,7 @@ import {
   View,
 } from "react-native";
 import { Picker } from "@react-native-picker/picker";
+import { SettingsRepository } from "@/repository/SettingsRepository";
 
 const AI_ENDPOINT_URL = "AI_ENDPOINT_URL";
 const AI_MODEL_ID = "AI_MODEL_ID";
@@ -27,18 +27,20 @@ export default function SettingsAiConfiguration() {
   const [testResult, setTestResult] = useState<string | null>(null);
   const [models, setModels] = useState<string[]>([]);
 
-  // Load AI config from AsyncStorage
+  // Load AI config from DB
   useEffect(() => {
     (async () => {
+      setLoading(true);
       try {
-        const [endpointValue, modelValue, promptValue] = await Promise.all([
-          AsyncStorage.getItem(AI_ENDPOINT_URL),
-          AsyncStorage.getItem(AI_MODEL_ID),
-          AsyncStorage.getItem(AI_SYSTEM_PROMPT),
+        const settings = await SettingsRepository.getSettings([
+          AI_ENDPOINT_URL,
+          AI_MODEL_ID,
+          AI_SYSTEM_PROMPT,
         ]);
-        if (endpointValue) setEndpoint(endpointValue);
-        if (modelValue) setModelId(modelValue);
-        if (promptValue) setSystemPrompt(promptValue);
+        if (settings[AI_ENDPOINT_URL]) setEndpoint(settings[AI_ENDPOINT_URL]);
+        if (settings[AI_MODEL_ID]) setModelId(settings[AI_MODEL_ID]);
+        if (settings[AI_SYSTEM_PROMPT])
+          setSystemPrompt(settings[AI_SYSTEM_PROMPT]);
       } catch (err) {
         console.warn("Failed to load AI config:", err);
       } finally {
@@ -47,7 +49,7 @@ export default function SettingsAiConfiguration() {
     })();
   }, []);
 
-  // Save AI config to AsyncStorage
+  // Save AI config to DB
   const save = async () => {
     if (!endpoint.trim()) {
       Alert.alert("Error", "Please enter an endpoint.");
@@ -56,9 +58,9 @@ export default function SettingsAiConfiguration() {
     setLoading(true);
     try {
       await Promise.all([
-        AsyncStorage.setItem(AI_ENDPOINT_URL, endpoint.trim()),
-        AsyncStorage.setItem(AI_MODEL_ID, modelId.trim()),
-        AsyncStorage.setItem(AI_SYSTEM_PROMPT, systemPrompt.trim()),
+        SettingsRepository.setSetting(AI_ENDPOINT_URL, endpoint.trim()),
+        SettingsRepository.setSetting(AI_MODEL_ID, modelId.trim()),
+        SettingsRepository.setSetting(AI_SYSTEM_PROMPT, systemPrompt.trim()),
       ]);
       Alert.alert("Success", "AI configuration saved.");
     } catch (err) {

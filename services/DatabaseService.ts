@@ -115,6 +115,11 @@ export class DatabaseService {
         folder_id INTEGER NOT NULL REFERENCES folders(id) ON DELETE CASCADE,
         PRIMARY KEY (post_id, folder_id)
       );
+
+      Create TABLE IF NOT EXISTS settings (
+        key   TEXT PRIMARY KEY,
+        value TEXT
+      );
     `);
 
     // Migration: add minHash column if it doesn't exist

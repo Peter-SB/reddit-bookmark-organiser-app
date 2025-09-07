@@ -10,9 +10,12 @@ import {
 import type { Post } from "@/models/models";
 import { fontSizes } from "@/constants/typography";
 import { palette } from "@/constants/Colors";
-import AsyncStorage from "@react-native-async-storage/async-storage";
+import { SettingsRepository } from "@/repository/SettingsRepository";
 import { Ionicons } from "@expo/vector-icons";
 import Entypo from "@expo/vector-icons/Entypo";
+import EventSource from "react-native-sse";
+import { startSSEChat } from "@/services/sseChat";
+import { spacing } from "@/constants/spacing";
 
 // This is a post summary section. This goes just below the title section and above the main text in the post #[id].tsx.
 
@@ -44,67 +47,116 @@ export default function PostSummary({
   const [summary, setSummary] = useState(post.summary || "");
   const [error, setError] = useState<string | null>(null);
   const [edited, setEdited] = useState(false);
+  const [isStreaming, setIsStreaming] = useState(false);
+  const [streamHandle, setStreamHandle] = useState<EventSource | null>(null);
+  const latestRef = React.useRef(summary);
+  const summaryRef = React.useRef(summary);
 
-  // Track if summary has changed
+  useEffect(
+    () => () => {
+      if (streamHandle) streamHandle.close();
+    },
+    [streamHandle]
+  );
+
   useEffect(() => {
-    setSummary(editedSummary);
-  }, [editedSummary]);
+    if (!isStreaming) setSummary(editedSummary);
+  }, [editedSummary, isStreaming]);
 
-  const fetchSummary = async () => {
-    setError(null);
-    setStatus("loading");
+  useEffect(() => {
+    summaryRef.current = summary;
+  }, [summary]);
+
+  useEffect(() => {
+    if (isStreaming) {
+      setEditedSummary(summary); // mirror to parent after each paint while streaming
+    }
+  }, [summary, isStreaming, setEditedSummary]);
+
+  async function startSummary() {
     try {
-      const [endpoint, modelId, systemPrompt] = await Promise.all([
-        AsyncStorage.getItem(AI_ENDPOINT_URL),
-        AsyncStorage.getItem(AI_MODEL_ID),
-        AsyncStorage.getItem(AI_SYSTEM_PROMPT),
+      if (isStreaming) return;
+      const settings = await SettingsRepository.getSettings([
+        AI_ENDPOINT_URL,
+        AI_MODEL_ID,
+        AI_SYSTEM_PROMPT,
       ]);
-      if (!endpoint) throw new Error("AI endpoint not configured");
-      const url = endpoint.replace(/\/+$/, "") + "/chat/completions";
+      const endpoint = settings[AI_ENDPOINT_URL];
+      const modelId = settings[AI_MODEL_ID];
+      const systemPrompt = settings[AI_SYSTEM_PROMPT];
+      if (!endpoint) throw new Error("AI Settings Not Configured");
       const bodyText = post.customBody || post.bodyText || "";
+      const prompt =
+        systemPrompt || "You are an assistant that summarizes Reddit posts.";
       const payload = {
         model: modelId,
+        stream: true,
         messages: [
           {
-            role: "user",
-            content:
-              systemPrompt ||
-              "You are an assistant that summarizes Reddit posts.",
+            role: "system",
+            content: prompt,
           },
           {
-            role: "system", // changed from user to system to improve response attention
-            content: `\n${bodyText}`,
+            role: "user",
+            content: bodyText + "----End of Story---" + prompt,
           },
         ],
         max_tokens: 1024,
       };
-      const res = await fetch(url, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
+      setError(null);
+      setStatus("loading");
+      setIsStreaming(true);
+      setSummary("");
+      summaryRef.current = "";
+      const es = startSSEChat({
+        endpoint,
+        payload,
+        onDelta: (delta) => {
+          setSummary((prev) => {
+            const next = prev + delta;
+            summaryRef.current = next; // keep ref in lockstep with state
+            return next;
+          });
         },
-        body: JSON.stringify(payload),
+        onFinish: () => {
+          requestAnimationFrame(() => {
+            setIsStreaming(false);
+            setStatus("success");
+            setStreamHandle(null);
+            setEditedSummary(summaryRef.current); // now includes the last chunk
+          });
+        },
+        onError: (err) => {
+          setIsStreaming(false);
+          setError(
+            (err && (err.message || err.toString())) ||
+              "Failed to stream summary."
+          );
+          setStatus("error");
+          setStreamHandle(null);
+        },
       });
-      if (!res.ok) throw new Error(`HTTP ${res.status}`);
-      const data = await res.json();
-      const aiSummary =
-        data?.choices?.[0]?.message?.content?.trim() || "No summary returned.";
-      setSummary(aiSummary);
-      setEditedSummary(aiSummary);
-      onSave(aiSummary); // auto-save when first generated
-      setStatus("success");
+      setStreamHandle(es);
     } catch (err: any) {
-      setError(err.message || "Failed to fetch summary.");
+      setError(err?.message || "Failed to start summary.");
       setStatus("error");
+      setIsStreaming(false);
     }
-  };
+  }
 
   const handleRegenerate = () => {
-    fetchSummary();
+    if (streamHandle) streamHandle.close();
+    startSummary();
   };
 
-  const handleRetry = () => {
-    fetchSummary();
+  const handleStop = () => {
+    if (streamHandle) {
+      streamHandle.close();
+      setIsStreaming(false);
+      setStatus("success");
+      setStreamHandle(null);
+      setEditedSummary(summaryRef.current); // ensure parent gets the last buffered text
+    }
   };
 
   const handleEdit = (text: string) => {
@@ -118,7 +170,7 @@ export default function PostSummary({
     <View style={styles.container}>
       {status === "idle" && (
         <View>
-          <TouchableOpacity onPress={fetchSummary} style={styles.idleRow}>
+          <TouchableOpacity onPress={startSummary} style={styles.idleRow}>
             <Text style={styles.infoText}>AI Summarise</Text>
             <Entypo
               name="new-message"
@@ -129,45 +181,78 @@ export default function PostSummary({
           </TouchableOpacity>
         </View>
       )}
-      {status === "loading" && (
-        <View style={styles.idleRow}>
-          <ActivityIndicator size="small" style={{ padding: 8 }} />
-          <Text style={styles.infoText}>Generating summary...</Text>
+      {(status === "loading" || status === "success") && (
+        <View>
+          <View style={styles.idleRow}>
+            {status === "loading" && (
+              <View style={[styles.idleRow, { marginLeft: 8 }]}>
+                <ActivityIndicator size="small" style={{ padding: 8 }} />
+                <Text style={styles.infoText}>Generating summary...</Text>
+                {isStreaming && (
+                  <TouchableOpacity
+                    onPress={handleStop}
+                    style={[styles.stopButton]}
+                  >
+                    <Entypo
+                      name="circle-with-cross"
+                      size={18}
+                      color={palette.favHeartRed}
+                      style={styles.stopButtonIcon}
+                    />
+                  </TouchableOpacity>
+                )}
+              </View>
+            )}
+            {status === "success" && (
+              <View style={styles.summaryRow}>
+                <Text
+                  style={[
+                    styles.infoText,
+                    { color: palette.foreground, fontWeight: "semibold" },
+                  ]}
+                >
+                  AI Summary:
+                </Text>
+
+                <TouchableOpacity
+                  // style={styles.button}
+                  onPress={handleRegenerate}
+                >
+                  <Ionicons
+                    name="refresh"
+                    style={styles.summariseButton}
+                    size={20}
+                    color={palette.muted}
+                  />
+                </TouchableOpacity>
+              </View>
+            )}
+          </View>
+          {summary !== "" && (
+            <TextInput
+              style={[styles.body, currentFont]}
+              value={summary}
+              onChangeText={handleEdit}
+              multiline
+              editable={!isStreaming}
+            />
+          )}
         </View>
       )}
       {status === "error" && (
-        <View style={styles.centered}>
+        <View style={styles.idleRow}>
           <Text style={styles.errorText}>{error}</Text>
-          <TouchableOpacity style={styles.button} onPress={handleRetry}>
-            <Text style={styles.buttonText}>Retry</Text>
+          <TouchableOpacity
+            // style={styles.button}
+            onPress={handleRegenerate}
+          >
+            <Entypo
+              name="ccw"
+              style={styles.summariseButton}
+              size={20}
+              color={palette.muted}
+            />
           </TouchableOpacity>
-        </View>
-      )}
-      {status === "success" && (
-        <View>
-          <View style={styles.summaryRow}>
-            <Text style={styles.label}>AI Summary:</Text>
-            <View>
-              <TouchableOpacity
-                // style={styles.button}
-                onPress={handleRegenerate}
-              >
-                {/* <Text style={styles.buttonText}>Regenerate</Text> */}
-                <Entypo
-                  name="ccw"
-                  style={styles.summariseButton}
-                  size={20}
-                  color={palette.muted}
-                />
-              </TouchableOpacity>
-            </View>
-          </View>
-          <TextInput
-            style={[styles.body, currentFont]}
-            value={summary}
-            onChangeText={handleEdit}
-            multiline
-          />
         </View>
       )}
     </View>
@@ -186,8 +271,7 @@ const styles = StyleSheet.create({
     color: "#555",
   },
   errorText: {
-    color: "red",
-    marginBottom: 8,
+    color: palette.favHeartRed,
   },
   label: {
     fontWeight: "bold",
@@ -226,7 +310,7 @@ const styles = StyleSheet.create({
     fontSize: fontSizes.small,
     lineHeight: 16,
     color: palette.foreground,
-    padding: 0,
+    padding: spacing.xs,
   },
   idleRow: {
     flexDirection: "row",
@@ -247,5 +331,17 @@ const styles = StyleSheet.create({
     justifyContent: "space-between",
     paddingHorizontal: 8,
     width: "100%",
+  },
+  stopButton: {
+    flexDirection: "row",
+    alignItems: "center",
+    paddingTop: 1,
+  },
+  stopButtonText: {
+    color: "#fff",
+    fontWeight: "bold",
+  },
+  stopButtonIcon: {
+    marginLeft: 6,
   },
 });

@@ -226,7 +226,7 @@ export default function HomeScreen() {
 
   useEffect(() => {
     async function handleIncoming() {
-      alert("Handling incoming link if any...");
+      // alert("Handling incoming link if any...");
       let shared: string | undefined = undefined;
       // Check for sharedUrl param from router (expo-router v2)
       // Safely get params from router (expo-router v2+ or fallback)
@@ -259,7 +259,7 @@ export default function HomeScreen() {
 
     // also listen for deep‑link events when the app is already running:
     const sub = Linking.addEventListener("url", ({ url }) => {
-      alert("Handling incoming link if any...");
+      // alert("Handling incoming link if any...");
       const { queryParams } = Linking.parse(url);
       if (queryParams?.text) handleAddPost(queryParams?.text as string);
     });
