@@ -14,7 +14,7 @@ import { SettingsRepository } from "@/repository/SettingsRepository";
 import { Ionicons } from "@expo/vector-icons";
 import Entypo from "@expo/vector-icons/Entypo";
 import EventSource from "react-native-sse";
-import { startSSEChat } from "@/services/sseChat";
+import { startSSEChat } from "@/services/SSEChatService";
 import { spacing } from "@/constants/spacing";
 
 // This is a post summary section. This goes just below the title section and above the main text in the post #[id].tsx.
