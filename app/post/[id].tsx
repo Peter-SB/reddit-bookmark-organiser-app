@@ -140,7 +140,15 @@ export default function PostScreen() {
           {
             text: "Discard",
             style: "destructive",
-            onPress: () => animateAndGoBack(),
+            onPress: () => {
+              if (post) {
+                setEditedTitle(post.customTitle ?? post.title);
+                setEditedBody(post.customBody ?? post.bodyText);
+                setEditedNotes(post.notes ?? "");
+                setEditedSummary(post.summary || "");
+              }
+              animateAndGoBack();
+            },
           },
           {
             text: "Save",
@@ -155,7 +163,7 @@ export default function PostScreen() {
     } else {
       animateAndGoBack();
     }
-  }, [hasUnsavedChanges, animateAndGoBack, handleSave]);
+  }, [hasUnsavedChanges, animateAndGoBack, handleSave, post]);
 
   useEffect(() => {
     const onBackPress = () => {
@@ -187,7 +195,7 @@ export default function PostScreen() {
       setEditedIsRead(found.isRead);
       setEditedIsFavorite(found.isFavorite);
     }
-  }, [id, posts, loading]);
+  }, [id, posts, loading, hasUnsavedChanges]);
 
   const fontOptions = [
     { fontSize: fontSizes.xsmall, lineHeight: 13 },
@@ -362,6 +370,7 @@ export default function PostScreen() {
                             setEditedTitle(post.customTitle ?? post.title);
                             setEditedBody(post.customBody ?? post.bodyText);
                             setEditedNotes(post.notes ?? "");
+                            setEditedSummary(post.summary || "");
                           }
                         },
                       },
