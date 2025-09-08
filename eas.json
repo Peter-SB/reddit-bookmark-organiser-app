@@ -17,6 +17,7 @@
       "distribution": "internal",
       "android": {
         "buildType": "apk",
+        // "workflow": "managed"
       }
     },
     "production": {

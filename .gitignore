@@ -45,6 +45,6 @@ app-example
 *.db
 
 _bin/
-android/
+android*/
 ios/
 .vscode
