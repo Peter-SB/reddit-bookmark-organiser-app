@@ -268,6 +268,16 @@ export default function HomeScreen() {
 
   const isLoading = redditApiLoading || isAdding; // || postsLoading;
 
+  // Add this callback to open a random post
+  const handleOpenRandomPost = useCallback(() => {
+    if (filteredPosts.length === 0) return;
+    const randomIndex = Math.floor(Math.random() * filteredPosts.length);
+    const post = filteredPosts[randomIndex];
+    if (post && post.id) {
+      router.push(`/post/${post.id}`);
+    }
+  }, [filteredPosts, router]);
+
   return (
     <SafeAreaView style={styles.container}>
       <MenuSidebar
@@ -301,6 +311,22 @@ export default function HomeScreen() {
               {unread > 0 && ` • ${unread} unread`}
             </Text>
           </View>
+          {/* Random Post button */}
+          {filteredPosts.length > 2 && (
+            <View style={{ flex: 1, alignItems: "flex-end" }}>
+              <TouchableOpacity
+                onPress={handleOpenRandomPost}
+                style={{
+                  padding: spacing.xs,
+                  marginLeft: spacing.s,
+                  marginRight: spacing.xs,
+                }}
+                accessibilityLabel="Open a random post"
+              >
+                <Icon name="shuffle" size={28} color={palette.foreground} />
+              </TouchableOpacity>
+            </View>
+          )}
         </View>
         {isLoading && (
           <View style={styles.loadingContainer}>
