@@ -222,10 +222,6 @@ export default function PostScreen() {
     AsyncStorage.setItem(FONT_INDEX_KEY, String(fontOptionIdx));
   }, [fontOptionIdx]);
 
-  useEffect(() => {
-    console.log("editedSummary:", editedSummary);
-  }, [editedSummary]);
-
   // slide in
   useEffect(() => {
     Animated.timing(slideAnim, {

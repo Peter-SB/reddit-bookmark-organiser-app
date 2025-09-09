@@ -18,6 +18,12 @@ const AI_ENDPOINT_URL = "AI_ENDPOINT_URL";
 const AI_MODEL_ID = "AI_MODEL_ID";
 const AI_SYSTEM_PROMPT = "AI_SYSTEM_PROMPT";
 
+const parseEndpoints = (input: string): string[] =>
+  input
+    .split(";")
+    .map((e) => e.trim())
+    .filter(Boolean);
+
 export default function SettingsAiConfiguration() {
   const [endpoint, setEndpoint] = useState("");
   const [modelId, setModelId] = useState("");
@@ -51,8 +57,9 @@ export default function SettingsAiConfiguration() {
 
   // Save AI config to DB
   const save = async () => {
-    if (!endpoint.trim()) {
-      Alert.alert("Error", "Please enter an endpoint.");
+    const endpoints = parseEndpoints(endpoint);
+    if (endpoints.length === 0) {
+      Alert.alert("Error", "Please enter at least one endpoint.");
       return;
     }
     setLoading(true);
@@ -73,52 +80,60 @@ export default function SettingsAiConfiguration() {
 
   // Test endpoint by querying /models
   const testEndpoint = async () => {
-    if (!endpoint.trim()) {
-      Alert.alert("Error", "Please enter an endpoint.");
+    const endpoints = parseEndpoints(endpoint);
+    if (endpoints.length === 0) {
+      Alert.alert("Error", "Please enter at least one endpoint.");
       return;
     }
     setTesting(true);
     setTestResult(null);
-    try {
-      const url = endpoint.trim().replace(/\/+$/, "") + "/models";
-      console.debug("Testing AI endpoint:", url);
-      const res = await fetch(url, { method: "GET" });
-      if (!res.ok) throw new Error(`HTTP ${res.status}`);
-      const data = await res.json();
-      let modelList: string[] = [];
-      if (Array.isArray(data?.data)) {
-        modelList = data.data.map((m: any) => m.id || m.name || "");
-        setTestResult(`Success: ${modelList.length} models found`);
-      } else {
-        setTestResult("Success: Response received");
+    let success = false;
+    for (const ep of endpoints) {
+      try {
+        const url = ep.replace(/\/+$|\/+$/g, "") + "/models";
+        console.debug("Testing AI endpoint:", url);
+        const res = await fetch(url, { method: "GET" });
+        if (!res.ok) throw new Error(`HTTP ${res.status}`);
+        const data = await res.json();
+        let modelList: string[] = [];
+        if (Array.isArray(data?.data)) {
+          modelList = data.data.map((m: any) => m.id || m.name || "");
+          setTestResult(`Success: ${modelList.length} models found at ${ep}`);
+        } else {
+          setTestResult(`Success: Response received at ${ep}`);
+        }
+        setModels(modelList);
+        if (!modelId && modelList.length > 0) setModelId(modelList[0]);
+        success = true;
+        break;
+      } catch (err: any) {
+        setTestResult(`Error: ${err.message || "Failed to connect"} at ${ep}`);
+        setModels([]);
       }
-      setModels(modelList);
-      // If no model selected, pick first
-      if (!modelId && modelList.length > 0) setModelId(modelList[0]);
-    } catch (err: any) {
-      setTestResult(`Error: ${err.message || "Failed to connect"}`);
-      setModels([]);
-    } finally {
-      setTesting(false);
     }
+    setTesting(false);
   };
 
   // Load models when dropdown is focused
   const handleModelDropdownOpen = async () => {
-    if (!endpoint.trim()) return;
+    const endpoints = parseEndpoints(endpoint);
+    if (endpoints.length === 0) return;
     if (models.length > 0) return;
-    try {
-      const url = endpoint.trim().replace(/\/+$/, "") + "/models";
-      const res = await fetch(url, { method: "GET" });
-      if (!res.ok) return;
-      const data = await res.json();
-      let modelList: string[] = [];
-      if (Array.isArray(data?.data)) {
-        modelList = data.data.map((m: any) => m.id || m.name || "");
-        setModels(modelList);
-        if (!modelId && modelList.length > 0) setModelId(modelList[0]);
-      }
-    } catch {}
+    for (const endpoint of endpoints) {
+      try {
+        const url = endpoint.replace(/\/+$|\/+$/g, "") + "/models";
+        const res = await fetch(url, { method: "GET" });
+        if (!res.ok) continue;
+        const data = await res.json();
+        let modelList: string[] = [];
+        if (Array.isArray(data?.data)) {
+          modelList = data.data.map((m: any) => m.id || m.name || "");
+          setModels(modelList);
+          if (!modelId && modelList.length > 0) setModelId(modelList[0]);
+          break;
+        }
+      } catch {}
+    }
   };
 
   if (loading) {

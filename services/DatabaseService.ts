@@ -116,7 +116,7 @@ export class DatabaseService {
         PRIMARY KEY (post_id, folder_id)
       );
 
-      Create TABLE IF NOT EXISTS settings (
+      CREATE TABLE IF NOT EXISTS settings (
         key   TEXT PRIMARY KEY,
         value TEXT
       );
