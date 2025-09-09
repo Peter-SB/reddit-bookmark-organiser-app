@@ -4,8 +4,10 @@ import { StarRating } from "@/components/StarRating";
 import { palette } from "@/constants/Colors";
 import { spacing } from "@/constants/spacing";
 import { fontSizes, fontWeights } from "@/constants/typography";
+import { fontOptions } from "@/constants/fontOptions";
 import { usePosts } from "@/hooks/usePosts";
 import { Post } from "@/models/models";
+import { SettingsRepository } from "@/repository/SettingsRepository";
 import { Ionicons, MaterialCommunityIcons } from "@expo/vector-icons";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { useLocalSearchParams, useRouter } from "expo-router";
@@ -71,6 +73,7 @@ export default function PostScreen() {
   const [ratingInput, setRatingInput] = useState<string>("");
 
   const [fontOptionIdx, setFontOptionIdx] = useState(0);
+  const [showAiSummary, setShowAiSummary] = useState(true);
 
   const hasUnsavedChanges = useCallback(() => {
     if (!post) return false;
@@ -198,18 +201,27 @@ export default function PostScreen() {
     }
   }, [id, posts, loading, hasUnsavedChanges]);
 
-  const fontOptions = [
-    { fontSize: fontSizes.xsmall, lineHeight: 13 },
-    { fontSize: fontSizes.small, lineHeight: 16 },
-    { fontSize: fontSizes.body, lineHeight: 20 },
-    { fontSize: fontSizes.large, lineHeight: 26 },
-    { fontSize: fontSizes.xxsmall, lineHeight: 10 },
-  ];
   const currentFont = fontOptions[fontOptionIdx];
 
   const toggleFontOption = () => {
     setFontOptionIdx((idx) => (idx + 1) % fontOptions.length);
   };
+
+  useEffect(() => {
+    (async () => {
+      try {
+        const settings = await SettingsRepository.getSettings([
+          "SHOW_AI_SUMMARY",
+        ]);
+        if (settings["SHOW_AI_SUMMARY"] !== undefined) {
+          setShowAiSummary(settings["SHOW_AI_SUMMARY"] === "true");
+        }
+      } catch (err) {
+        // fallback to true if error
+        setShowAiSummary(true);
+      }
+    })();
+  }, []);
 
   useEffect(() => {
     (async () => {
@@ -480,15 +492,17 @@ export default function PostScreen() {
             </View>
           </View>
           {/* Summary */}
-          <View style={styles.summarySection}>
-            <PostSummary
-              post={post}
-              onSave={setEditedSummary}
-              currentFont={currentFont}
-              editedSummary={editedSummary}
-              setEditedSummary={setEditedSummary}
-            />
-          </View>
+          {showAiSummary && (
+            <View style={styles.summarySection}>
+              <PostSummary
+                post={post}
+                onSave={setEditedSummary}
+                currentFont={currentFont}
+                editedSummary={editedSummary}
+                setEditedSummary={setEditedSummary}
+              />
+            </View>
+          )}
 
           {/* Body */}
           <View style={styles.bodySection}>

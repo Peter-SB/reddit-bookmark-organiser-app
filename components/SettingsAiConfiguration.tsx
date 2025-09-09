@@ -17,6 +17,7 @@ import { SettingsRepository } from "@/repository/SettingsRepository";
 const AI_ENDPOINT_URL = "AI_ENDPOINT_URL";
 const AI_MODEL_ID = "AI_MODEL_ID";
 const AI_SYSTEM_PROMPT = "AI_SYSTEM_PROMPT";
+const SHOW_AI_SUMMARY = "SHOW_AI_SUMMARY";
 
 const parseEndpoints = (input: string): string[] =>
   input
@@ -32,6 +33,7 @@ export default function SettingsAiConfiguration() {
   const [testing, setTesting] = useState(false);
   const [testResult, setTestResult] = useState<string | null>(null);
   const [models, setModels] = useState<string[]>([]);
+  const [showAiSummary, setShowAiSummary] = useState(true);
 
   // Load AI config from DB
   useEffect(() => {
@@ -42,11 +44,14 @@ export default function SettingsAiConfiguration() {
           AI_ENDPOINT_URL,
           AI_MODEL_ID,
           AI_SYSTEM_PROMPT,
+          SHOW_AI_SUMMARY,
         ]);
         if (settings[AI_ENDPOINT_URL]) setEndpoint(settings[AI_ENDPOINT_URL]);
         if (settings[AI_MODEL_ID]) setModelId(settings[AI_MODEL_ID]);
         if (settings[AI_SYSTEM_PROMPT])
           setSystemPrompt(settings[AI_SYSTEM_PROMPT]);
+        if (settings[SHOW_AI_SUMMARY] !== undefined)
+          setShowAiSummary(settings[SHOW_AI_SUMMARY] === "true");
       } catch (err) {
         console.warn("Failed to load AI config:", err);
       } finally {
@@ -68,6 +73,10 @@ export default function SettingsAiConfiguration() {
         SettingsRepository.setSetting(AI_ENDPOINT_URL, endpoint.trim()),
         SettingsRepository.setSetting(AI_MODEL_ID, modelId.trim()),
         SettingsRepository.setSetting(AI_SYSTEM_PROMPT, systemPrompt.trim()),
+        SettingsRepository.setSetting(
+          SHOW_AI_SUMMARY,
+          showAiSummary ? "true" : "false"
+        ),
       ]);
       Alert.alert("Success", "AI configuration saved.");
     } catch (err) {
@@ -186,6 +195,42 @@ export default function SettingsAiConfiguration() {
           autoCorrect={false}
           multiline
         />
+        <Text style={styles.label}>Show AI Summary Section</Text>
+        <TouchableOpacity
+          style={[
+            styles.input,
+            {
+              flexDirection: "row",
+              alignItems: "center",
+              justifyContent: "space-between",
+            },
+          ]}
+          onPress={() => setShowAiSummary((v) => !v)}
+        >
+          <Text style={{ fontSize: fontSizes.body }}>
+            {showAiSummary ? "On" : "Off"}
+          </Text>
+          <View
+            style={{
+              width: 40,
+              height: 24,
+              borderRadius: 12,
+              backgroundColor: showAiSummary ? palette.accent : palette.border,
+              justifyContent: "center",
+            }}
+          >
+            <View
+              style={{
+                width: 20,
+                height: 20,
+                borderRadius: 10,
+                backgroundColor: palette.background,
+                marginLeft: showAiSummary ? 18 : 2,
+                elevation: 2,
+              }}
+            />
+          </View>
+        </TouchableOpacity>
 
         <View style={styles.buttonRow}>
           <TouchableOpacity
