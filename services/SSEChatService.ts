@@ -67,7 +67,7 @@ export function startSSEChat({
   });
 
   es.addEventListener("error", (event: any) => {
-    console.error("[SSE] error:", event?.message || event);
+    console.log("[SSE] error:", event?.message || event);
     onError?.(event);
     es.close();
   });

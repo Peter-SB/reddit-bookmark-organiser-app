@@ -102,7 +102,6 @@ export const PostSidebar: React.FC<SidebarProps> = ({
         </View>
         <ScrollView style={styles.sidebarContent}>
           <View style={styles.sidebarSection}>
-            {" "}
             <Text style={styles.sidebarText}>Bookmark #{post.id}</Text>
           </View>
 
