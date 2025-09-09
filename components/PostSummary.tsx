@@ -67,27 +67,33 @@ export default function PostSummary({
     summaryRef.current = summary;
   }, [summary]);
 
+  // mirror text to parent after each paint while streaming
   useEffect(() => {
     if (isStreaming) {
-      setEditedSummary(summary); // mirror to parent after each paint while streaming
+      setEditedSummary(summary);
     }
   }, [summary, isStreaming, setEditedSummary]);
 
   async function startSummary() {
     try {
       if (isStreaming) return;
+
       const settings = await SettingsRepository.getSettings([
         AI_ENDPOINT_URL,
         AI_MODEL_ID,
         AI_SYSTEM_PROMPT,
       ]);
+
       const endpoint = settings[AI_ENDPOINT_URL];
       const modelId = settings[AI_MODEL_ID];
       const systemPrompt = settings[AI_SYSTEM_PROMPT];
+
       if (!endpoint) throw new Error("AI Settings Not Configured");
+
       const bodyText = post.customBody || post.bodyText || "";
       const prompt =
-        systemPrompt || "You are an assistant that summarizes Reddit posts.";
+        systemPrompt ||
+        "You are an assistant that summarises reddit posts in 3-4 lines.";
       const payload = {
         model: modelId,
         stream: true,
@@ -103,10 +109,12 @@ export default function PostSummary({
         ],
         max_tokens: 1024,
       };
+
       setError(null);
       setStatus("loading");
       setIsStreaming(true);
       setSummary("");
+
       summaryRef.current = "";
       const es = startSSEChat({
         endpoint,

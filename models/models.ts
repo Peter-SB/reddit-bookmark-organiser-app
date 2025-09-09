@@ -18,6 +18,9 @@ export interface Post {
   /** When the user added it */
   addedAt: Date;
 
+  /** When the post was last updated */
+  updatedAt: Date;
+
   /** User-editable */
   customTitle?: string;
   customBody?: string;

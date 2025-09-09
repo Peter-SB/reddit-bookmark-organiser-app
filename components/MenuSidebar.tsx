@@ -21,6 +21,7 @@ import { palette } from "@/constants/Colors";
 import { spacing } from "@/constants/spacing";
 import { fontSizes, fontWeights } from "@/constants/typography";
 import { Folder } from "@/models/models";
+import { OrderByRow } from "./OrderByRow";
 
 // enable LayoutAnimation on Android
 if (
@@ -42,6 +43,10 @@ export interface MenuSidebarProps {
   selectedFolders?: number[];
   onSelectedFoldersChange?: (ids: number[]) => void;
   onDeleteFolder?: (id: number) => void;
+  orderBy?: string;
+  orderDirection?: "asc" | "desc";
+  onOrderByChange?: (val: string) => void;
+  onOrderDirectionChange?: (val: "asc" | "desc") => void;
 }
 
 export const MenuSidebar: React.FC<MenuSidebarProps> = ({
@@ -56,6 +61,10 @@ export const MenuSidebar: React.FC<MenuSidebarProps> = ({
   selectedFolders = [],
   onSelectedFoldersChange,
   onDeleteFolder,
+  orderBy = "addedAt",
+  orderDirection = "desc",
+  onOrderByChange,
+  onOrderDirectionChange,
 }) => {
   const insets = useSafeAreaInsets();
   const screenWidth = Dimensions.get("window").width;
@@ -64,6 +73,27 @@ export const MenuSidebar: React.FC<MenuSidebarProps> = ({
   const [translateX] = useState(new Animated.Value(-sidebarWidth));
   const [backdropOpacity] = useState(new Animated.Value(0));
   const [foldersOpen, setFoldersOpen] = useState(true);
+
+  // Use controlled state if provided
+  const [localOrderBy, setLocalOrderBy] = useState<string>(orderBy);
+  const [localOrderDirection, setLocalOrderDirection] = useState<
+    "asc" | "desc"
+  >(orderDirection);
+  useEffect(() => {
+    setLocalOrderBy(orderBy);
+  }, [orderBy]);
+  useEffect(() => {
+    setLocalOrderDirection(orderDirection);
+  }, [orderDirection]);
+
+  // Order options
+  const orderOptions = [
+    { key: "addedAt", label: "Added at" },
+    { key: "updatedAt", label: "Updated at" },
+    { key: "rating", label: "Rating" },
+    { key: "title", label: "Title" },
+    { key: "length", label: "Length" },
+  ];
 
   // slide + fade animations
   useEffect(() => {
@@ -250,6 +280,20 @@ export const MenuSidebar: React.FC<MenuSidebarProps> = ({
             />
           </View>
 
+          {/* Order By row */}
+          <OrderByRow
+            orderOptions={orderOptions}
+            localOrderBy={localOrderBy}
+            localOrderDirection={localOrderDirection}
+            onOrderByChange={(val) => {
+              setLocalOrderBy(val);
+              if (onOrderByChange) onOrderByChange(val);
+            }}
+            onOrderDirectionChange={(val) => {
+              setLocalOrderDirection(val);
+              if (onOrderDirectionChange) onOrderDirectionChange(val);
+            }}
+          />
           <View style={styles.dividerContainer}>
             <View style={styles.dividerLine} />
           </View>

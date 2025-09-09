@@ -116,6 +116,7 @@ export default function PostScreen() {
       isRead: editedIsRead,
       isFavorite: editedIsFavorite,
       summary: editedSummary,
+      updatedAt: new Date(),
     };
     await savePost(updated);
   }, [

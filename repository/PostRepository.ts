@@ -29,6 +29,7 @@ export class PostRepository {
       subreddit: string;
       redditCreatedAt: string;
       addedAt: string;
+      updatedAt: string;
       customTitle: string | null;
       customBody: string | null;
       notes: string | null;
@@ -52,6 +53,7 @@ export class PostRepository {
         subreddit: r.subreddit,
         redditCreatedAt: new Date(r.redditCreatedAt),
         addedAt: new Date(r.addedAt),
+        updatedAt: new Date(r.updatedAt),
         customTitle: r.customTitle ?? undefined,
         customBody: r.customBody ?? undefined,
         notes: r.notes ?? undefined,
@@ -78,6 +80,7 @@ export class PostRepository {
       subreddit: string;
       redditCreatedAt: string;
       addedAt: string;
+      updatedAt: string;
       customTitle: string | null;
       customBody: string | null;
       notes: string | null;
@@ -100,6 +103,7 @@ export class PostRepository {
       subreddit: r.subreddit,
       redditCreatedAt: new Date(r.redditCreatedAt),
       addedAt: new Date(r.addedAt),
+      updatedAt: new Date(r.updatedAt),
       customTitle: r.customTitle ?? undefined,
       customBody: r.customBody ?? undefined,
       notes: r.notes ?? undefined,
@@ -120,10 +124,10 @@ export class PostRepository {
     const result = await this.db.runAsync(
       `INSERT INTO posts (
          redditId, url, title, bodyText, bodyMinHash, author, subreddit,
-         redditCreatedAt, addedAt,
+         redditCreatedAt, addedAt, updatedAt,
          customTitle, customBody, notes, rating,
          isRead, isFavorite, extraFields, summary
-       ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+       ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
       post.redditId,
       post.url,
       post.title,

@@ -32,6 +32,7 @@ import { useFolders } from "@/hooks/useFolders";
 import { usePosts } from "@/hooks/usePosts";
 import { useRedditApi } from "@/hooks/useRedditApi";
 import { AppState } from "react-native";
+import { filterPosts, sortPosts } from "@/utils/postsHelpers";
 
 type TripleFilter = "all" | "yes" | "no";
 
@@ -59,45 +60,23 @@ export default function HomeScreen() {
   // Track selected folders
   const [selectedFolders, setSelectedFolders] = useState<number[]>([]);
 
+  // Add state for orderBy and orderDirection
+  const [orderBy, setOrderBy] = useState<string>("addedAt");
+  const [orderDirection, setOrderDirection] = useState<"asc" | "desc">("desc");
+
   const insets = useSafeAreaInsets();
 
   // Filter posts by search string and selected folders
-  const filteredPosts = posts
-    // text search
-    .filter((post) => {
-      const q = search.trim().toLowerCase();
-      if (!q) return true;
-      return (
-        (post.title ?? "").toLowerCase().includes(q) ||
-        (post.customTitle ?? "").toLowerCase().includes(q) ||
-        (post.bodyText ?? "").toLowerCase().includes(q) ||
-        (post.customBody ?? "").toLowerCase().includes(q) ||
-        (post.notes ?? "").toLowerCase().includes(q) ||
-        (post.author ?? "").toLowerCase().includes(q) ||
-        (post.subreddit ?? "").toLowerCase().includes(q)
-      );
-    })
-    // folder filter
-    .filter((post) => {
-      if (!selectedFolders || selectedFolders.length === 0) return true;
-      // post.folderIds may be undefined/null or an array
-      if (!post.folderIds || post.folderIds.length === 0) return false;
-      return post.folderIds.some((fid: number) =>
-        selectedFolders.includes(fid)
-      );
-    })
-    // favourites filter
-    .filter((post) => {
-      if (favouritesFilter === "all") return true;
-      const isFav = Boolean(post.isFavorite);
-      return favouritesFilter === "yes" ? isFav : !isFav;
-    })
-    // read filter
-    .filter((post) => {
-      if (readFilter === "all") return true;
-      const isRead = Boolean(post.isRead);
-      return readFilter === "yes" ? isRead : !isRead;
-    });
+  const filteredPosts = sortPosts(
+    filterPosts(posts, {
+      search,
+      selectedFolders,
+      favouritesFilter,
+      readFilter,
+    }),
+    orderBy,
+    orderDirection
+  );
 
   const postsListRef = useRef<FlatList<Post>>(null);
 
@@ -292,6 +271,10 @@ export default function HomeScreen() {
         selectedFolders={selectedFolders}
         onSelectedFoldersChange={setSelectedFolders}
         onDeleteFolder={deleteFolder}
+        orderBy={orderBy}
+        orderDirection={orderDirection}
+        onOrderByChange={setOrderBy}
+        onOrderDirectionChange={setOrderDirection}
       />
 
       <View style={styles.header}>
@@ -312,7 +295,7 @@ export default function HomeScreen() {
             </Text>
           </View>
           {/* Random Post button */}
-          {filteredPosts.length > 2 && (
+          {filteredPosts.length > 1 && (
             <View style={{ flex: 1, alignItems: "flex-end" }}>
               <TouchableOpacity
                 onPress={handleOpenRandomPost}
@@ -348,10 +331,7 @@ export default function HomeScreen() {
       <FlatList
         ref={postsListRef}
         style={{ flex: 1 }}
-        data={filteredPosts.sort(
-          (a, b) =>
-            new Date(b.addedAt).getTime() - new Date(a.addedAt).getTime()
-        )}
+        data={filteredPosts}
         keyExtractor={(item) => item.id.toString()}
         renderItem={renderPost}
         showsVerticalScrollIndicator={true}
@@ -383,7 +363,8 @@ export default function HomeScreen() {
                 // setSearch(""); // Done in SearchBar
                 setFavouritesFilter("all");
                 setReadFilter("all");
-
+                setOrderBy("addedAt");
+                setOrderDirection("desc");
                 postsListRef.current?.scrollToOffset({
                   offset: LIST_HEADER_HEIGHT,
                   animated: true,
