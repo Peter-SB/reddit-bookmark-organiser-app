@@ -9,6 +9,7 @@ import React, { useEffect, useState } from "react";
 import { ActivityIndicator, ScrollView, StyleSheet } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { DatabaseService } from "../services/DatabaseService";
+import SettingsAiConfiguration from "@/components/SettingsAiConfiguration";
 
 const defaultDbs = ["reddit_posts.db", "reddit_posts_test.db"];
 
@@ -77,6 +78,7 @@ export default function SettingsScreen() {
         </Text> */}
 
         <SettingsCredentialsManager />
+        <SettingsAiConfiguration />
         <SettingsDatabaseManager />
         <SettingsExportToJson />
       </ScrollView>

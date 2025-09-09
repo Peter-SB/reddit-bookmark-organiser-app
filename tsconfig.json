@@ -4,6 +4,9 @@
     "resolveJsonModule": true,
     "esModuleInterop": true,
     "strict": true,
+    "jsx": "react-jsx", // todo: double check
+    "module": "esnext",
+    "target": "es6",
     "paths": {
       "@/*": [
         "./*"

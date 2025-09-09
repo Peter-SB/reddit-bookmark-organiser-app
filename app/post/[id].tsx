@@ -1,4 +1,5 @@
 import { PostSidebar } from "@/components/PostSidebar";
+import PostSummary from "@/components/PostSummary";
 import { StarRating } from "@/components/StarRating";
 import { palette } from "@/constants/Colors";
 import { spacing } from "@/constants/spacing";
@@ -56,6 +57,7 @@ export default function PostScreen() {
   const [editedRating, setEditedRating] = useState<number | null>(null);
   const [editedIsRead, setEditedIsRead] = useState<boolean>(false);
   const [editedIsFavorite, setEditedIsFavorite] = useState<boolean>(false);
+  const [editedSummary, setEditedSummary] = useState("");
 
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [sidebarVisible, setSidebarVisible] = useState(false);
@@ -81,7 +83,8 @@ export default function PostScreen() {
       editedNotes !== originalNotes ||
       (editedRating ?? undefined) !== post.rating ||
       editedIsRead !== post.isRead ||
-      editedIsFavorite !== post.isFavorite
+      editedIsFavorite !== post.isFavorite ||
+      editedSummary !== (post.summary || "")
     );
   }, [
     post,
@@ -91,6 +94,7 @@ export default function PostScreen() {
     editedRating,
     editedIsRead,
     editedIsFavorite,
+    editedSummary,
   ]);
   // animates out then goes back
   const animateAndGoBack = useCallback(() => {
@@ -111,6 +115,8 @@ export default function PostScreen() {
       rating: editedRating ?? undefined,
       isRead: editedIsRead,
       isFavorite: editedIsFavorite,
+      summary: editedSummary,
+      updatedAt: new Date(),
     };
     await savePost(updated);
   }, [
@@ -121,6 +127,7 @@ export default function PostScreen() {
     editedRating,
     editedIsRead,
     editedIsFavorite,
+    editedSummary,
     savePost,
   ]);
 
@@ -134,7 +141,15 @@ export default function PostScreen() {
           {
             text: "Discard",
             style: "destructive",
-            onPress: () => animateAndGoBack(),
+            onPress: () => {
+              if (post) {
+                setEditedTitle(post.customTitle ?? post.title);
+                setEditedBody(post.customBody ?? post.bodyText);
+                setEditedNotes(post.notes ?? "");
+                setEditedSummary(post.summary || "");
+              }
+              animateAndGoBack();
+            },
           },
           {
             text: "Save",
@@ -149,7 +164,7 @@ export default function PostScreen() {
     } else {
       animateAndGoBack();
     }
-  }, [hasUnsavedChanges, animateAndGoBack, handleSave]);
+  }, [hasUnsavedChanges, animateAndGoBack, handleSave, post]);
 
   useEffect(() => {
     const onBackPress = () => {
@@ -176,11 +191,12 @@ export default function PostScreen() {
         setEditedBody(found.customBody ?? found.bodyText);
         setEditedNotes(found.notes ?? "");
         setEditedRating(found.rating ?? null);
+        setEditedSummary(found.summary || "");
       }
       setEditedIsRead(found.isRead);
       setEditedIsFavorite(found.isFavorite);
     }
-  }, [id, posts, loading]);
+  }, [id, posts, loading, hasUnsavedChanges]);
 
   const fontOptions = [
     { fontSize: fontSizes.xsmall, lineHeight: 13 },
@@ -351,6 +367,7 @@ export default function PostScreen() {
                             setEditedTitle(post.customTitle ?? post.title);
                             setEditedBody(post.customBody ?? post.bodyText);
                             setEditedNotes(post.notes ?? "");
+                            setEditedSummary(post.summary || "");
                           }
                         },
                       },
@@ -461,6 +478,16 @@ export default function PostScreen() {
                 />
               </TouchableOpacity>
             </View>
+          </View>
+          {/* Summary */}
+          <View style={styles.summarySection}>
+            <PostSummary
+              post={post}
+              onSave={setEditedSummary}
+              currentFont={currentFont}
+              editedSummary={editedSummary}
+              setEditedSummary={setEditedSummary}
+            />
           </View>
 
           {/* Body */}
@@ -661,6 +688,11 @@ const styles = StyleSheet.create({
   },
   titleSection: {
     padding: spacing.m,
+    borderBottomWidth: 1,
+    borderBottomColor: palette.border,
+  },
+  summarySection: {
+    padding: spacing.s,
     borderBottomWidth: 1,
     borderBottomColor: palette.border,
   },

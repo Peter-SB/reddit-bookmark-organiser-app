@@ -7,6 +7,7 @@ export const DEFAULT_DB = 'reddit_posts.db';
 
 export class DatabaseService {
   private static instance: DatabaseService | null;
+  private static inFlight: Promise<DatabaseService> | null = null;
   private db: SQLiteDatabase;
   private filename: string;
 
@@ -20,22 +21,50 @@ export class DatabaseService {
   public static async getInstance(): Promise<DatabaseService> {
     console.debug('DatabaseService.getInstance() called');
 
-    if (DatabaseService.instance) {
+    if (DatabaseService.instance && await DatabaseService.instance.isConnectionValid()) {
       return DatabaseService.instance;
     }
 
-    const stored = await AsyncStorage.getItem(STORAGE_KEY);
-    const filename = stored ?? DEFAULT_DB;
+    if (DatabaseService.inFlight) return DatabaseService.inFlight;
 
-    const db = await SQLite.openDatabaseAsync(
-      filename, 
-      { useNewConnection: true } // stops null pointer exceptions caused by shared connection being automatically closed
-    );
+    DatabaseService.inFlight = (async () => {
+      const stored = await AsyncStorage.getItem(STORAGE_KEY);
+      const filename = stored ?? DEFAULT_DB;
+      const db = await SQLite.openDatabaseAsync(filename, { useNewConnection: true });
 
-    const dbService = new DatabaseService(db, filename);
-    await dbService.init();
-    DatabaseService.instance = dbService;
-    return dbService;
+      const svc = new DatabaseService(db, filename);
+      await svc.init();
+      DatabaseService.instance = svc;
+      DatabaseService.inFlight = null;
+      return svc;
+    })().catch((e) => {
+      DatabaseService.inFlight = null;
+      throw e;
+    });
+
+    return DatabaseService.inFlight;
+
+    // const stored = await AsyncStorage.getItem(STORAGE_KEY);
+    // const filename = stored ?? DEFAULT_DB;
+
+    // const db = await SQLite.openDatabaseAsync(
+    //   filename, 
+    //   { useNewConnection: true } // stops null pointer exceptions caused by shared connection being automatically closed
+    // );
+
+    // const dbService = new DatabaseService(db, filename);
+    // await dbService.init();
+    // DatabaseService.instance = dbService;
+    // return dbService;
+  }
+
+  private async isConnectionValid(): Promise<boolean> {
+    try {
+      await this.db.getFirstAsync('SELECT 1 as ok');
+      return true;
+    } catch {
+      return false;
+    }
   }
 
   public static async switchDatabase(filename: string): Promise<void> {
@@ -77,13 +106,19 @@ export class DatabaseService {
         isRead            INTEGER NOT NULL DEFAULT 0,
         isFavorite        INTEGER NOT NULL DEFAULT 0,
         extraFields       TEXT,
-        bodyMinHash       TEXT
+        bodyMinHash       TEXT,
+        summary           TEXT
       );
 
       CREATE TABLE IF NOT EXISTS post_folders (
         post_id   INTEGER NOT NULL REFERENCES posts(id) ON DELETE CASCADE,
         folder_id INTEGER NOT NULL REFERENCES folders(id) ON DELETE CASCADE,
         PRIMARY KEY (post_id, folder_id)
+      );
+
+      CREATE TABLE IF NOT EXISTS settings (
+        key   TEXT PRIMARY KEY,
+        value TEXT
       );
     `);
 
@@ -92,6 +127,11 @@ export class DatabaseService {
     const hasBodyMinHash = columns.some((col: any) => col.name === 'bodyMinHash');
     if (!hasBodyMinHash) {
       await this.db.execAsync(`ALTER TABLE posts ADD COLUMN bodyMinHash TEXT;`);
+    }
+    // Migration: add summary column if it doesn't exist
+    const hasSummary = columns.some((col: any) => col.name === 'summary');
+    if (!hasSummary) {
+      await this.db.execAsync(`ALTER TABLE posts ADD COLUMN summary TEXT;`);
     }
   }
 

@@ -18,6 +18,9 @@ export interface Post {
   /** When the user added it */
   addedAt: Date;
 
+  /** When the post was last updated */
+  updatedAt: Date;
+
   /** User-editable */
   customTitle?: string;
   customBody?: string;
@@ -36,6 +39,9 @@ export interface Post {
 
   /** MinHash for duplicate detection in-case of repost or reupload */
   bodyMinHash?: string;
+
+  /** AI-generated summary */
+  summary?: string;
 }
 
 export interface Folder {

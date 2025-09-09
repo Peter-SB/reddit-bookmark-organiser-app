@@ -65,7 +65,7 @@ export function usePosts(): UsePostsResult {
   }, [repo, loadPosts]);
 
   const updatePost = useCallback(async (post: Post) => {
-    console.debug('Updating post:', post);
+    // console.debug('Updating post:', post);
     if (!repo) throw new Error('PostRepository not ready');
     await repo.update(post);
     const updated = await repo.getById(post.id);

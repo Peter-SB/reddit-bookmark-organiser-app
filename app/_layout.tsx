@@ -28,11 +28,24 @@ export default function RootLayout() {
     console.log("DatabaseService initialized");
   }, []);
 
+  useEffect(() => {
+    const sub = AppState.addEventListener("change", (state) => {
+      if (state === "active") {
+        // Reopen if needed; cheap due to health check + in-flight lock
+        DatabaseService.getInstance().catch((e) =>
+          console.error("DB re-open on resume failed", e)
+        );
+      }
+    });
+    return () => sub.remove();
+  }, []);
+
   // Handle incoming shared Reddit URLs: todo check
   useEffect(() => {
     const handleUrl = (url: string) => {
       if (url && url.includes("reddit.com")) {
         // Pass the shared URL as a param to index
+        alert("Shared URL detected: " + url);
         router.replace({ pathname: "/", params: { sharedUrl: url } });
       }
     };

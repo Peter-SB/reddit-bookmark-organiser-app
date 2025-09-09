@@ -158,6 +158,16 @@ export const PostSidebar: React.FC<SidebarProps> = ({
             <Text style={styles.sidebarText}>
               Posted: {formatDate(post.redditCreatedAt)}
             </Text>
+            <Text style={styles.sidebarText}>Bookmark #{post.id}</Text>
+            <Text style={styles.sidebarText}>
+              Word count:{" "}
+              {
+                (post.customBody ?? post.bodyText ?? "")
+                  .trim()
+                  .split(/\s+/)
+                  .filter(Boolean).length
+              }
+            </Text>
           </View>
 
           {/* Folder */}
