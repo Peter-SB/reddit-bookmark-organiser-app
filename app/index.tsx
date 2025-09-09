@@ -7,6 +7,7 @@ import {
   Alert,
   Dimensions,
   FlatList,
+  Image,
   StyleSheet,
   Text,
   TouchableOpacity,
@@ -287,12 +288,25 @@ export default function HomeScreen() {
               style={{ marginRight: spacing.xs }}
             />
           </TouchableOpacity>
-          <View style={styles.headerText}>
-            <Text style={styles.title}>Reddit Bookmarks</Text>
-            <Text style={styles.subtitle}>
-              {total} {total === 1 ? "bookmark" : "bookmarks"}
-              {unread > 0 && ` • ${unread} unread`}
-            </Text>
+          <View
+            style={{
+              flexDirection: "row",
+              alignItems: "center",
+              justifyContent: "center",
+            }}
+          >
+            <View style={styles.headerText}>
+              <Text style={styles.title}>Reddit Bookmarks</Text>
+              <Text style={styles.subtitle}>
+                {total} {total === 1 ? "bookmark" : "bookmarks"}
+                {unread > 0 && ` • ${unread} unread`}
+              </Text>
+            </View>
+            <Image
+              source={require("@/assets/images/custom-splash-icon.png")}
+              style={{ width: 46, height: 46, marginLeft: 4 }}
+              resizeMode="contain"
+            />
           </View>
           {/* Random Post button */}
           {filteredPosts.length > 1 && (
