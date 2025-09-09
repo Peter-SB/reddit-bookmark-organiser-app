@@ -75,81 +75,95 @@ export default function PostSummary({
   }, [summary, isStreaming, setEditedSummary]);
 
   async function startSummary() {
-    try {
-      if (isStreaming) return;
-
-      const settings = await SettingsRepository.getSettings([
-        AI_ENDPOINT_URL,
-        AI_MODEL_ID,
-        AI_SYSTEM_PROMPT,
-      ]);
-
-      const endpoint = settings[AI_ENDPOINT_URL];
-      const modelId = settings[AI_MODEL_ID];
-      const systemPrompt = settings[AI_SYSTEM_PROMPT];
-
-      if (!endpoint) throw new Error("AI Settings Not Configured");
-
-      const bodyText = post.customBody || post.bodyText || "";
-      const prompt =
-        systemPrompt ||
-        "You are an assistant that summarises reddit posts in 3-4 lines.";
-      const payload = {
-        model: modelId,
-        stream: true,
-        messages: [
-          {
-            role: "system",
-            content: prompt,
-          },
-          {
-            role: "user",
-            content: bodyText + "----End of Story---" + prompt,
-          },
-        ],
-        max_tokens: 1024,
-      };
-
-      setError(null);
-      setStatus("loading");
-      setIsStreaming(true);
-      setSummary("");
-
-      summaryRef.current = "";
-      const es = startSSEChat({
-        endpoint,
-        payload,
-        onDelta: (delta) => {
-          setSummary((prev) => {
-            const next = prev + delta;
-            summaryRef.current = next; // keep ref in lockstep with state
-            return next;
-          });
-        },
-        onFinish: () => {
-          requestAnimationFrame(() => {
-            setIsStreaming(false);
-            setStatus("success");
-            setStreamHandle(null);
-            setEditedSummary(summaryRef.current); // now includes the last chunk
-          });
-        },
-        onError: (err) => {
-          setIsStreaming(false);
-          setError(
-            (err && (err.message || err.toString())) ||
-              "Failed to stream summary."
-          );
-          setStatus("error");
-          setStreamHandle(null);
-        },
-      });
-      setStreamHandle(es);
-    } catch (err: any) {
-      setError(err?.message || "Failed to start summary.");
+    if (isStreaming) return;
+    const settings = await SettingsRepository.getSettings([
+      AI_ENDPOINT_URL,
+      AI_MODEL_ID,
+      AI_SYSTEM_PROMPT,
+    ]);
+    const endpoints = (settings[AI_ENDPOINT_URL] || "")
+      .split(";")
+      .map((e) => e.trim())
+      .filter(Boolean);
+    const modelId = settings[AI_MODEL_ID];
+    const systemPrompt = settings[AI_SYSTEM_PROMPT];
+    if (!endpoints.length) {
+      setError("AI Settings Not Configured");
       setStatus("error");
       setIsStreaming(false);
+      return;
     }
+    const bodyText = post.customBody || post.bodyText || "";
+    const prompt =
+      systemPrompt ||
+      "You are an assistant that summarises reddit posts in 3-4 lines.";
+    const payload = {
+      model: modelId,
+      stream: true,
+      messages: [
+        {
+          role: "system",
+          content: prompt,
+        },
+        {
+          role: "user",
+          content: bodyText + "----End of Story---" + prompt,
+        },
+      ],
+      max_tokens: 1024,
+    };
+    setError(null);
+    setStatus("loading");
+    setIsStreaming(true);
+    setSummary("");
+    summaryRef.current = "";
+
+    let currentEndpointIndex = 0;
+    function tryNextEndpoint(errorMsg?: string) {
+      if (currentEndpointIndex >= endpoints.length) {
+        setError("All endpoints failed." + errorMsg);
+        setStatus("error");
+        setIsStreaming(false);
+        setStreamHandle(null);
+        return;
+      }
+      const endpoint = endpoints[currentEndpointIndex];
+      currentEndpointIndex++;
+      try {
+        const es = startSSEChat({
+          endpoint,
+          payload,
+          onDelta: (delta) => {
+            setSummary((prev) => {
+              const next = prev + delta;
+              summaryRef.current = next; // keep ref inline with state
+              return next;
+            });
+          },
+          onFinish: () => {
+            requestAnimationFrame(() => {
+              setIsStreaming(false);
+              setStatus("success");
+              setStreamHandle(null);
+              setEditedSummary(summaryRef.current);
+            });
+          },
+          onError: (err) => {
+            setStreamHandle(null);
+            const errMsg =
+              typeof err === "string" ? err : err?.message || "Unknown error";
+            tryNextEndpoint(errMsg);
+          },
+        });
+        setStreamHandle(es);
+      } catch (err) {
+        // Synchronous error, try next
+        console.log("AI endpoint error:", err);
+        const errMsg = err instanceof Error ? err.message : String(err);
+        tryNextEndpoint(errMsg);
+      }
+    }
+    tryNextEndpoint();
   }
 
   const handleRegenerate = () => {

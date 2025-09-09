@@ -101,10 +101,6 @@ export const PostSidebar: React.FC<SidebarProps> = ({
           </TouchableOpacity>
         </View>
         <ScrollView style={styles.sidebarContent}>
-          <View style={styles.sidebarSection}>
-            <Text style={styles.sidebarText}>Bookmark #{post.id}</Text>
-          </View>
-
           {/* Notes */}
           <View style={styles.sidebarSection}>
             <Text style={styles.sidebarSectionTitle}>Notes</Text>
@@ -162,6 +158,7 @@ export const PostSidebar: React.FC<SidebarProps> = ({
             <Text style={styles.sidebarText}>
               Posted: {formatDate(post.redditCreatedAt)}
             </Text>
+            <Text style={styles.sidebarText}>Bookmark #{post.id}</Text>
             <Text style={styles.sidebarText}>
               Word count:{" "}
               {
