@@ -1,10 +1,10 @@
 {
   "expo": {
-    "name": "reddit-post-organiser-app",
+    "name": "Reddit Bookmarks",
     "slug": "reddit-post-organiser-app",
     "version": "1.0.0",
     "orientation": "portrait",
-    "icon": "./assets/images/custom-icon.png",
+    "icon": "./assets/images/custom-icon-small.png",
     "scheme": "redditpostorganiserapp",
     "userInterfaceStyle": "automatic",
     "newArchEnabled": true,
