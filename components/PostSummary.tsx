@@ -294,6 +294,8 @@ const styles = StyleSheet.create({
   },
   errorText: {
     color: palette.favHeartRed,
+    flexShrink: 1,
+    marginRight: 8,
   },
   label: {
     fontWeight: "bold",
@@ -338,6 +340,7 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "center",
+    maxWidth: "100%",
     width: "100%",
   },
   summariseButton: {
