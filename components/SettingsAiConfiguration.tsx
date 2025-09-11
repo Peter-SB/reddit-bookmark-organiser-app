@@ -156,170 +156,163 @@ export default function SettingsAiConfiguration() {
   }
 
   return (
-    <>
-      <Text style={styles.title}>AI Endpoint Configuration</Text>
-      <View style={styles.container}>
-        <Text style={styles.label}>Endpoint URL*</Text>
-        <TextInput
-          style={styles.input}
-          value={endpoint}
-          onChangeText={setEndpoint}
-          placeholder="https://your-ai-endpoint.com/v1"
-          autoCapitalize="none"
-          autoCorrect={false}
-        />
-        <Text style={styles.label}>Model ID</Text>
-        <View style={styles.input}>
-          <Picker
-            selectedValue={modelId}
-            onValueChange={setModelId}
-            onFocus={handleModelDropdownOpen}
-          >
-            {models.length > 0 ? (
-              models.map((m) => <Picker.Item key={m} label={m} value={m} />)
-            ) : (
-              <Picker.Item
-                label={modelId || "Enter endpoint and test to load models"}
-                value={modelId}
-              />
-            )}
-          </Picker>
-        </View>
-        <Text style={styles.label}>System Prompt</Text>
-        <TextInput
-          style={styles.input}
-          value={systemPrompt}
-          onChangeText={setSystemPrompt}
-          placeholder="You are an assistant that summarizes Reddit posts."
-          autoCapitalize="none"
-          autoCorrect={false}
-          multiline
-        />
-        <Text style={styles.label}>Show AI Summary Section</Text>
-        <TouchableOpacity
-          style={[
-            styles.input,
-            {
-              flexDirection: "row",
-              alignItems: "center",
-              justifyContent: "space-between",
-            },
-          ]}
-          onPress={() => setShowAiSummary((v) => !v)}
+    <View style={styles.container}>
+      <Text style={styles.label}>Endpoint URL*</Text>
+      <TextInput
+        style={styles.input}
+        value={endpoint}
+        onChangeText={setEndpoint}
+        placeholder="https://your-ai-endpoint.com/v1"
+        autoCapitalize="none"
+        autoCorrect={false}
+      />
+      <Text style={styles.label}>Model ID</Text>
+      <View style={styles.input}>
+        <Picker
+          selectedValue={modelId}
+          onValueChange={setModelId}
+          onFocus={handleModelDropdownOpen}
         >
-          <Text style={{ fontSize: fontSizes.body }}>
-            {showAiSummary ? "On" : "Off"}
-          </Text>
+          {models.length > 0 ? (
+            models.map((m) => <Picker.Item key={m} label={m} value={m} />)
+          ) : (
+            <Picker.Item
+              label={modelId || "Enter endpoint and test to load models"}
+              value={modelId}
+            />
+          )}
+        </Picker>
+      </View>
+      <Text style={styles.label}>System Prompt</Text>
+      <TextInput
+        style={styles.input}
+        value={systemPrompt}
+        onChangeText={setSystemPrompt}
+        placeholder="You are an assistant that summarizes Reddit posts."
+        autoCapitalize="none"
+        autoCorrect={false}
+        multiline
+      />
+      <Text style={styles.label}>Show AI Summary Section</Text>
+      <TouchableOpacity
+        style={[
+          styles.input,
+          {
+            flexDirection: "row",
+            alignItems: "center",
+            justifyContent: "space-between",
+          },
+        ]}
+        onPress={() => setShowAiSummary((v) => !v)}
+      >
+        <Text style={{ fontSize: fontSizes.body }}>
+          {showAiSummary ? "On" : "Off"}
+        </Text>
+        <View
+          style={{
+            width: 40,
+            height: 24,
+            borderRadius: 12,
+            backgroundColor: showAiSummary ? palette.accent : palette.border,
+            justifyContent: "center",
+          }}
+        >
           <View
             style={{
-              width: 40,
-              height: 24,
-              borderRadius: 12,
-              backgroundColor: showAiSummary ? palette.accent : palette.border,
-              justifyContent: "center",
+              width: 20,
+              height: 20,
+              borderRadius: 10,
+              backgroundColor: palette.background,
+              marginLeft: showAiSummary ? 18 : 2,
+              elevation: 2,
             }}
-          >
-            <View
-              style={{
-                width: 20,
-                height: 20,
-                borderRadius: 10,
-                backgroundColor: palette.background,
-                marginLeft: showAiSummary ? 18 : 2,
-                elevation: 2,
-              }}
-            />
-          </View>
-        </TouchableOpacity>
-
-        <View style={styles.buttonRow}>
-          <TouchableOpacity
-            style={styles.button}
-            onPress={testEndpoint}
-            disabled={testing}
-          >
-            <Text style={styles.buttonText}>
-              {testing ? "Testing..." : "Test Endpoint"}
-            </Text>
-          </TouchableOpacity>
-          <TouchableOpacity style={styles.button} onPress={save}>
-            <Text style={styles.buttonText}>Save</Text>
-          </TouchableOpacity>
+          />
         </View>
+      </TouchableOpacity>
 
-        {testResult && (
-          <Text
-            style={[
-              styles.testResult,
-              testResult.startsWith("Success") ? styles.success : styles.error,
-            ]}
-          >
-            {testResult}
+      <View style={styles.buttonRow}>
+        <TouchableOpacity
+          style={styles.button}
+          onPress={testEndpoint}
+          disabled={testing}
+        >
+          <Text style={styles.buttonText}>
+            {testing ? "Testing..." : "Test Endpoint"}
           </Text>
-        )}
+        </TouchableOpacity>
+        <TouchableOpacity style={styles.button} onPress={save}>
+          <Text style={styles.buttonText}>Save</Text>
+        </TouchableOpacity>
       </View>
-    </>
+
+      {testResult && (
+        <Text
+          style={[
+            styles.testResult,
+            testResult.startsWith("Success") ? styles.success : styles.error,
+          ]}
+        >
+          {testResult}
+        </Text>
+      )}
+    </View>
   );
 }
 
 const styles = StyleSheet.create({
   container: {
-    flex: 1,
     padding: spacing.m,
-    paddingTop: 0,
     backgroundColor: palette.background,
-  },
-  title: {
-    fontSize: fontSizes.title,
-    fontWeight: fontWeights.semibold,
-    color: palette.foreground,
-    margin: spacing.m,
   },
   label: {
     fontSize: fontSizes.body,
-    fontWeight: fontWeights.semibold,
+    fontWeight: fontWeights.medium,
     color: palette.foreground,
-    marginTop: spacing.m / 2,
+    marginTop: spacing.s,
+    marginBottom: spacing.xs,
   },
   input: {
     borderWidth: 1,
     borderColor: palette.border,
-    borderRadius: 8,
+    borderRadius: 6,
     padding: spacing.s,
-    marginTop: spacing.s / 2,
-    backgroundColor: palette.background,
+    backgroundColor: palette.backgroundMidLight,
+    fontSize: fontSizes.body,
+    color: palette.foreground,
   },
   buttonRow: {
     flexDirection: "row",
-    marginTop: spacing.l,
-    justifyContent: "space-between",
+    marginTop: spacing.m,
+    gap: spacing.s,
   },
   button: {
     flex: 1,
-    marginHorizontal: spacing.s / 2,
-    padding: spacing.m,
-    backgroundColor: palette.accent,
-    borderRadius: 8,
+    marginTop: spacing.m,
+    padding: spacing.s,
+    backgroundColor: palette.background,
+    borderRadius: 6,
+    borderColor: palette.border,
+    borderWidth: 1,
     alignItems: "center",
   },
   buttonText: {
-    color: palette.background,
+    color: palette.foreground,
     fontSize: fontSizes.body,
     fontWeight: fontWeights.medium,
   },
   testResult: {
-    marginTop: spacing.m,
-    fontSize: fontSizes.body,
+    marginTop: spacing.s,
+    fontSize: fontSizes.small,
     fontWeight: fontWeights.medium,
     padding: spacing.s,
-    borderRadius: 8,
+    borderRadius: 6,
   },
   success: {
-    color: "green",
+    color: palette.saveGreen,
     backgroundColor: "#e6ffe6",
   },
   error: {
-    color: "red",
+    color: "#dc3545",
     backgroundColor: "#ffe6e6",
   },
 });

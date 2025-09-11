@@ -81,98 +81,100 @@ export default function SettingsCredentialsManager() {
   }
 
   return (
-    <>
-      <Text style={styles.title}>Reddit API Credentials</Text>
-      <View style={styles.container}>
-        <Text style={styles.label}>Username*</Text>
-        <TextInput
-          style={styles.input}
-          value={username}
-          onChangeText={setUsername}
-          placeholder="Username"
-          autoCapitalize="none"
-        />
+    <View style={styles.container}>
+      <Text style={styles.label}>Username*</Text>
+      <TextInput
+        style={styles.input}
+        value={username}
+        onChangeText={setUsername}
+        placeholder="Username"
+        autoCapitalize="none"
+      />
 
-        <Text style={styles.label}>Password</Text>
-        <TextInput
-          style={styles.input}
-          value={password}
-          onChangeText={setPassword}
-          placeholder="Password"
-          secureTextEntry
-        />
+      <Text style={styles.label}>Password</Text>
+      <TextInput
+        style={styles.input}
+        value={password}
+        onChangeText={setPassword}
+        placeholder="Password"
+        secureTextEntry
+      />
 
-        <Text style={styles.label}>Client ID*</Text>
-        <TextInput
-          style={styles.input}
-          value={clientId}
-          onChangeText={setClientId}
-          placeholder="Client ID"
-          autoCapitalize="none"
-        />
+      <Text style={styles.label}>Client ID*</Text>
+      <TextInput
+        style={styles.input}
+        value={clientId}
+        onChangeText={setClientId}
+        placeholder="Client ID"
+        autoCapitalize="none"
+      />
 
-        <Text style={styles.label}>Client Secret*</Text>
-        <TextInput
-          style={styles.input}
-          value={clientSecret}
-          onChangeText={setClientSecret}
-          placeholder="Client Secret"
-          autoCapitalize="none"
-        />
+      <Text style={styles.label}>Client Secret*</Text>
+      <TextInput
+        style={styles.input}
+        value={clientSecret}
+        onChangeText={setClientSecret}
+        placeholder="Client Secret"
+        autoCapitalize="none"
+      />
 
-        <Text style={styles.label}>User Agent*</Text>
-        <TextInput
-          style={styles.input}
-          value={userAgent}
-          onChangeText={setUserAgent}
-          placeholder="User Agent"
-          autoCapitalize="none"
-        />
+      <Text style={styles.label}>User Agent*</Text>
+      <TextInput
+        style={styles.input}
+        value={userAgent}
+        onChangeText={setUserAgent}
+        placeholder="User Agent"
+        autoCapitalize="none"
+      />
 
+      <View style={styles.buttonRow}>
         <TouchableOpacity style={styles.button} onPress={save}>
           <Text style={styles.buttonText}>Save Credentials</Text>
         </TouchableOpacity>
       </View>
-    </>
+    </View>
   );
 }
 
 const styles = StyleSheet.create({
   container: {
-    flex: 1,
     padding: spacing.m,
-    paddingTop: 0,
     backgroundColor: palette.background,
-  },
-  title: {
-    fontSize: fontSizes.title,
-    fontWeight: fontWeights.semibold,
-    color: palette.foreground,
-    margin: spacing.m,
   },
   label: {
     fontSize: fontSizes.body,
-    fontWeight: fontWeights.semibold,
+    fontWeight: fontWeights.medium,
     color: palette.foreground,
-    marginTop: spacing.m / 2,
+    marginTop: spacing.s,
+    marginBottom: spacing.xs,
   },
   input: {
     borderWidth: 1,
     borderColor: palette.border,
-    borderRadius: 8,
+    borderRadius: 6,
     padding: spacing.s,
-    marginTop: spacing.s / 2,
-    backgroundColor: palette.background,
+    backgroundColor: palette.backgroundMidLight,
+    fontSize: fontSizes.body,
+    color: palette.foreground,
+  },
+  buttonRow: {
+    flexDirection: "row",
+    marginTop: spacing.m,
+    gap: spacing.s,
+    alignItems: "center",
+    justifyContent: "center",
   },
   button: {
-    marginTop: spacing.l,
-    padding: spacing.m,
-    backgroundColor: palette.accent,
-    borderRadius: 8,
+    flex: 1,
+    padding: spacing.s,
+    backgroundColor: palette.background,
+    borderRadius: 6,
+    borderColor: palette.border,
+    borderWidth: 1,
     alignItems: "center",
   },
   buttonText: {
-    color: palette.background,
+    color: palette.foreground,
     fontSize: fontSizes.body,
     fontWeight: fontWeights.medium,
   },

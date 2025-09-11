@@ -1,6 +1,6 @@
 import { palette } from "@/constants/Colors";
 import { spacing } from "@/constants/spacing";
-import { fontSizes, fontWeights } from "@/constants/typography";
+import { fontColours, fontSizes, fontWeights } from "@/constants/typography";
 import { Picker } from "@react-native-picker/picker";
 import * as DocumentPicker from "expo-document-picker";
 import * as FileSystem from "expo-file-system";
@@ -19,7 +19,6 @@ import {
   TouchableOpacity,
   View,
 } from "react-native";
-import { SafeAreaView } from "react-native-safe-area-context";
 import { DatabaseService, DEFAULT_DB } from "../services/DatabaseService";
 
 export default function SettingsDatabaseManager() {
@@ -248,15 +247,14 @@ export default function SettingsDatabaseManager() {
 
   if (loading) {
     return (
-      <SafeAreaView style={styles.container}>
+      <View style={styles.container}>
         <ActivityIndicator size="large" color={palette.accent} />
-      </SafeAreaView>
+      </View>
     );
   }
 
   return (
-    <SafeAreaView style={styles.container}>
-      <Text style={styles.title}>Database File</Text>
+    <View style={styles.container}>
       <View style={styles.pickerWrapper}>
         <Picker
           selectedValue={selected}
@@ -318,49 +316,53 @@ export default function SettingsDatabaseManager() {
           </View>
         </View>
       </Modal>
-    </SafeAreaView>
+    </View>
   );
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: palette.background },
-  title: {
-    fontSize: fontSizes.title,
-    fontWeight: fontWeights.semibold,
-    color: palette.foreground,
-    margin: spacing.m,
+  container: {
+    padding: spacing.m,
+    backgroundColor: palette.background,
   },
   pickerWrapper: {
-    marginHorizontal: spacing.m,
+    marginBottom: spacing.s,
     borderWidth: 1,
     borderColor: palette.border,
-    borderRadius: 8,
+    borderRadius: 6,
+    backgroundColor: palette.backgroundMidLight,
     overflow: "hidden",
   },
-  picker: { height: 50, width: "100%" },
+  picker: {
+    height: 50,
+    width: "100%",
+    color: palette.foreground,
+  },
   buttonRow: {
     flexDirection: "row",
-    margin: spacing.m,
-    justifyContent: "space-between",
+    gap: spacing.s,
+    marginBottom: spacing.s,
   },
   button: {
     flex: 1,
-    marginHorizontal: spacing.s / 2,
     paddingVertical: spacing.s,
     backgroundColor: palette.background,
-    borderRadius: 8,
+    borderRadius: 6,
     alignItems: "center",
+    borderWidth: 1,
+    borderColor: palette.border,
   },
   smallButton: {
     flex: 1,
-    marginHorizontal: spacing.s / 4,
     paddingVertical: spacing.s,
-    backgroundColor: palette.background,
-    borderRadius: 8,
+    backgroundColor: palette.backgroundMidLight,
+    borderRadius: 6,
     alignItems: "center",
+    borderWidth: 1,
+    borderColor: palette.border,
   },
   buttonText: {
-    color: palette.accent,
+    color: fontColours.foreground,
     fontSize: fontSizes.body,
     fontWeight: fontWeights.medium,
   },
@@ -373,21 +375,30 @@ const styles = StyleSheet.create({
   modalContent: {
     width: "80%",
     backgroundColor: palette.background,
-    borderRadius: 12,
+    borderRadius: 8,
     padding: spacing.m,
+    borderWidth: 1,
+    borderColor: palette.border,
   },
   modalTitle: {
     fontSize: fontSizes.title,
     fontWeight: fontWeights.semibold,
-    color: palette.accent,
+    color: palette.foreground,
     marginBottom: spacing.s,
   },
   input: {
     borderWidth: 1,
     borderColor: palette.border,
-    borderRadius: 8,
+    borderRadius: 6,
     padding: spacing.s,
     marginBottom: spacing.m,
+    backgroundColor: palette.backgroundMidLight,
+    fontSize: fontSizes.body,
+    color: palette.foreground,
   },
-  modalButtons: { flexDirection: "row", justifyContent: "space-between" },
+  modalButtons: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    gap: spacing.s,
+  },
 });

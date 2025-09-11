@@ -1,6 +1,6 @@
 import { palette } from "@/constants/Colors";
 import { spacing } from "@/constants/spacing";
-import { fontColours, fontSizes, fontWeights } from "@/constants/typography";
+import { fontSizes, fontWeights } from "@/constants/typography";
 import { FolderRepository } from "@/repository/FolderRepository";
 import { PostRepository } from "@/repository/PostRepository";
 import * as DocumentPicker from "expo-document-picker";
@@ -16,7 +16,6 @@ import {
   TouchableOpacity,
   View,
 } from "react-native";
-import { SafeAreaView } from "react-native-safe-area-context";
 
 export default function SettingsExportToJson() {
   const [loading, setLoading] = useState(false);
@@ -130,25 +129,13 @@ export default function SettingsExportToJson() {
   };
 
   return (
-    <SafeAreaView style={styles.container}>
-      <Text style={styles.title}>Export Json Data</Text>
-      {/* <Text style={styles.description}>
-        Export and import your bookmark data in JSON format. Note that when
-        importing, this will add to your current library.
-      </Text> */}
+    <View style={styles.container}>
       <View style={styles.buttonRow}>
         <TouchableOpacity
           onPress={exportToFolder}
-          style={[styles.button]}
+          style={styles.button}
           disabled={loading}
         >
-          <TouchableOpacity
-            onPress={importFromJson}
-            style={[styles.button]}
-            disabled={loading}
-          >
-            <Text style={styles.buttonText}>Import</Text>
-          </TouchableOpacity>
           {loading ? (
             <ActivityIndicator color={palette.accent} />
           ) : (
@@ -156,44 +143,52 @@ export default function SettingsExportToJson() {
           )}
         </TouchableOpacity>
         <TouchableOpacity
+          onPress={importFromJson}
+          style={styles.button}
+          disabled={loading}
+        >
+          <Text style={styles.buttonText}>Import</Text>
+        </TouchableOpacity>
+        <TouchableOpacity
           onPress={shareAllData}
-          style={[styles.button]}
+          style={styles.button}
           disabled={loading}
         >
           <Text style={styles.buttonText}>Share</Text>
         </TouchableOpacity>
       </View>
-    </SafeAreaView>
+    </View>
   );
 }
 
 const styles = StyleSheet.create({
   container: {
     padding: spacing.m,
-  },
-  title: {
-    fontSize: fontSizes.title,
-    fontWeight: fontWeights.semibold,
-    color: palette.foreground,
-    marginBottom: spacing.m,
+    backgroundColor: palette.background,
   },
   description: {
     fontSize: fontSizes.body,
-    color: fontColours.muted,
-    marginBottom: spacing.m,
-  },
-  buttonRow: {
-    flexDirection: "row",
+    color: palette.foregroundMidLight,
     marginBottom: spacing.m,
   },
   button: {
-    flex: 1,
-    paddingVertical: spacing.s,
+    marginTop: spacing.m,
+    padding: spacing.s,
+    backgroundColor: palette.background,
+    borderRadius: 6,
+    borderColor: palette.border,
+    borderWidth: 1,
     alignItems: "center",
+    flex: 1,
   },
   buttonText: {
-    color: palette.accent,
-    fontWeight: fontWeights.medium,
+    color: palette.foreground,
     fontSize: fontSizes.body,
+    fontWeight: fontWeights.medium,
+  },
+  buttonRow: {
+    flexDirection: "row",
+    gap: spacing.s,
+    marginBottom: spacing.m,
   },
 });
