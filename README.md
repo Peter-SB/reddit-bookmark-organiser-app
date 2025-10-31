@@ -1,140 +1,73 @@
-# Reddit Bookmark Manager
+# My Reddit Bookmark App and How I Integrated AI
 
-A modern React Native app built with Expo for saving and organizing Reddit posts. This POC demonstrates the core functionality of adding, rating, and managing Reddit bookmarks with a clean, minimalist UI.
+As anyone who uses Reddit know, saving and then searching for anything interesting in a nightmare. Your saved posts is just a long list with no way of filtering it down resulting in endless scrolling for a post you may or may not have remembered to save. There's also the sneaky 1000 post cap on the number of post you can save* (it's a bit more complicated than that, you can still find them but you have to request your Reddit data or start unpacking post). And god forbid you need to access anything offline.
 
-One main reason this app was built was because of the immense size of saved Reddit posts I have, and that I've had issues with my phone’s clipboard truncating long posts when trying to save to a generic notes app.
+The issue I kept running into while using my notes app to keep posts was that the clipboard would truncate long text. Plus I would have to save the original link to find it again later.
 
-## Features 
+Having used a lot of React and Typescript recently to build some front-ends for a couple of apps and website, I wanted to explore building with React Native, [a multiplatform mobile native version of react?].
 
-- **Add Reddit Posts**: Paste any Reddit URL to save posts
-- **Star Rating System**: Rate posts from 0-5 stars with half-star precision
-- **Read/Unread Toggle**: Mark posts as read with a simple tap
-- **Local Storage**: SQLite database for persistent, offline storage
-- **Modern UI**: Clean card-based design with consistent spacing and typography
-- **Cross-Platform**: Works on iOS, Android, and Web
+I focused clean minimalist design approach with initiatives user experience, offline storage, extensive search functionality, and post customisation.
 
-## Project Structure 
+I wanted to be able to quickly add posts, mark them are read/favourite, give them ratings, make notes for later, and untimely organise anything useful I found while browsing for later.
 
+**Note** that while this project taught me a lot, but the main aim was just to build something fun and there is a lot of further optimisation and refactoring possible. I however have other priorities and just wanted to post this and share what I've built so far.
 
-```
-reddit-post-organiser-app/
-├── components/             # Reusable UI components (cards, sidebar, etc.)
-├── constants/              # Design system: colors, spacing, typography
-├── hooks/                  # Custom React hooks (business logic, data fetching)
-├── models/                 # TypeScript models & types
-├── repository/             # Data access layer (Repository Pattern)
-├── services/               # App services (Database, MinHash, etc.)
-├── utils/                  # Helper functions
-├── app/                    # Expo Router pages (navigation, screens)
-|   └── post/               # Dynamic post pages
-├── app.json                # Expo app config
-├── eas.json                # EAS build config
-├── package.json            # NPM dependencies & scripts
-├── tsconfig.json           # TypeScript config
-└── README.md       
+# Key Features 
 
-```
+## Integration With Reddit API
+While initially I was scraping Reddit without using the official API, I ran into rate limits, bot detection, and this approach ultimately proved unreliable so I moved to use the official Reddit API. When you add a post a request is made to the API for the relevant post data.
 
-### Technical Highlights
+## SQLite Database
+For simple and reliable offline storage on mobile devices, SQLite was the no brainer. Storing the post data in an SQLite database also allowed for quick switching to other bookmark libraries or easy backup and restores.
 
-- **Repository Pattern**: All database access goes through `repository/`, making it easy to swap SQLite for cloud storage later.
-- **Custom Hooks**: Business logic (fetching, state) lives in `hooks/`, keeping UI components code clean.
-- **Expo Router**: Navigation handled in `app/` using file-based routing.
-- **Type Safety**: All models/types in `models/` for typesafe data handling.
-- **Testing**: Tested in `/__tests__/` folders.
-- **Design System**: Consistent look via `constants/` (colors, spacing, typography).
+Use a SQLite database came with its own challenge such as connections being automatically binned by the mobile operating system but they were all addressed.
+
+A repository pattern was used as a layer between the database and service hooks for cleaner code [fact check and come back to here].
+
+## Post Customisation 
+I wanted to be able to have a lot of options when it came to saving and then customising posts. Posts can be favourited, read/unread, have a start rating. Posts can also be edited incase I wanted to add my own notes or remove filler text. I also added a custom notes section for keeping my own thoughts on a post separate to the post body. I even added a neat folder system with some nice UI for keeping posts organised within topics.
+
+## Searching and Filtering 
+The standard search and filtering [levers? Word] are present. Searching body/title/author. Sort by date/rating/read/favourite. I also added a random button to take you to any post on your filtered list.
+
+## Deduplication with Minhash
+Given the tendancy for reposts, cross-posts, I wanted to be able to detect posts I already had saved, beyond just a title match.
+
+I experimented with two different simple [hashing?] algorithms to match duplicate posts. Simple hash and Min hash. While the Simple hash washing precise enough and provided too many false positives, the Minhash approaches worked excellently for finding matches of posts with only minor deviations.
+
+The post body Minhash values were precomputed as added to the database to be later compared against any newly added post.
 
 
-
-Features:
-
-- Save Reddit posts locally. Enter a post URL and the app will fetch the post data for offline local storage
-- Organise and Edit. Favourite, notes, rating, read-status, and local editing of posts.
-- De-duplication. Avoid resaving posts with checks of matching content in your library
-- Export posts for backups or other uses
-- Simple intuitive ui
-
-# Technical Notes
-
-## State Management and Data Persistence
-
-Important to have a reactive UI interface backed by a reliable truth source persistent database but doing this well can be difficult. Keeping the two in sync can be the hardest part.
+## UI Design Choices 
+I had a lot of fun focusing on the design choices in the app and building it with user experience in mind. Simple clean interface, initiative buttons, and smooth interactions were all at the heart of the design of this app and I'm happy with the results. I wanted to avoid the clunky feeling of simple apps and paid a lot of attention to this aspect.
 
 
-## How to Use 🚀
+# React Native + Expo Go
+React Native and Expo Go were an excellent choice of fast iterative design allowing me to quickly build and test this app. Especially for any developer with React web experience, there is much less new to wrap you hear around than learning Kaitlin/Java, swift, or [...].
 
-1. **Add a Bookmark**: Paste any Reddit URL in the input field and tap the add button
-2. **Rate Posts**: Tap the stars to rate posts from 0-5 stars
-3. **Mark as Read**: Tap the circle icon to toggle read/unread status
-4. **View Settings**: Switch to the Settings tab for app information
+While not exactly the same as React web, the overall feel and standards pattern were still similar and Expo Go allowed for a quick test cycle.
 
-## Tech Stack 🛠️
+### What I learned:
+- more about mobile memory management 
+- mobile data management and permissions 
 
-- **React Native** with Expo SDK 53
-- **TypeScript** for type safety
-- **Expo Router** for navigation
-- **SQLite** for local data persistence
-- **Vector Icons** for UI elements
-- **Reanimated** for smooth animations
-
-## POC Scope & Future Enhancements 🔮
-
-This POC focuses on core bookmark management. Future versions will include:
-
-- Real Reddit API integration (currently uses mock data)
-- User authentication and cloud sync
-- Advanced filtering and search
-- Categories 
-- Export/import functionality
-- Dark mode theme switching
-
-## Architecture Highlights 🏗️
-
-- **Repository Pattern**: Abstracted data layer for easy SQLite → Cloud migration
-- **Custom Hooks**: Business logic separated from UI components
-- **Design System**: Consistent colors, spacing, and typography constants
-- **TypeScript**: Full type safety across the entire codebase
-- **Component Composition**: Reusable, testable UI components
-
-
-Using hook/repository/data service lalyers pattern. Expo provides a solid sqlite library. Considered using something like Drizzle for ORM but decided not to for the scale of this app (one to look into more next time).
-
-For the database instance, I've used a singleton pattern as opposed to, for example, the react context hook pattern, just because of the simplicity of the app. Thoughts this has it's train offs being harder to test.
-
-# Expo
-
-### Expo Go and OAuth Redirect
-
-I was struggling to use Reddit's OAuth flow because I was testing the app with Expo Go, which doesn't support the way I was trying because the flow needed a redirect url, which works for built expo apps, but Expo Go doesn't have the schema name needed for the app to redirect to. Because this is just a little test app, I've decided to switch to a client/secret auth, instead of OAuth.
-
-## Building Expo Package
-
-*Expo account required
-
-- `npm install -g eas-cli`
-- `eas login`
-- `eas build:configure`
-- in eas.json - `developmentClient=true`
-- `npx expo install expo-dev-client -- --legacy-peer-deps`
-- `eas build --platform android --profile development`
-
-
-## 
+### Biggest Struggles 
+- formatting for mobile devices
+- keyboard layouts
+- getting the list to be smooth, especially the search bar at the top
+- memory and object binning 
+- 
 
 
 
-## Paterns
+# How I Integrated AI
+Having been exploring a lot of AI tech recently [rephrase this] I wanted to integrate an AI summary feature into the app. This was a surprisingly simple feature but ended up looking very clean and was very helpful and taught more about integrating AI features into applications.
 
-- Use
+The summary feature works by sending off the post to a AI endpoint, in this case an AI endpoint I was self-hosting but any openAI protocol endpoint would work. Then streaming the response data back into the app. This resulted in the classic AI writing stream look standard to any of the classic AI web interfaces. 
 
-## Todo
+While the prompting was a minimal aspect, and the summary feature simple, this still showed how AI can be easily and intentionaly added as features for improving user experience.
 
-- Better credential storing. OAuth or save creds in settings
-- Link to subreddits and usernames
-- Search functionality
-- Switch Database from settings
+### Further Investigation 
+With this was just a little experiment, I wanted to go further with to and add a RAG search and even an AI interface to query you library. 
 
-Stretch Goals
-
-- Cloud Backup
-- User Saved Posts selection and subreddit search
+I drew up plans to use a vector database such as [xx] but was worries about the resource constraints on the device. While simple similarly search was possible, I wanted to expand this with RAG but this would likely have required  hosting the database [Todo: research the requirements, propose a hypothetical solution. Explain how a simple rag agent could have been added, explain why no (time, phone resource constraints, library that exist already, refactoring neede)]
