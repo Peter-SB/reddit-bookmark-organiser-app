@@ -1,5 +1,5 @@
 <p align="center">
-    <img src="assets/images/custom-adaptive-icon-cropped.png" alt="App Logo" height="250">
+    <img src="src/assets/images/custom-adaptive-icon-cropped.png" alt="App Logo" height="250">
 
 </p>
 
