@@ -23,9 +23,9 @@ Having used a lot of React and Typescript recently and been enjoying building so
 This project was as much about learning some new tools, frameworks, and some AI, as it was about building a genuine solution to a problem I had. An app I actually will use. There is still plenty of room for improvement, optimisation, and refactoring, but its been fun and rewarding and I wanted to share what Ive built!
 
 <p align="center">
-    <img src="docs/images/home-screen.jpg" alt="App Home" width="33vw">
-    <img src="docs/images/post-screen.jpg" alt="App Home" width="33vw">
-    <img src="docs/images/menu-screen.jpg" alt="App Home" width="33vw">
+    <img src="docs/images/home-screen.jpg" alt="App Home" width="30%">
+    <img src="docs/images/post-screen.jpg" alt="App Home" width="30%">
+    <img src="docs/images/menu-screen.jpg" alt="App Home" width="30%">
 </p>
 
 # Key Features 
