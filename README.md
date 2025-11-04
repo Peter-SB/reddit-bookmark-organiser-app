@@ -1,6 +1,5 @@
 <p align="center">
     <img src="src/assets/images/custom-adaptive-icon-cropped.png" alt="App Logo" height="250">
-
 </p>
 
 # Simple Reddit Bookmark App and How I Integrated AI
@@ -22,6 +21,12 @@ Having used a lot of React and Typescript recently and been enjoying building so
 - AI integration 
 
 This project was as much about learning some new tools, frameworks, and some AI, as it was about building a genuine solution to a problem I had. An app I actually will use. There is still plenty of room for improvement, optimisation, and refactoring, but its been fun and rewarding and I wanted to share what Ive built!
+
+<p align="center">
+    <img src="docs/images/home-screen.jpg" alt="App Home" width="33vw">
+    <img src="docs/images/post-screen.jpg" alt="App Home" width="33vw">
+    <img src="docs/images/menu-screen.jpg" alt="App Home" width="33vw">
+</p>
 
 # Key Features 
 
@@ -55,7 +60,15 @@ This was a good experiment in applying some data analytics and information retri
 
 ### UI Design Choices 
 
-I had a lot of fun focusing on the design choices in the app and building it with user experience in mind. Simple clean interface, initiative buttons, and smooth interactions were all at the heart of the design of this app and I'm happy with the results. I wanted to avoid the clunky feeling of simple apps and paid a lot of attention to this aspect. 
+I had a lot of fun focusing on the design choices in the app and building it with user experience in mind. Simple clean interface, initiative buttons, and smooth interactions were all at the heart of the design of this app and I'm happy with the results. I wanted to avoid the clunky feeling of simple apps and paid a lot of attention to this aspect. I put a lot of work into making sure the lists and navigation felt smooth and intuitive and the results payed off. 
+
+### React Native + Expo Go
+
+React Native and Expo Go were an excellent choice for fast iterative development, allowing me to quickly build and test directly on my device. Having a background in React and TypeScript, I found the switch simple. Component based UIs, hooks, and state management are all familiar with the benefit of React Native providing access to native device APIs. There is much less new to wrap you hear around than learning new tools such as Kotlin, Java, or Swift from scratch.
+
+Expo extends capabilities of React Native with excellent developer tooling. Testing on device is as easy as just scanning a QR code and allows for hot reloads and console debugging. It also add useful libraries such as `expo-sqlite` for persistent local storage and `expo-secure-store` for simple and safe secret storage. 
+
+By far the biggest struggle was working with memory management, specifically how React Native handles object binning and background process cleanup. Working with this helped me understand mobile environments and accessing objects safely 
 
 # Implementing AI
 ## Chat Completions In React Native
@@ -132,26 +145,7 @@ We would precompute chunked post data into vectors representing semantic meaning
 
 The next step after semantic search would have been to have been to implement RAG (Retrieval-Augmented Generation), allowing the post database to be the knolage base for an LLM. By injecting results from a semantic search into the prompt for an LLM, users could query and interact with their database. 
 
-While I made some progress into looking into this, the challenges I faced were storage, and computational requirements on mobile. Especially generating the embeddings and the searching across large datasets. I did consider precomputing embeddings server-side but this project was quickly growing out of hand. There are also the model hosting constraints and data privacy issue faced if this app was to be made public but luckly this remains just a little passion project.
+While I made some progress into looking into this, the challenges I faced were storage, and computational requirements on mobile. Especially generating the embeddings and the searching across large datasets. I did consider precomputing embeddings server-side but this project was quickly growing out of hand. There are also the model hosting constraints and data privacy issue faced if this app was to be made public but luckily this remains just a little passion project.
 
-It would have been very interesting to investigate some full RAG implementations and architectures, however I think this would be best suited for future projects, especialy where im not constrained by mobile capabilities.
+It would have been very interesting to investigate some full RAG implementations and architectures, however I think this would be best suited for future projects, especially where im not constrained by mobile capabilities.
 
-# React Native + Expo Go
-
-React Native and Expo Go were an excellent choice of fast iterative design allowing me to quickly build and test this app. Having a background in React and TypeScript, I found the switch simple. Especially for any developer with React web experience, the component based UI, hooks, and state magmen is similar while giving access to native device APIs. There is much less new to wrap you hear around than learning Kaitlin/Java, swift.
-
-Expo Go has an intuative 
-
-While not exactly the same as React web, the overall feel and standards pattern were still similar and Expo Go allowed for a quick test cycle.
-
-### What I learned:
-- more about mobile memory management 
-- mobile data management and permissions 
-- App Lifecycle and Backgrounding
-
-### Biggest Struggles 
-- formatting for mobile devices
-- keyboard layouts
-- getting the list to be smooth, especially the search bar at the top
-- memory and object binning 
-- 
