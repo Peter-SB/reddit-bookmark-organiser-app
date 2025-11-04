@@ -14,8 +14,10 @@ export const STORAGE_KEYS = {
 const TOKEN_URL = 'https://www.reddit.com/api/v1/access_token';
 const API_BASE = 'https://oauth.reddit.com';
 
-const POST_URL_RE = /^\/r\/[^\/]+\/comments\/([a-z0-9]+)(?:\/[^\/]+)?\/?$/i;
-const SHORT_S_RE   = /^\/r\/[^\/]+\/s\/[A-Za-z0-9_-]+\/?$/i;
+const POST_URL_RE       = /^\/r\/[^\/]+\/comments\/([a-z0-9]+)(?:\/[^\/]+)?\/?$/i;
+const USER_POST_URL_RE  = /^\/user\/[^\/]+\/comments\/([a-z0-9]+)(?:\/[^\/]+)?\/?$/i;
+const SHORT_S_RE        = /^\/r\/[^\/]+\/s\/[A-Za-z0-9_-]+\/?$/i;
+const SHORT_USER_S_RE   = /^\/u\/[^\/]+\/s\/[A-Za-z0-9_-]+\/?$/i;
 
 type TokenResponse = {
   token_type: string;
@@ -147,14 +149,16 @@ export function useRedditApi(): UseRedditApiResult {
 
   function validateUrl(input: URL) {
     if (POST_URL_RE.test(input.pathname)
+     || USER_POST_URL_RE.test(input.pathname)
      || SHORT_S_RE.test(input.pathname)
+     || SHORT_USER_S_RE.test(input.pathname)
     ) return;
     throw new Error('Unrecognised Reddit post URL format');
   }
 
   async function resolveRedirect(input: URL): Promise<URL> {
     const ua = credsRef.current?.userAgent || '';
-    if (!SHORT_S_RE.test(input.pathname)) {
+    if (!SHORT_S_RE.test(input.pathname) && !SHORT_USER_S_RE.test(input.pathname)) {
       return input;
     }
     const resp = await fetch(input.toString(), {
@@ -221,6 +225,7 @@ export function useRedditApi(): UseRedditApiResult {
         throw new Error('URL is not on reddit.com');
       }
       const final   = await resolveRedirect(parsed);
+      console.debug(`url to get ${final}`)
       validateUrl(final);
       const jsonUrl = buildJsonUrl(final.pathname);
       const listings = await fetchJson(jsonUrl);
