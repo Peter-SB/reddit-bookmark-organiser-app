@@ -204,6 +204,7 @@ export function useRedditApi(): UseRedditApiResult {
       subreddit:      postData.subreddit,
       redditCreatedAt: new Date((postData.created_utc || postData.created) * 1000),
       addedAt:        new Date(now),
+      // updatedAt:      new Date(now),
       customTitle:    undefined,
       customBody:     undefined,
       notes:          undefined,

@@ -18,12 +18,21 @@ const AI_ENDPOINT_URL = "AI_ENDPOINT_URL";
 const AI_MODEL_ID = "AI_MODEL_ID";
 const AI_SYSTEM_PROMPT = "AI_SYSTEM_PROMPT";
 const SHOW_AI_SUMMARY = "SHOW_AI_SUMMARY";
+const AI_API_KEY = "AI_API_KEY";
+const AI_ATTRIB_REFERER = "AI_ATTRIB_REFERER";
+const AI_ATTRIB_TITLE = "AI_ATTRIB_TITLE";
+const AI_MAX_TOKENS = "AI_MAX_TOKENS";
 
 const parseEndpoints = (input: string): string[] =>
   input
     .split(";")
     .map((e) => e.trim())
     .filter(Boolean);
+
+const sortModels = (list: string[]): string[] =>
+  (list || [])
+    .filter(Boolean)
+    .sort((a, b) => a.localeCompare(b, undefined, { sensitivity: "base" }));
 
 export default function SettingsAiConfiguration() {
   const [endpoint, setEndpoint] = useState("");
@@ -34,6 +43,10 @@ export default function SettingsAiConfiguration() {
   const [testResult, setTestResult] = useState<string | null>(null);
   const [models, setModels] = useState<string[]>([]);
   const [showAiSummary, setShowAiSummary] = useState(true);
+  const [apiKey, setApiKey] = useState("");
+  const [referer, setReferer] = useState("");
+  const [appTitle, setAppTitle] = useState("Reddit-Bookmark-App");
+  const [maxTokens, setMaxTokens] = useState("1024");
 
   // Load AI config from DB
   useEffect(() => {
@@ -45,6 +58,10 @@ export default function SettingsAiConfiguration() {
           AI_MODEL_ID,
           AI_SYSTEM_PROMPT,
           SHOW_AI_SUMMARY,
+          AI_API_KEY,
+          AI_ATTRIB_REFERER,
+          AI_ATTRIB_TITLE,
+          AI_MAX_TOKENS,
         ]);
         if (settings[AI_ENDPOINT_URL]) setEndpoint(settings[AI_ENDPOINT_URL]);
         if (settings[AI_MODEL_ID]) setModelId(settings[AI_MODEL_ID]);
@@ -52,6 +69,10 @@ export default function SettingsAiConfiguration() {
           setSystemPrompt(settings[AI_SYSTEM_PROMPT]);
         if (settings[SHOW_AI_SUMMARY] !== undefined)
           setShowAiSummary(settings[SHOW_AI_SUMMARY] === "true");
+        if (settings[AI_API_KEY]) setApiKey(settings[AI_API_KEY]);
+        if (settings[AI_ATTRIB_REFERER]) setReferer(settings[AI_ATTRIB_REFERER]);
+        if (settings[AI_ATTRIB_TITLE]) setAppTitle(settings[AI_ATTRIB_TITLE]);
+        if (settings[AI_MAX_TOKENS]) setMaxTokens(settings[AI_MAX_TOKENS]);
       } catch (err) {
         console.warn("Failed to load AI config:", err);
       } finally {
@@ -77,6 +98,10 @@ export default function SettingsAiConfiguration() {
           SHOW_AI_SUMMARY,
           showAiSummary ? "true" : "false"
         ),
+        SettingsRepository.setSetting(AI_API_KEY, apiKey.trim()),
+        SettingsRepository.setSetting(AI_ATTRIB_REFERER, referer.trim()),
+        SettingsRepository.setSetting(AI_ATTRIB_TITLE, "Reddit-Bookmark-App"),
+        SettingsRepository.setSetting(AI_MAX_TOKENS, String(parseInt(maxTokens || "1024", 10) || 1024)),
       ]);
       Alert.alert("Success", "AI configuration saved.");
     } catch (err) {
@@ -101,20 +126,26 @@ export default function SettingsAiConfiguration() {
       try {
         const url = ep.replace(/\/+$|\/+$/g, "") + "/models";
         console.debug("Testing AI endpoint:", url);
-        const res = await fetch(url, { method: "GET" });
+        const headers: Record<string, string> = {};
+        if (apiKey) headers["Authorization"] = `Bearer ${apiKey}`;
+        if (referer) headers["HTTP-Referer"] = referer;
+        if (appTitle) headers["X-Title"] = appTitle;
+        const res = await fetch(url, { method: "GET", headers });
         if (!res.ok) throw new Error(`HTTP ${res.status}`);
         const data = await res.json();
         let modelList: string[] = [];
         if (Array.isArray(data?.data)) {
           modelList = data.data.map((m: any) => m.id || m.name || "");
-          setTestResult(`Success: ${modelList.length} models found at ${ep}`);
+          const sorted = sortModels(modelList);
+          setTestResult(`Success: ${sorted.length} models found at ${ep}`);
+          setModels(sorted);
+          if (!modelId && sorted.length > 0) setModelId(sorted[0]);
+          success = true;
+          break;
         } else {
           setTestResult(`Success: Response received at ${ep}`);
         }
-        setModels(modelList);
-        if (!modelId && modelList.length > 0) setModelId(modelList[0]);
-        success = true;
-        break;
+        // Fallback for non-standard responses: leave models as-is
       } catch (err: any) {
         setTestResult(`Error: ${err.message || "Failed to connect"} at ${ep}`);
         setModels([]);
@@ -131,14 +162,19 @@ export default function SettingsAiConfiguration() {
     for (const endpoint of endpoints) {
       try {
         const url = endpoint.replace(/\/+$|\/+$/g, "") + "/models";
-        const res = await fetch(url, { method: "GET" });
+        const headers: Record<string, string> = {};
+        if (apiKey) headers["Authorization"] = `Bearer ${apiKey}`;
+        if (referer) headers["HTTP-Referer"] = referer;
+        if (appTitle) headers["X-Title"] = appTitle;
+        const res = await fetch(url, { method: "GET", headers });
         if (!res.ok) continue;
         const data = await res.json();
         let modelList: string[] = [];
         if (Array.isArray(data?.data)) {
           modelList = data.data.map((m: any) => m.id || m.name || "");
-          setModels(modelList);
-          if (!modelId && modelList.length > 0) setModelId(modelList[0]);
+          const sorted = sortModels(modelList);
+          setModels(sorted);
+          if (!modelId && sorted.length > 0) setModelId(sorted[0]);
           break;
         }
       } catch {}
@@ -162,7 +198,7 @@ export default function SettingsAiConfiguration() {
         style={styles.input}
         value={endpoint}
         onChangeText={setEndpoint}
-        placeholder="https://your-ai-endpoint.com/v1"
+        placeholder="https://open-ai-compatible.endpoint/api/v1"
         autoCapitalize="none"
         autoCorrect={false}
       />
@@ -192,6 +228,44 @@ export default function SettingsAiConfiguration() {
         autoCapitalize="none"
         autoCorrect={false}
         multiline
+      />
+      <Text style={styles.label}>API Key</Text>
+      <TextInput
+        style={styles.input}
+        value={apiKey}
+        onChangeText={setApiKey}
+        placeholder="API Key...."
+        autoCapitalize="none"
+        secureTextEntry
+      />
+
+      {/* <Text style={styles.label}>Attribution Referer (optional)</Text>
+      <TextInput
+        style={styles.input}
+        value={referer}
+        onChangeText={setReferer}
+        placeholder="https://your-app-or-repo.example"
+        autoCapitalize="none"
+        autoCorrect={false}
+      /> */}
+
+      {/* <Text style={styles.label}>Attribution App Title (optional)</Text>
+      <TextInput
+        style={styles.input}
+        value={appTitle}
+        onChangeText={setAppTitle}
+        placeholder="Reddit-Bookmark-App"
+        autoCapitalize="none"
+        autoCorrect={false}
+      /> */}
+
+      <Text style={styles.label}>Max Tokens</Text>
+      <TextInput
+        style={styles.input}
+        value={maxTokens}
+        onChangeText={setMaxTokens}
+        placeholder="1024"
+        keyboardType="number-pad"
       />
       <Text style={styles.label}>Show AI Summary Section</Text>
       <TouchableOpacity

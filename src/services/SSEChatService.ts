@@ -7,6 +7,9 @@ export type StartSSEArgs = {
   onDelta: (text: string) => void;
   onFinish?: () => void;
   onError?: (err: any) => void;
+  apiKey?: string;
+  referer?: string;
+  appTitle?: string;
 };
 
 export function startSSEChat({
@@ -15,17 +18,25 @@ export function startSSEChat({
   onDelta,
   onFinish,
   onError,
+  apiKey,
+  referer,
+  appTitle,
 }: StartSSEArgs) {
   const url = endpoint.replace(/\/+$/, "") + "/chat/completions";
 
   const body = JSON.stringify({ ...payload, stream: true });
 
+  const headers: Record<string, string> = {
+    "Content-Type": "application/json",
+    Accept: "text/event-stream",
+  };
+  if (apiKey) headers["Authorization"] = `Bearer ${apiKey}`;
+  if (referer) headers["HTTP-Referer"] = referer;
+  if (appTitle) headers["X-Title"] = appTitle;
+
   const es = new EventSource(url, {
     method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-      Accept: "text/event-stream",
-    },
+    headers,
     body,
   });
 
@@ -35,30 +46,46 @@ export function startSSEChat({
 
   es.addEventListener("message", (event) => {
     const raw = String(event.data ?? "").trim();
-    console.debug("[SSE] message raw:", raw.slice(0, 120));
     if (!raw) return;
+
     if (raw === "[DONE]") {
-      console.debug("[SSE] done");
       onFinish?.();
       es.close();
       return;
     }
+
     // Some servers send multiple "data:" lines in one message; split just in case.
     const frames = raw.split(/\n+/).filter(Boolean);
     for (const f of frames) {
-      const line = f.replace(/^data:\s*/i, ""); // strip leading "data: "
+      // Ignore OpenRouter keepalive comments like ": OPENROUTER PROCESSING"
+      if (f.startsWith(":")) continue;
+
+      const line = f.replace(/^data:\s*/i, "");
       try {
         const json = JSON.parse(line);
+
+        // Done if usage-only final chunk arrives
+        if (json?.usage && (!json.choices || json.choices.length === 0)) {
+          onFinish?.();
+          es.close();
+          continue;
+        }
+
+        // Mid-stream error handling
+        if (json?.error) {
+          console.error("[SSE] stream error:", json.error);
+          onError?.(json.error);
+          es.close();
+          continue;
+        }
+
         const choice = json?.choices?.[0] ?? {};
         const deltaObj = choice.delta ?? {};
         const textDelta =
-          deltaObj.content ??
-          choice.text ??
-          json.content ??
-          "";
-        if (typeof textDelta === "string" && textDelta.length) onDelta(textDelta);
-        if (choice.finish_reason) {
-          // do nothing; [DONE] will still arrive
+          deltaObj.content ?? choice.text ?? json.content ?? "";
+
+        if (typeof textDelta === "string" && textDelta.length) {
+          onDelta(textDelta);
         }
       } catch {
         console.debug("[SSE] non-JSON frame:", f.slice(0, 80));

@@ -33,8 +33,12 @@ interface PostSummaryProps {
 }
 
 const AI_ENDPOINT_URL = "AI_ENDPOINT_URL";
+const AI_API_KEY = "AI_API_KEY"
 const AI_MODEL_ID = "AI_MODEL_ID";
 const AI_SYSTEM_PROMPT = "AI_SYSTEM_PROMPT";
+const AI_ATTRIB_REFERER = "AI_ATTRIB_REFERER";
+const AI_ATTRIB_TITLE = "AI_ATTRIB_TITLE";
+const AI_MAX_TOKENS = "AI_MAX_TOKENS";
 
 export default function PostSummary({
   post,
@@ -78,13 +82,25 @@ export default function PostSummary({
     if (isStreaming) return;
     const settings = await SettingsRepository.getSettings([
       AI_ENDPOINT_URL,
+      AI_API_KEY,
       AI_MODEL_ID,
       AI_SYSTEM_PROMPT,
+      AI_ATTRIB_REFERER,
+      AI_ATTRIB_TITLE,
+      AI_MAX_TOKENS,
     ]);
     const endpoints = (settings[AI_ENDPOINT_URL] || "")
       .split(";")
       .map((e) => e.trim())
       .filter(Boolean);
+    const apiKey = (settings[AI_API_KEY]?.trim() || "");
+    const referer = settings[AI_ATTRIB_REFERER]?.trim() || "";
+    const appTitle = settings[AI_ATTRIB_TITLE]?.trim() || "Reddit-Bookmark-App";
+    const maxTokens = (() => {
+      const v = parseInt(settings[AI_MAX_TOKENS] || "1024", 10);
+      return Number.isFinite(v) && v > 0 ? v : 1024;
+    })();
+
     const modelId = settings[AI_MODEL_ID];
     const systemPrompt = settings[AI_SYSTEM_PROMPT];
     if (!endpoints.length) {
@@ -94,6 +110,8 @@ export default function PostSummary({
       return;
     }
     const bodyText = post.customBody || post.bodyText || "";
+    const titleText = post.customTitle || post.title || "";
+
     const prompt =
       systemPrompt ||
       "You are an assistant that summarises reddit posts in 3-4 lines.";
@@ -107,10 +125,10 @@ export default function PostSummary({
         },
         {
           role: "user",
-          content: bodyText + "----End of Story---" + prompt,
+          content: titleText + " \n" + bodyText + "----End of Text ---" + prompt,
         },
       ],
-      max_tokens: 1024,
+      max_tokens: maxTokens,
     };
     setError(null);
     setStatus("loading");
@@ -154,6 +172,9 @@ export default function PostSummary({
               typeof err === "string" ? err : err?.message || "Unknown error";
             tryNextEndpoint(errMsg);
           },
+          apiKey,
+          referer,
+          appTitle,
         });
         setStreamHandle(es);
       } catch (err) {
