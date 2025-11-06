@@ -125,7 +125,7 @@ export default function PostSummary({
         },
         {
           role: "user",
-          content: titleText + " \n" + bodyText + "----End of Text ---" + prompt,
+          content: bodyText + "----End of Text ---" + prompt,
         },
       ],
       max_tokens: maxTokens,

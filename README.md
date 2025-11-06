@@ -2,14 +2,13 @@
     <img src="src/assets/images/custom-adaptive-icon-cropped.png" alt="App Logo" height="250">
 </p>
 
-# Simple Reddit Bookmark App and How I Integrated AI
+# Reddit Bookmark App with AI Integration
 
 As anyone who uses Reddit know, saving and then later finding anything of interest in a nightmare! Saved posts are just a long list with no way of filtering it down resulting in endless scrolling for a post you may or may not have remembered to save. There's also the sneaky 1000 saved posts cap, after which you need to either request your Reddit data or start unsaving post. And god forbid you need to access anything offline or the post gets deleted.
 
-The temporary solution was to copy and save interesting posts to my notes app but this had its own issues.
-The main issue I kept running into while using my notes app to keep posts was that the clipboard would truncate long text. Plus I would have to save the original link to find it again later. It was also just not a good user experience. 
+The temporary solution I had to this was to copy and save interesting posts to my notes app but this had its own issues. The main issue I kept running into while using my notes app to keep posts was that the clipboard would truncate long text. Plus I would have to save the original link to find it again later. It was also just not a good user experience. 
 
-Having used a lot of React and Typescript recently and been enjoying building some front-ends, I wanted to explore building with React Native! I also wanted to take this opportunity to try integrate some AI functionality in a practical and useful way.   
+Having used a lot of React and Typescript recently and been enjoying building some front-ends, I wanted to explore building with React Native! Having then built this gave me a great opportunity to try integrate some AI functionality in a practical and useful way. I wanted to explore using some more local LLMs as well as cloud-hosted API endpoints.  
 
 ### Project Objectives:
 
@@ -20,14 +19,13 @@ Having used a lot of React and Typescript recently and been enjoying building so
 - Ultimately to organise anything useful I found while browsing for later. 
 - AI integration 
 
-This project was as much about learning some new tools, frameworks, and some AI, as it was about building a genuine solution to a problem I had. An app I actually will use. There is still plenty of room for improvement, optimisation, and refactoring, but its been fun and rewarding and I wanted to share what Ive built!
+This project was as much about learning some new tools, frameworks, and some AI, as it was about building a genuine solution to a problem I had. And Having some fun! An app I actually will use and enjoyed making. There is still plenty of room for improvement, optimisation, and refactoring. However I wanted to share what Ive built so far and highlight the AI integration since it's been so fun and rewarding!
 
 <p align="center">
     <img src="docs/images/home-screen.jpg" alt="App Home" width="30%">
-    <img src="docs/images/post-screen.jpg" alt="App Home" width="30%">
-    <img src="docs/images/menu-screen.jpg" alt="App Home" width="30%">
+    <img src="docs/images/post-screen.jpg" alt="Post Page" width="30%">
+    <img src="docs/images/menu-screen.jpg" alt="Menu Sidebar" width="30%">
 </p>
-
 # Key Features 
 
 ### Post Customisation 
@@ -73,9 +71,9 @@ By far the biggest struggle was working with memory management, specifically how
 # Implementing AI
 ## Chat Completions In React Native
 
-Having been experimenting with a lot of AI tech recently, I wanted to integrate some simple AI functionally into my app. An AI summary feature seemed an obvious choice for this app and I aimed to integrate it in a natural and aesthetic way. 
+Having been experimenting with a lot of AI recently, I wanted to integrate some simple AI functionally into my app. An AI summary feature seemed an obvious choice for this app and I aimed to integrate it in a natural and aesthetic way. 
 
-I wanted to emulate the classic AI streamed response, the text that instantly displays when generating as the model writes. This gives the integration a fast and native feel, not waiting for a static blob of text to appear. The response time, especially in cases of long response or when using slower self-hosted models, has a huge effect on user experience. Long delays can feel awkward or even concern the user something has gone wrong. Streaming the response also has the added benefit of letting the user start reading before the response has even finished generating.
+I wanted to emulate the classic AI streamed response, the text that instantly displays when generating as the model writes. This gives the summary feature a fast and native feel, not waiting for a static blob of text to appear. The response time, especially in cases of long response or when using slower self-hosted models, has a huge effect on user experience. Long delays can feel awkward or even concern the user something has gone wrong. Streaming the response also has the added benefit of letting the user start reading before the response has even finished generating.
 
 In this section we will go over how to implement streamed chat completions in React Native, but the approach would be similar for React or other technologies. This was a surprisingly simple feature and ended up looking very clean and still taught me a lot about integrating AI features into applications.
 ### Server-Sent Events (SSE)
@@ -94,15 +92,48 @@ data: [DONE]
 
 In React Natives we will use `EventSource` (provided by the library `react-native-sse`) to implement this connection. We will listen for each delta message and, unless it's the final `Done` message, we will append the new data to our stored ongoing response.
 
+Our payload will contain the details we need to generate the message such as modelId, stream, message, and max tokens. Temperature and ... can also be added here for further repose control.  
+
+The `onDelta` function is what we want to do, most likely update a local variable, 
+
+```javascript
+    const payload = {
+      model: modelId,
+      stream: true,
+      messages: [
+        {
+          role: "user",
+          content: bodyText + "----End of Text ---" + prompt,
+        },
+      ],
+      max_tokens: maxTokens,
+    };
+    
+    function onDelta(delta) = {
+		setSummary((prev) => {
+		  const next = prev + delta;
+		  summaryRef.current = next; // keep ref inline with state
+		  return next;
+		});
+	  },
+```
+
+Here is our actual SSEChat service function:
+
 ``` javascript
 import EventSource from "react-native-sse";
 
-function startSSEChat(endpoint, payload, onDelta, onFinish) {
+function startSSEChat(endpoint, apiKey, payload, onDelta, onFinish) {
   const es = new EventSource(endpoint, {
     method: "POST",
-    headers: { "Content-Type": "application/json" },
+    headers: { 
+	    "Content-Type": "application/json" 
+		Accept: "text/event-stream",
+	},
     body: JSON.stringify({ ...payload, stream: true }),
   });
+  
+  if (apiKey) headers["Authorization"] = `Bearer ${apiKey}`; // If using an api key
 
   es.addEventListener("message", (event) => {
     const raw = event.data?.trim();
@@ -141,9 +172,9 @@ Though simple, this still shows how AI can be quickly but intentionally added as
 
 To expand the search capability, and my own understanding, I also looked into using vector databases to allow for semantic search. This is a precursor to RAG and even a simple semantic search would have allowed for some more advanced post filtering.
 
-We would precompute chunked post data into vectors representing semantic meaning using a lightweight encoder such as OpenAI’s text-embedding model. Then we could compare similarity using using simple cosine similarity or dot-product to find closet matches.
+We would precompute chunked post data into vectors representing semantic meaning using a lightweight encoder such as OpenAI’s text-embedding model. Then we could compare similarity using using simple cosine similarity or dot-product to find closet matches. While doing this purely on device would have been hard, especially with pure Expo EAS, I hypothesized using either a self-hosted endpoint, or a cloud one to do the embeddings. Then the best option for storing the embedding vector would have been stored in a blob in a SQL table to keep the app pure Expo. Lastly cosine similarity functions could have been implement from scratch to keep the search functionality offline. This hybrid approach would have compromised performance with offline search capability.
 
-The next step after semantic search would have been to have been to implement RAG (Retrieval-Augmented Generation), allowing the post database to be the knolage base for an LLM. By injecting results from a semantic search into the prompt for an LLM, users could query and interact with their database. 
+The next step after semantic search would have been to have been to implement RAG (Retrieval-Augmented Generation), allowing the post database to be the knowledge base for an LLM. By injecting results from a semantic search into the prompt for an LLM, users could query and interact with their database. 
 
 While I made some progress into looking into this, the challenges I faced were storage, and computational requirements on mobile. Especially generating the embeddings and the searching across large datasets. I did consider precomputing embeddings server-side but this project was quickly growing out of hand. There are also the model hosting constraints and data privacy issue faced if this app was to be made public but luckily this remains just a little passion project.
 
