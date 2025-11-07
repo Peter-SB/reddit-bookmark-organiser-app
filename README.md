@@ -8,7 +8,7 @@ As anyone who uses Reddit know, saving and then later finding anything of intere
 
 The temporary solution I had to this was to copy and save interesting posts to my notes app but this had its own issues. The main issue I kept running into while using my notes app to keep posts was that the clipboard would truncate long text. Plus I would have to save the original link to find it again later. It was also just not a good user experience. 
 
-Having used a lot of React and Typescript recently and been enjoying building some front-ends, I wanted to explore building with React Native! Having then built this gave me a great opportunity to try integrate some AI functionality in a practical and useful way. I wanted to explore using some more local LLMs as well as cloud-hosted API endpoints.  
+Having used a lot of React and Typescript recently and been enjoying building some front-ends, I wanted to explore building with React Native! Having then built this gave me a great opportunity to try integrate some AI functionality in a practical and useful way. I wanted to explore using some more local LLMs as well as cloud-hosted API endpoints and have detailed below my results.
 
 ### Project Objectives:
 
@@ -17,7 +17,7 @@ Having used a lot of React and Typescript recently and been enjoying building so
 - Extensive search and filter functionality
 - Post customisation and annotation with read, favourites, ratings, and notes for later
 - Ultimately to organise anything useful I found while browsing for later. 
-- AI integration 
+- AI integration
 
 This project was as much about learning some new tools, frameworks, and some AI, as it was about building a genuine solution to a problem I had. And Having some fun! An app I actually will use and enjoyed making. There is still plenty of room for improvement, optimisation, and refactoring. However I wanted to share what Ive built so far and highlight the AI integration since it's been so fun and rewarding!
 
@@ -26,6 +26,7 @@ This project was as much about learning some new tools, frameworks, and some AI,
     <img src="docs/images/post-screen.jpg" alt="Post Page" width="30%">
     <img src="docs/images/menu-screen.jpg" alt="Menu Sidebar" width="30%">
 </p>
+
 # Key Features 
 
 ### Post Customisation 
@@ -161,22 +162,26 @@ function startSSEChat(endpoint, apiKey, payload, onDelta, onFinish) {
 This approach has the benefits of low memory, fast responsiveness, and quick cancellation by simply closing the SSE connection.
 
 **Prompt**
-The prompt was super simple, just `You are an assistant that summarises reddit posts in 3-4 lines`. However this could be changed in the app settings.
+The prompt was super simple, just `You are an assistant that summarises reddit posts in 3-4 lines`. However this could be changed in the app settings. I do want to experiment more with prompt engineering, but feature only required a simple summarise request with no particular output requirements.
 
 **UI State Machine**
 The UI follows a simple four-state flow: `idle -> loading -> success | error`. This can be interrupted mid loading and regenerated. The streamed text is store temporarily and only saved to the post database when the post is saved.
 
-Though simple, this still shows how AI can be quickly but intentionally added as features for improving user experience with a fast and native feel delivering great user experience.
+Overall, though simple, this still shows how AI can be quickly but intentionally added as features for improving user experience with a fast and native feel delivering great user experience.
 
 ## Further Investigations: Semantic Search and RAG
 
 To expand the search capability, and my own understanding, I also looked into using vector databases to allow for semantic search. This is a precursor to RAG and even a simple semantic search would have allowed for some more advanced post filtering.
 
-We would precompute chunked post data into vectors representing semantic meaning using a lightweight encoder such as OpenAI’s text-embedding model. Then we could compare similarity using using simple cosine similarity or dot-product to find closet matches. While doing this purely on device would have been hard, especially with pure Expo EAS, I hypothesized using either a self-hosted endpoint, or a cloud one to do the embeddings. Then the best option for storing the embedding vector would have been stored in a blob in a SQL table to keep the app pure Expo. Lastly cosine similarity functions could have been implement from scratch to keep the search functionality offline. This hybrid approach would have compromised performance with offline search capability.
+We would precompute chunked post data into vectors representing semantic meaning using a lightweight encoder such as OpenAI’s text-embedding model. Then we could compare similarity using using simple cosine similarity or dot-product to find closet matches. While doing this purely on device would have been hard, especially with Expo, 
+
+I hypothesized a hybrid approach where I offload the embedding to a server, using either a self-hosted endpoint, or a cloud one. Then the best option for storing the embedding vector would have been stored in a blob in a SQL table to keep the app pure Expo. There exist other vector storage options for mobile but none for Expo I could find. Lastly cosine similarity functions could have been implement from scratch to keep the search functionality offline. The issue with this is that search query would also need embedding, so could not be completely offline. It would have allowed searching for similar posts using the already computed embeddings though! 
+
+I did also look into using `react-native-fast-tflite`, A high-performance TensorFlow Lite library for React Native. A simple embedding model could have been saved to the device and most modern phones could handle small chunk embeddings, especially with a small embedding model. I have yet to experiment with this as I just ran out of time on this project and this would have required a large chunk of development and testing effort. I do hope to revisit this soon though!
 
 The next step after semantic search would have been to have been to implement RAG (Retrieval-Augmented Generation), allowing the post database to be the knowledge base for an LLM. By injecting results from a semantic search into the prompt for an LLM, users could query and interact with their database. 
 
-While I made some progress into looking into this, the challenges I faced were storage, and computational requirements on mobile. Especially generating the embeddings and the searching across large datasets. I did consider precomputing embeddings server-side but this project was quickly growing out of hand. There are also the model hosting constraints and data privacy issue faced if this app was to be made public but luckily this remains just a little passion project.
+While I made some progress into looking into this, the challenges I faced were available libraries, storage, and computational requirements on mobile. Especially generating the embeddings and the searching across large datasets. As I said I did consider precomputing embeddings server-side but this project was quickly growing out of hand. There are also the model hosting constraints and data privacy issue faced with sending data across networks and to remote llm's, if this app was to be made public, but luckily this remains just a little passion project.
 
-It would have been very interesting to investigate some full RAG implementations and architectures, however I think this would be best suited for future projects, especially where im not constrained by mobile capabilities.
+It would have been very interesting to investigate some full RAG implementations and architectures, however I think this would be best suited for future projects, especially where im not constrained by mobile capabilities. Whether that be a remote AI service for this app or a completely new project.
 
