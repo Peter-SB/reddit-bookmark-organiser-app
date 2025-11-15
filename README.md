@@ -67,12 +67,21 @@ This was one interesting feature I'm proud of. Given the tendency on Reddit for 
 I experimented with two different simple hashing algorithms to match duplicate posts. Posts would be hashed into a signature representing its token set, then roughly similar posts could be matched, even when post formatting was slightly different.
 
 **SimHash**
-The first approach I tried was SimHash. While the SimHash was fast, it wasnt precise enough, and provided too many false positives.
+The first approach I tried was SimHash. This approach uses a binary fingerprint for each text and finds there "Hamming distance". While the SimHash was fast, it wasnt precise enough, and provided too many false positives.
 
 **MinHash**
-MinHash approached worked excellently for finding matches of posts with minor deviations. The post body Minhash signatures values were precomputed and added to the database to be later compared against any newly added post.
+MinHash algorithm works by creating compact "signatures", which can be then compared with Jaccard similarity. This approached worked excellently for finding matches of posts with minor deviations. The post body Minhash signatures values were precomputed and added to the database to be later compared against any newly added post.
 
 This was a good experiment in applying some data analytics and information retrieval techniques on mobile while constrained by mobile limitations.
+
+### Gallery
+
+<p align="center">
+    <img src="docs/images/search-box.jpg" alt="Search Bar" width="30%">
+    <img src="docs/images/settings-page.jpg" alt="Settings Page" width="30%">
+    <img src="docs/images/post-sidebar.jpg" alt="Post Notes/Info Sidebar" width="30%">
+</p>
+
 
 # Implementing AI
 ## AI Summary Feature In React Native
@@ -83,9 +92,15 @@ I wanted to emulate the classic AI streamed response, the text that instantly di
 
 In this section we will go over how to implement streamed chat completions in React Native, but the approach would be similar for React or other technologies. This was a surprisingly simple feature and ended up looking very clean and still taught me a lot about integrating AI features into applications.
 
-### Streamed Chat Response
+<p align="center">
+    <img src="docs/images/ai-summary-demo-gif.gif" alt="AI Summary Demo GIF" width="50%">
+</p>
 
-To achieve this streamed chat completion effect we will use an SSE (Server Sent Events) approach. SSE allows the server to send incremental data over a single long lived HTTP connection. We just make the request and listen to the JSON chunks returned. 
+
+### Streamed Chat Response with SSE
+
+
+To achieve this streamed chat completion effect we will use an SSE (Server Sent Events) approach. SSE allows the server to send incremental data over a single long lived HTTP connection. We just make the request and listen to the JSON chunks returned. This is more simple and lightweight than WebSockets and is used by a lot of LLM inference endpoints.
 
 We will use the `POST /v1/chat/completions` endpoint provided by most OpenAI compatible APIs. We can enable the streaming of data by including `"stream": true` in our request body. Then the server sends incremental chunks as `text/event-stream` data until finally ending with `[DONE]` event.
 
