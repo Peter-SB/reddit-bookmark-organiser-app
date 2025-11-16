@@ -4,21 +4,21 @@
 
 # Reddit Bookmark App with AI Integration
 
-As anyone who uses Reddit knows, saving and then later finding anything of interest is a nightmare! The saved posts screen is just a long list with no way of filtering it, resulting in endless scrolling for a post you may or may not have even remembered to save! There's also the sneaky 1000 saved posts cap, after which you need to either request your Reddit data or start unsaving posts. And god forbid you need to access anything offline or the post gets deleted.
+As anyone who uses Reddit knows, saving and then later finding anything of interest is a nightmare! The saved posts screen is just a long list of posts with no way of filtering it, resulting in endless scrolling for a post you may or may not have even remembered to save. There's also the sneaky 1000 saved posts cap, after which you need to either request your Reddit data or start un-saving posts. And god forbid you need to access anything offline or the post gets deleted.
 
-The temporary solution I had was to copy and save interesting posts to my notes app. This worked but had its own issues. The main issue I kept running into while using my notes app was that the clipboard would truncate long text. Plus I would have to save the original link to find it again later. It just wasn't a good user experience. So I set out to fix that!
+The temporary solution I had was to copy and save interesting posts to my notes app. This worked but had its own issues. The main issue I kept running into was that the clipboard would truncate long text. Plus, I would have to save the original link to find it again later. It just wasn't a good user experience. So I set out to fix that!
 
-Having used a lot of React and TypeScript recently and been enjoying building some front ends, I wanted to explore building with React Native! Then, having built this, it gave me a great opportunity to try to integrate some AI functionality in a practical and useful way. I wanted to explore using some more local LLMs as well as cloud-hosted API endpoints, and how AI integration could feel natural, native and improve the user experience. I've detailed this specifically below.
+Having used a lot of React and TypeScript recently and enjoying building some front ends, I wanted to explore building with React Native. Then, having built the base app, it gave me a great opportunity to try to integrate some AI functionality in a practical and useful way. I wanted to explore using some local LLMs, as well as cloud-hosted API endpoints, and how AI integration could feel natural, native and improve the user experience. I've detailed this specifically below.
 
 ### Project Objectives:
 
-- A clean, minimalist design approach with intuitive user experience forefront 
+- A clean, minimalist design approach with intuitive user experience at the forefront 
 - Offline storage
 - Extensive search and filter functionality
 - Post customisation and annotation (with read, favourites, ratings, and notes for later)
 - AI feature integration
 
-While this project was about learning some new tools, frameworks, and some AI, it was about building a genuine solution to a problem I had. And having some fun! An app I actually will use and enjoyed making. There is still plenty of room for improvement, optimisation, and refactoring. I don't pretend this is production-ready code. However, I wanted to share what I've built so far and highlight the AI integration since it's been so fun and rewarding!
+While this project was about learning new tools, frameworks, and some AI, it was also about building a genuine solution to a problem I had. And having some fun!  There is still plenty of room for improvement, optimisation, and refactoring. I don't pretend this is production-ready code. However, I wanted to share what I've built so far and highlight the AI integration since it's been so fun and rewarding!
 
 <p align="center">
     <img src="docs/images/home-screen.jpg" alt="App Home" width="30%">
