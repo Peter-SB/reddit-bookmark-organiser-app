@@ -100,7 +100,7 @@ In this section we will go over how to implement streamed chat completions in Re
 ### Streamed Chat Response with SSE
 
 
-To achieve this streamed chat completion effect we will use an SSE (Server Sent Events) approach. SSE allows the server to send incremental data over a single long lived HTTP connection. We just make the request and listen to the JSON chunks returned. This is more simple and lightweight than WebSockets and is used by a lot of LLM inference endpoints.
+To achieve this streamed chat completion effect we will use SSE (Server Sent Events). SSE allows the server to send incremental data over a single long lived HTTP connection. We just make the request and listen to the JSON chunks returned. This is more simple and lightweight than WebSockets and is used by a lot of LLM inference endpoints.
 
 We will use the `POST /v1/chat/completions` endpoint provided by most OpenAI compatible APIs. We can enable the streaming of data by including `"stream": true` in our request body. Then the server sends incremental chunks as `text/event-stream` data until finally ending with `[DONE]` event.
 
@@ -193,18 +193,20 @@ The UI follows a simple four-state flow: `idle -> loading -> success | error`. T
 
 Overall, though simple, this still shows how AI can be quickly but intentionally added as features for improving user experience with a fast and native feel delivering great user experience. 
 
+**Read More Here:** https://openrouter.ai/docs/api-reference/streaming
+
 ## Further Investigations: Semantic Search and RAG
 
-To expand the search capability and my own understanding, I also looked into using vector databases to allow for semantic search. This is a precursor to RAG and even a simple semantic search would have allowed for some more advanced post filtering.
+To expand the search capability (and my own technical understanding), I also looked into using vector databases to allow for semantic search. This is a precursor to RAG and even a simple semantic search would have allowed for some more advanced post filtering.
 
-To search by meaning, we would precompute chunked post data into vectors representing semantic meaning using a lightweight encoder such as `sentence-transformers/all-MiniLM-L6-v2` or even OpenAI’s text-embedding model. Then we could compare similarity using simple cosine similarity or dot-product to find closest matches. 
+To search by meaning, we would precompute chunked post data into vectors representing semantic meaning. This would be done using a lightweight encoder such as `sentence-transformers/all-MiniLM-L6-v2` or even OpenAI’s text-embedding model. Then we could compare similarity using simple cosine similarity or dot-product to find closest matches. 
 
-I hypothesised a hybrid approach where I offload the embedding to a server, using either a self-hosted endpoint, or a cloud one. Then the best option for storing the embedding vector would have been stored in a blob in an SQL table to keep the app buildable in Expo. There exist other on-device vector storage options for mobile but none for Expo I could find. Lastly cosine similarity functions could have been implemented from scratch to keep the search functionality offline. The issue with this is that search query would also need embedding, so could not be completely offline. It would have allowed searching for similar posts using the already computed embeddings though! 
+Due to mobile constraints, I hypothesised a hybrid approach where I offload the embedding to a server, using either a self-hosted endpoint, or a cloud one. Then the best option for storing the embedding vector would have been stored in a blob in an SQL table to keep the app buildable in Expo. There exist other on-device vector storage options for mobile but none for Expo I could find. Lastly cosine similarity functions could have been implemented from scratch to keep the search functionality offline. The issue with this is that search query would also need embedding, so could not be completely offline. It would have allowed searching for similar posts using the already computed embeddings though! 
 
-I did also look into using `react-native-fast-tflite`, a high-performance TensorFlow Lite library for React Native. A simple embedding model could have been saved to the device and most modern phones could handle small chunk embeddings, especially with a small embedding model. I have yet to experiment with this as I just ran out of time on this project and this would have required a large chunk of development and testing effort. I do hope to revisit this soon though!
+I did also look into using `react-native-fast-tflite`, a high-performance TensorFlow Lite library for React Native. A simple embedding model could have been saved to the device and most modern phones could handle small chunk embeddings, especially with a small embedding model. I have yet to experiment with this as I ran out of time on this project and this would have required a large chunk of development and testing effort. I do hope to revisit this soon though!
 
 The next step after semantic search would have been to implement RAG (Retrieval-Augmented Generation), allowing the post database to be the knowledge base for an LLM. By injecting results from a semantic search into the prompt for an LLM, users could query and interact with their database. 
 
-While I made some progress into looking into this, the challenges I faced were available libraries, large refactors, and computational requirements on mobile. Especially generating the embeddings and the searching across large datasets. As I said I did consider precomputing embeddings server-side but this project was quickly growing out of hand. There are also the model hosting constraints and data privacy issue faced with sending data across networks and to remote llm's if this app was to be made public, but luckily this remains just a little passion project.
+While I made some progress into looking into this, the challenges I faced were available libraries, large refactors, and computational requirements on mobile. Especially generating the embeddings and the searching across large datasets. As I said, I did consider precomputing embeddings server-side but this project was quickly growing out of hand. There are also the model hosting constraints and data privacy issue faced with sending data across networks and to remote llm's if this app was to be made public, but luckily this remains just a little passion project.
 
 It would have been very interesting to investigate some full RAG implementations and architectures, however I think this would be best suited for future projects, especially where I'm not constrained by mobile capabilities. Whether that be a remote AI service for this app or a completely new project all together!
