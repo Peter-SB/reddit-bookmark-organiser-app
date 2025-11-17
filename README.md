@@ -4,6 +4,8 @@
 
 # Reddit Bookmark App with AI Integration
 
+[**Jump To AI Section ↓**](#implementing-ai)
+
 As anyone who uses Reddit knows, saving and then later finding anything of interest is a nightmare! The saved posts screen is just a long list of posts with no way of filtering it, resulting in endless scrolling for a post you may or may not have even remembered to save. There's also the sneaky 1000 saved posts cap, after which you need to either request your Reddit data or start un-saving posts. And god forbid you need to access anything offline or the post gets deleted.
 
 The temporary solution I had was to copy and save interesting posts to my notes app. This worked but had its own issues. The main issue I kept running into was that the clipboard would truncate long text. Plus, I would have to save the original link to find it again later. It just wasn't a good user experience. So I set out to fix that!
@@ -88,7 +90,7 @@ This was a good experiment in applying some data analytics and information retri
 
 Having been experimenting with a lot of AI recently, I wanted to integrate some simple AI functionality into my app. An AI summary feature seemed an obvious choice for this app and I aimed to integrate it in a natural and aesthetic way. 
 
-I wanted to emulate the classic AI streamed response, the text that instantly displays when generating as the model writes. This gives the summary feature a fast and native feel, not waiting for a static blob of text to appear. The response time, especially in cases of long responses or when using slower self-hosted models, has a huge effect on user experience. Long delays can feel awkward or even concern the user something has gone wrong. Streaming the response also has the added benefit of letting the user start reading before the response has even finished generating.
+I wanted to emulate the classic AI streamed response, the text that instantly displays when generating as the model writes. This gives the summary feature a fast and native feel, not waiting for a static blob of text to appear. The response time, especially in cases of long responses or when using slower self-hosted models, has a huge effect on user experience. Long delays can feel awkward or even concern the user that something has gone wrong. Streaming the response also has the added benefit of letting the user start reading before the response has even finished generating.
 
 In this section we will go over how to implement streamed chat completions in React Native, but the approach would be similar for React or other technologies. This was a surprisingly simple feature and ended up looking very clean and still taught me a lot about integrating AI features into applications.
 
