@@ -11,8 +11,9 @@ import { useEffect } from "react";
 import "react-native-reanimated";
 
 import { useColorScheme } from "@/hooks/useColorScheme";
+import { usePostSync } from "@/hooks/usePostSync";
 import { DatabaseService } from "../services/DatabaseService";
-import { AppState, AppStateStatus } from "react-native";
+import { AppState } from "react-native";
 
 export default function RootLayout() {
   const colorScheme = useColorScheme();
@@ -20,6 +21,7 @@ export default function RootLayout() {
     SpaceMono: require("../assets/fonts/SpaceMono-Regular.ttf"),
   });
   const router = useRouter();
+  usePostSync(); // start periodic syncing of posts when started
 
   useEffect(() => {
     DatabaseService.getInstance().catch((err) => {

@@ -99,6 +99,9 @@ export class DatabaseService {
         redditCreatedAt   TEXT    NOT NULL,
         addedAt           TEXT    NOT NULL,
         updatedAt         TEXT    DEFAULT CURRENT_TIMESTAMP,
+        syncedAt          TEXT,
+        lastSyncStatus    TEXT,
+        lastSyncError     TEXT,
         customTitle       TEXT,
         customBody        TEXT,
         notes             TEXT,
@@ -132,6 +135,19 @@ export class DatabaseService {
     const hasSummary = columns.some((col: any) => col.name === 'summary');
     if (!hasSummary) {
       await this.db.execAsync(`ALTER TABLE posts ADD COLUMN summary TEXT;`);
+    }
+    // Migration: add sync tracking columns if they don't exist
+    const hasSyncedAt = columns.some((col: any) => col.name === 'syncedAt');
+    if (!hasSyncedAt) {
+      await this.db.execAsync(`ALTER TABLE posts ADD COLUMN syncedAt TEXT;`);
+    }
+    const hasLastSyncStatus = columns.some((col: any) => col.name === 'lastSyncStatus');
+    if (!hasLastSyncStatus) {
+      await this.db.execAsync(`ALTER TABLE posts ADD COLUMN lastSyncStatus TEXT;`);
+    }
+    const hasLastSyncError = columns.some((col: any) => col.name === 'lastSyncError');
+    if (!hasLastSyncError) {
+      await this.db.execAsync(`ALTER TABLE posts ADD COLUMN lastSyncError TEXT;`);
     }
   }
 

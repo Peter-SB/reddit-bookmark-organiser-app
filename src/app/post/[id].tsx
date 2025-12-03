@@ -6,6 +6,7 @@ import { spacing } from "@/constants/spacing";
 import { fontSizes, fontWeights } from "@/constants/typography";
 import { fontOptions } from "@/constants/fontOptions";
 import { usePosts } from "@/hooks/usePosts";
+import { usePostSync } from "@/hooks/usePostSync";
 import { Post } from "@/models/models";
 import { SettingsRepository } from "@/repository/SettingsRepository";
 import { Ionicons, MaterialCommunityIcons } from "@expo/vector-icons";
@@ -49,6 +50,7 @@ export default function PostScreen() {
     toggleRead,
     toggleFavorite,
   } = usePosts();
+  const { syncSinglePost } = usePostSync({ autoStart: false });
 
   const [post, setPost] = useState<Post | null>(null);
 
@@ -121,7 +123,8 @@ export default function PostScreen() {
       summary: editedSummary,
       updatedAt: new Date(),
     };
-    await savePost(updated);
+    const saved = await savePost(updated);
+    await syncSinglePost(saved.id);
   }, [
     post,
     editedTitle,
@@ -132,6 +135,7 @@ export default function PostScreen() {
     editedIsFavorite,
     editedSummary,
     savePost,
+    syncSinglePost,
   ]);
 
   const handleBack = useCallback(() => {
@@ -281,11 +285,15 @@ export default function PostScreen() {
   };
 
   const handleToggleRead = async () => {
-    toggleRead(post!.id);
+    if (!post) return;
+    await toggleRead(post.id);
+    await syncSinglePost(post.id);
   };
 
   const handleToggleFavorite = async () => {
-    toggleFavorite(post!.id);
+    if (!post) return;
+    await toggleFavorite(post.id);
+    await syncSinglePost(post.id);
   };
 
   const handleSetRating = async (rating: number | null) => {

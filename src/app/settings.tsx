@@ -1,6 +1,7 @@
 import SettingsCredentialsManager from "@/components/SettingsCredentialsManager";
 import SettingsDatabaseManager from "@/components/SettingsDatabaseManager";
 import SettingsExportToJson from "@/components/SettingsExportToJson";
+import SettingsSyncConfiguration from "@/components/SettingsSyncConfiguration";
 import { palette } from "@/constants/Colors";
 import { spacing } from "@/constants/spacing";
 import { fontSizes, fontWeights } from "@/constants/typography";
@@ -22,6 +23,7 @@ import { useRouter } from "expo-router";
 export default function SettingsScreen() {
   const [loading, setLoading] = useState(true);
   const [openSections, setOpenSections] = useState({
+    sync: true,
     credentials: false,
     ai: false,
     database: true,
@@ -104,6 +106,15 @@ export default function SettingsScreen() {
           onToggle={() => toggleSection("database")}
         >
           <SettingsDatabaseManager />
+        </SettingsSection>
+      
+        <SettingsSection
+          title="Sync Server"
+          icon="sync"
+          isOpen={openSections.sync}
+          onToggle={() => toggleSection("sync")}
+        >
+          <SettingsSyncConfiguration />
         </SettingsSection>
 
         <SettingsSection

@@ -1,9 +1,9 @@
 import { MinHashService } from "../MinHashService";
 
 describe("MinHashService.generateSignature", () => {
-  it("returns an array of default length (128)", () => {
+  it("returns an array of default length (32)", () => {
     const sig = MinHashService.generateSignature("test string");
-    expect(sig).toHaveLength(128);
+    expect(sig).toHaveLength(32);
   });
 
   it("returns an array of specified length", () => {
@@ -26,7 +26,7 @@ describe("MinHashService.generateSignature", () => {
 
   it("handles empty string input", () => {
     const sig = MinHashService.generateSignature("");
-    expect(sig).toHaveLength(128);
+    expect(sig).toHaveLength(32);
     for (const v of sig) {
       expect(typeof v).toBe("number");
       expect(Number.isFinite(v)).toBe(true);

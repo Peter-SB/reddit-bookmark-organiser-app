@@ -20,6 +20,12 @@ export interface Post {
 
   /** When the post was last updated */
   updatedAt: Date;
+  /** When the post was last successfully synced to the server */
+  syncedAt?: Date | null;
+  /** Status text returned by the sync endpoint */
+  lastSyncStatus?: string;
+  /** Last sync error message, if any */
+  lastSyncError?: string;
 
   /** User-editable */
   customTitle?: string;

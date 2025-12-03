@@ -4,11 +4,74 @@ import type { SQLiteDatabase } from 'expo-sqlite';
 import { DatabaseService } from '../services/DatabaseService';
 import { MinHashService } from '../services/MinHashService';
 
+type PostRow = {
+  id: number;
+  redditId: string;
+  url: string;
+  title: string;
+  bodyText: string | null;
+  bodyMinHash: string | null;
+  author: string;
+  subreddit: string;
+  redditCreatedAt: string;
+  addedAt: string;
+  updatedAt: string;
+  syncedAt: string | null;
+  lastSyncStatus: string | null;
+  lastSyncError: string | null;
+  customTitle: string | null;
+  customBody: string | null;
+  notes: string | null;
+  rating: number | null;
+  isRead: number;
+  isFavorite: number;
+  folderId: number | null;
+  extraFields: string | null;
+  summary: string | null;
+};
+
 export class PostRepository {
   private db: SQLiteDatabase;
 
   private constructor(db: SQLiteDatabase) {
     this.db = db;
+  }
+
+  private async mapRowToPost(row: PostRow): Promise<Post> {
+    let extraFields: Record<string, any> | undefined;
+    if (row.extraFields) {
+      try {
+        extraFields = JSON.parse(row.extraFields);
+      } catch {
+        extraFields = undefined;
+      }
+    }
+
+    return {
+      id: row.id,
+      redditId: row.redditId,
+      url: row.url,
+      title: row.title,
+      bodyText: row.bodyText ?? '',
+      bodyMinHash: row.bodyMinHash ?? undefined,
+      author: row.author,
+      subreddit: row.subreddit,
+      redditCreatedAt: new Date(row.redditCreatedAt),
+      addedAt: new Date(row.addedAt),
+      updatedAt: new Date(row.updatedAt),
+      syncedAt: row.syncedAt ? new Date(row.syncedAt) : null,
+      lastSyncStatus: row.lastSyncStatus ?? undefined,
+      lastSyncError: row.lastSyncError ?? undefined,
+      customTitle: row.customTitle ?? undefined,
+      customBody: row.customBody ?? undefined,
+      notes: row.notes ?? undefined,
+      rating: row.rating ?? undefined,
+      isRead: row.isRead === 1,
+      isFavorite: row.isFavorite === 1,
+      extraFields,
+      summary: row.summary ?? undefined,
+      folderIds: await this.loadFolderIds(row.id),
+    };
   }
 
   public static async create(): Promise<PostRepository> {
@@ -18,125 +81,51 @@ export class PostRepository {
   }
 
   public async getAll(): Promise<Post[]> {
-    const rows = await this.db.getAllAsync<{
-      id: number;
-      redditId: string;
-      url: string;
-      title: string;
-      bodyText: string | null;
-      bodyMinHash: string | null;
-      author: string;
-      subreddit: string;
-      redditCreatedAt: string;
-      addedAt: string;
-      updatedAt: string;
-      customTitle: string | null;
-      customBody: string | null;
-      notes: string | null;
-      rating: number | null;
-      isRead: number;
-      isFavorite: number;
-      folderId: number | null;
-      extraFields: string | null;
-      summary: string | null;
-    }>(`SELECT * FROM posts ORDER BY addedAt DESC`);
-
-    const posts = await Promise.all(
-      rows.map(async r => ({
-        id: r.id,
-        redditId: r.redditId,
-        url: r.url,
-        title: r.title,
-        bodyText: r.bodyText ?? '',
-        bodyMinHash: r.bodyMinHash ?? undefined,
-        author: r.author,
-        subreddit: r.subreddit,
-        redditCreatedAt: new Date(r.redditCreatedAt),
-        addedAt: new Date(r.addedAt),
-        updatedAt: new Date(r.updatedAt),
-        customTitle: r.customTitle ?? undefined,
-        customBody: r.customBody ?? undefined,
-        notes: r.notes ?? undefined,
-        rating: r.rating ?? undefined,
-        isRead: r.isRead === 1,
-        isFavorite: r.isFavorite === 1,
-        extraFields: r.extraFields ? JSON.parse(r.extraFields) : undefined,
-        summary: r.summary ?? undefined,
-        folderIds: await this.loadFolderIds(r.id),
-      }))
-    );
-    return posts;
+    const rows = await this.db.getAllAsync<PostRow>(`SELECT * FROM posts ORDER BY addedAt DESC`);
+    return Promise.all(rows.map(r => this.mapRowToPost(r)));
   }
 
   public async getById(id: number): Promise<Post | null> {
-    const r = await this.db.getFirstAsync<{
-      id: number;
-      redditId: string;
-      url: string;
-      title: string;
-      bodyText: string | null;
-      bodyMinHash: string | null;
-      author: string;
-      subreddit: string;
-      redditCreatedAt: string;
-      addedAt: string;
-      updatedAt: string;
-      customTitle: string | null;
-      customBody: string | null;
-      notes: string | null;
-      rating: number | null;
-      isRead: number;
-      isFavorite: number;
-      folderId: number | null;
-      extraFields: string | null;
-      summary: string | null;
-    }>(`SELECT * FROM posts WHERE id = ?`, id);
+    const r = await this.db.getFirstAsync<PostRow>(`SELECT * FROM posts WHERE id = ?`, id);
     if (!r) return null;
-    return {
-      id: r.id,
-      redditId: r.redditId,
-      url: r.url,
-      title: r.title,
-      bodyText: r.bodyText ?? '',
-      bodyMinHash: r.bodyMinHash ?? undefined,
-      author: r.author,
-      subreddit: r.subreddit,
-      redditCreatedAt: new Date(r.redditCreatedAt),
-      addedAt: new Date(r.addedAt),
-      updatedAt: new Date(r.updatedAt),
-      customTitle: r.customTitle ?? undefined,
-      customBody: r.customBody ?? undefined,
-      notes: r.notes ?? undefined,
-      rating: r.rating ?? undefined,
-      isRead: r.isRead === 1,
-      isFavorite: r.isFavorite === 1,
-      extraFields: r.extraFields ? JSON.parse(r.extraFields) : undefined,
-      summary: r.summary ?? undefined,
-      folderIds: await this.loadFolderIds(r.id),
-    };
+    return this.mapRowToPost(r);
   }
 
   public async create(post: Omit<Post,'id'>): Promise<number> {
-    // Generate MinHash signature for body text
-    const bodyMinHashArr = MinHashService.generateSignature(post.bodyText || '');
-    const bodyMinHash = JSON.stringify(bodyMinHashArr);
+    const addedAt = post.addedAt ?? new Date();
+    const updatedAt = post.updatedAt ?? addedAt ?? new Date();
+
+    // Use provided MinHash if present, otherwise generate from body text
+    let bodyMinHash: string | null = null;
+    if (typeof post.bodyMinHash === 'string') {
+      bodyMinHash = post.bodyMinHash;
+    } else {
+      const sig = MinHashService.generateSignature(post.bodyText || '');
+      bodyMinHash = sig ? JSON.stringify(sig) : null;
+    }
+
+    const syncedAt = post.syncedAt ? post.syncedAt.toISOString() : null;
 
     const result = await this.db.runAsync(
       `INSERT INTO posts (
          redditId, url, title, bodyText, bodyMinHash, author, subreddit,
-         redditCreatedAt, addedAt, updatedAt,
+         redditCreatedAt, addedAt, updatedAt, syncedAt, lastSyncStatus, lastSyncError,
          customTitle, customBody, notes, rating,
          isRead, isFavorite, extraFields, summary
-       ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+       ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
       post.redditId,
       post.url,
       post.title,
       post.bodyText ?? null,
-      bodyMinHash ?? null,
+      bodyMinHash,
       post.author,
       post.subreddit,
       post.redditCreatedAt.toISOString(),
-      post.addedAt.toISOString(),
+      addedAt.toISOString(),
+      updatedAt.toISOString(),
+      syncedAt,
+      post.lastSyncStatus ?? null,
+      post.lastSyncError ?? null,
       post.customTitle ?? null,
       post.customBody ?? null,
       post.notes ?? null,
@@ -198,7 +187,42 @@ export class PostRepository {
     return similarPosts;
   }
 
+  public async getPendingSyncPosts(): Promise<Post[]> {
+    const rows = await this.db.getAllAsync<PostRow>(
+      `SELECT * FROM posts WHERE syncedAt IS NULL OR datetime(syncedAt) < datetime(updatedAt)`
+    );
+    return Promise.all(rows.map(r => this.mapRowToPost(r)));
+  }
+
+  public async updateSyncState(
+    postId: number,
+    status: string,
+    syncedAt: Date | string | null,
+    error?: string | null
+  ): Promise<void> {
+    const syncedAtValue =
+      syncedAt instanceof Date ? syncedAt.toISOString() : syncedAt ?? null;
+    await this.db.runAsync(
+      `UPDATE posts
+         SET syncedAt = ?,
+             lastSyncStatus = ?,
+             lastSyncError = ?
+       WHERE id = ?`,
+      syncedAtValue,
+      status,
+      error ?? null,
+      postId
+    );
+  }
+
   public async update(post: Post): Promise<number> {
+    const bodyMinHash = typeof post.bodyMinHash === 'string'
+      ? post.bodyMinHash
+      : post.bodyMinHash
+        ? JSON.stringify(post.bodyMinHash)
+        : null;
+    const extraFields = post.extraFields ? JSON.stringify(post.extraFields) : null;
+
     const result = await this.db.runAsync(
       `UPDATE posts SET
          title         = ?,
@@ -212,18 +236,18 @@ export class PostRepository {
          isFavorite    = ?,
          extraFields   = ?,
          summary       = ?,
-         updatedAt    = CURRENT_TIMESTAMP
+         updatedAt     = CURRENT_TIMESTAMP
        WHERE id = ?`,
       post.title,
-      post.bodyText,
-      post.bodyMinHash ?? null,
+      post.bodyText ?? null,
+      bodyMinHash,
       post.customTitle ?? null,
       post.customBody ?? null,
       post.notes ?? null,
       post.rating ?? null,
       post.isRead ? 1 : 0,
       post.isFavorite ? 1 : 0,
-      post.extraFields ? JSON.stringify(post.extraFields) : null,
+      extraFields,
       post.summary ?? null,
       post.id
     );
