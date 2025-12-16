@@ -28,7 +28,7 @@ export default function SettingsSyncConfiguration() {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [statusMessage, setStatusMessage] = useState<string | null>(null);
-  const { syncPending, syncing, lastSyncAt } = usePostSync({ autoStart: false });
+  const { syncPending, syncing, lastSyncAt, forceResyncAll } = usePostSync({ autoStart: false });
 
   useEffect(() => {
     (async () => {
@@ -85,6 +85,25 @@ export default function SettingsSyncConfiguration() {
     } catch (err) {
       console.error("Manual sync failed:", err);
       Alert.alert("Sync failed", (err as Error).message);
+    }
+  };
+
+  const triggerForceResync = async () => {
+    setStatusMessage(null);
+    try {
+      const results = await forceResyncAll();
+      if (results.length === 0) {
+        setStatusMessage("No posts found to re-sync or server URL not set.");
+        return;
+      }
+      const success = results.filter((r) => r.success).length;
+      const failed = results.length - success;
+      setStatusMessage(
+        `Force re-sync finished: ${success} succeeded${failed ? `, ${failed} failed` : ""}.`
+      );
+    } catch (err) {
+      console.error("Force re-sync failed:", err);
+      Alert.alert("Force re-sync failed", (err as Error).message);
     }
   };
 
@@ -147,6 +166,16 @@ export default function SettingsSyncConfiguration() {
         </TouchableOpacity>
       </View>
 
+      <TouchableOpacity
+        style={[styles.button, styles.fullWidthButton, syncing && styles.buttonDisabled]}
+        onPress={triggerForceResync}
+        disabled={syncing}
+      >
+        <Text style={styles.buttonText}>
+          {syncing ? "Re-syncing..." : "Force Re-sync All Posts"}
+        </Text>
+      </TouchableOpacity>
+
       {statusMessage && <Text style={styles.status}>{statusMessage}</Text>}
       {lastSyncAt && (
         <Text style={styles.status}>Last successful sync: {lastSyncAt.toLocaleString()}</Text>
@@ -193,6 +222,11 @@ const styles = StyleSheet.create({
   },
   buttonDisabled: {
     opacity: 0.6,
+  },
+  fullWidthButton: {
+    marginTop: spacing.s,
+    flex: 0,
+    width: "100%",
   },
   buttonText: {
     color: palette.foreground,

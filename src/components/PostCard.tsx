@@ -9,9 +9,10 @@ import { Post } from "../models/models";
 
 interface PostCardProps {
   post: Post;
+  footer?: React.ReactNode;
 }
 
-export const PostCard: React.FC<PostCardProps> = ({ post }) => {
+export const PostCard: React.FC<PostCardProps> = ({ post, footer }) => {
   const router = useRouter();
 
   const handlePress = () => {
@@ -91,6 +92,7 @@ export const PostCard: React.FC<PostCardProps> = ({ post }) => {
           )}
         </View>
       </View>
+      {footer ? <View style={styles.footer}>{footer}</View> : null}
     </TouchableOpacity>
   );
 };
@@ -167,6 +169,9 @@ const styles = StyleSheet.create({
     fontSize: fontSizes.body,
     color: palette.muted,
     marginHorizontal: spacing.xs,
+  },
+  footer: {
+    marginTop: spacing.s,
   },
   // userLink: {
   //   color: palette.accent,

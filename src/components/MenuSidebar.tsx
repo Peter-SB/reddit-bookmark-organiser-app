@@ -219,6 +219,24 @@ export const MenuSidebar: React.FC<MenuSidebarProps> = ({
             </Text>
           </TouchableOpacity>
 
+          <TouchableOpacity
+            style={styles.item}
+            onPress={() => {
+              onSelect("semantic-search");
+              onClose();
+            }}
+          >
+            <View style={styles.iconContainer}>
+              <Icon
+                name="manage-search"
+                size={24}
+                style={styles.icon}
+                color={palette.foreground}
+              />
+            </View>
+            <Text style={styles.label}>Semantic Search</Text>
+          </TouchableOpacity>
+
           <View style={styles.dividerContainer}>
             <View style={styles.dividerLine} />
           </View>

@@ -195,6 +195,8 @@ export default function HomeScreen() {
         offset: LIST_HEADER_HEIGHT,
         animated: true,
       });
+    } else if (key === "semantic-search") {
+      router.push("/semantic-search" as any);
     } else if (key === "settings") {
       router.push("/settings" as any);
     } else if (key === "search") {

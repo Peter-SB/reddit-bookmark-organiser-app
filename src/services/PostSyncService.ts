@@ -5,6 +5,8 @@ import { SettingsRepository } from '@/repository/SettingsRepository';
 
 const DEFAULT_SYNC_BATCH_SIZE = 10;
 
+// todo: better error handeling and logging. Better ui for displaying when failed/successs
+
 export type SyncSettings = {
   serverUrl: string;
   tableName: string;
@@ -50,7 +52,7 @@ export class PostSyncService {
 
     const tableName = (settings[SYNC_TABLE_NAME_KEY] || DEFAULT_SYNC_TABLE).trim() || DEFAULT_SYNC_TABLE;
     const embeddingModel = (settings[SYNC_EMBED_MODEL_KEY] || DEFAULT_EMBED_MODEL).trim() || DEFAULT_EMBED_MODEL;
-    const chunkTable = (settings[SYNC_CHUNK_TABLE_KEY] || '').trim() || undefined;
+    const chunkTable = (settings[SYNC_CHUNK_TABLE_KEY] || '').trim() || `chunk_${embeddingModel}_${tableName}`;
 
     return {
       serverUrl: this.normaliseServerUrl(serverUrl),
@@ -201,5 +203,11 @@ export class PostSyncService {
     const post = await this.repo.getById(postId);
     if (!post) return [];
     return this.syncPosts([post]);
+  }
+
+  public async forceResyncAllPosts(): Promise<SyncResult[]> {
+    await this.repo.resetSyncStateForAll();
+    const pending = await this.repo.getPendingSyncPosts();
+    return this.syncPosts(pending);
   }
 }

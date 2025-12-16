@@ -45,6 +45,23 @@ export function usePostSync(options: Options = {}) {
     }
   }, [ensureService]);
 
+  const forceResyncAll = useCallback(async (): Promise<SyncResult[]> => {
+    if (syncingRef.current) return [];
+    syncingRef.current = true;
+    setSyncing(true);
+    try {
+      const svc = await ensureService();
+      const results = await svc.forceResyncAllPosts();
+      if (results.some((r) => r.success)) {
+        setLastSyncAt(new Date());
+      }
+      return results;
+    } finally {
+      syncingRef.current = false;
+      setSyncing(false);
+    }
+  }, [ensureService]);
+
   const syncSinglePost = useCallback(async (postId: number): Promise<SyncResult[]> => {
     const svc = await ensureService();
     const results = await svc.syncSinglePost(postId);
@@ -75,6 +92,7 @@ export function usePostSync(options: Options = {}) {
     syncing,
     lastSyncAt,
     syncPending,
+    forceResyncAll,
     syncSinglePost,
   };
 }

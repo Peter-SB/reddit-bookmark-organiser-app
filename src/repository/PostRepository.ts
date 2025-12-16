@@ -215,6 +215,15 @@ export class PostRepository {
     );
   }
 
+  public async resetSyncStateForAll(): Promise<void> {
+    await this.db.runAsync(
+      `UPDATE posts
+         SET syncedAt = NULL,
+             lastSyncStatus = NULL,
+             lastSyncError = NULL`
+    );
+  }
+
   public async update(post: Post): Promise<number> {
     const bodyMinHash = typeof post.bodyMinHash === 'string'
       ? post.bodyMinHash
