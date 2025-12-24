@@ -74,6 +74,7 @@ export default function RootLayout() {
         <Stack.Screen name="post/[id]" options={{ headerShown: false }} />
         <Stack.Screen name="settings" options={{ headerShown: false }} />
         <Stack.Screen name="semantic-search" options={{ headerShown: false }} />
+        <Stack.Screen name="similar/[id]" options={{ headerShown: false }} />
         <Stack.Screen name="+not-found" />
       </Stack>
       <StatusBar style="auto" />

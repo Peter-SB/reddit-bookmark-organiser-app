@@ -7,6 +7,7 @@ import {
   openRedditSubreddit,
   openRedditUser,
 } from "@/utils/redditLinks";
+import { useRouter } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
 import React, { useEffect, useState } from "react";
 import {
@@ -49,6 +50,7 @@ export const PostSidebar: React.FC<SidebarProps> = ({
   formatDate,
   setFolders,
 }) => {
+  const router = useRouter();
   const [postFolderIds, setPostFolderIds] = useState<number[]>([]);
 
   const handleFolderChange = async (folderIds: number[]) => {
@@ -62,6 +64,12 @@ export const PostSidebar: React.FC<SidebarProps> = ({
       setPostFolderIds(post.folderIds);
     }
   }, [post]);
+
+  const handleOpenSimilarPage = () => {
+    if (!post) return;
+    toggleSidebar();
+    router.push(`/similar/${post.id}`);
+  };
 
   if (!sidebarVisible) return null;
 
@@ -170,6 +178,20 @@ export const PostSidebar: React.FC<SidebarProps> = ({
             </Text>
           </View>
 
+          {/* Similar */}
+          <View style={styles.sidebarSection}>
+            <Text style={styles.sidebarSectionTitle}>Similar Posts</Text>
+            <TouchableOpacity style={styles.similarButton} onPress={handleOpenSimilarPage}>
+              <Ionicons
+                name="sparkles-outline"
+                size={18}
+                color={palette.foreground}
+                style={{ marginRight: spacing.s }}
+              />
+              <Text style={styles.similarButtonText}>View Similar Posts</Text>
+            </TouchableOpacity>
+          </View>
+
           {/* Folder */}
           <View style={styles.sidebarSection}>
             <Text style={styles.sidebarSectionTitle}>Folder</Text>
@@ -237,5 +259,20 @@ const styles = StyleSheet.create({
     color: palette.muted,
     lineHeight: 20,
     padding: 0,
+  },
+  similarButton: {
+    flexDirection: "row",
+    alignItems: "center",
+    // borderWidth: 1,
+    // borderColor: palette.border,
+    // borderRadius: 8,
+    paddingVertical: spacing.s,
+    // paddingHorizontal: spacing.m,
+    // backgroundColor: palette.backgroundMidLight,
+  },
+  similarButtonText: {
+    color: palette.foreground,
+    fontSize: fontSizes.body,
+    fontWeight: fontWeights.normal,
   },
 });

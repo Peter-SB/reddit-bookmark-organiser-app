@@ -1,4 +1,11 @@
-import { DEFAULT_EMBED_MODEL, DEFAULT_SYNC_TABLE, SYNC_CHUNK_TABLE_KEY, SYNC_EMBED_MODEL_KEY, SYNC_SERVER_URL_KEY, SYNC_TABLE_NAME_KEY } from '@/constants/sync';
+import {
+  DEFAULT_EMBED_MODEL,
+  DEFAULT_SYNC_TABLE,
+  SYNC_SEMANTIC_EMBED_MODEL_KEY,
+  SYNC_SERVER_URL_KEY,
+  SYNC_SIMILAR_EMBED_MODEL_KEY,
+  SYNC_TABLE_NAME_KEY,
+} from '@/constants/sync';
 import { Post } from '@/models/models';
 import { PostRepository } from '@/repository/PostRepository';
 import { SettingsRepository } from '@/repository/SettingsRepository';
@@ -10,8 +17,7 @@ const DEFAULT_SYNC_BATCH_SIZE = 10;
 export type SyncSettings = {
   serverUrl: string;
   tableName: string;
-  embeddingModel: string;
-  chunkTable?: string;
+  embeddingProfiles: string[];
 };
 
 export type SyncResult = {
@@ -40,8 +46,8 @@ export class PostSyncService {
     const settings = await SettingsRepository.getSettings([
       SYNC_SERVER_URL_KEY,
       SYNC_TABLE_NAME_KEY,
-      SYNC_EMBED_MODEL_KEY,
-      SYNC_CHUNK_TABLE_KEY,
+      SYNC_SEMANTIC_EMBED_MODEL_KEY,
+      SYNC_SIMILAR_EMBED_MODEL_KEY,
     ]);
 
     const serverUrl = (settings[SYNC_SERVER_URL_KEY] || '').trim();
@@ -51,14 +57,18 @@ export class PostSyncService {
     }
 
     const tableName = (settings[SYNC_TABLE_NAME_KEY] || DEFAULT_SYNC_TABLE).trim() || DEFAULT_SYNC_TABLE;
-    const embeddingModel = (settings[SYNC_EMBED_MODEL_KEY] || DEFAULT_EMBED_MODEL).trim() || DEFAULT_EMBED_MODEL;
-    const chunkTable = (settings[SYNC_CHUNK_TABLE_KEY] || '').trim() || `chunk_${embeddingModel}_${tableName}`;
+    const semanticEmbed =
+      (settings[SYNC_SEMANTIC_EMBED_MODEL_KEY] || DEFAULT_EMBED_MODEL).trim() || DEFAULT_EMBED_MODEL;
+    const similarEmbed =
+      (settings[SYNC_SIMILAR_EMBED_MODEL_KEY] || DEFAULT_EMBED_MODEL).trim() || DEFAULT_EMBED_MODEL;
+    const embeddingProfiles = Array.from(
+      new Set([semanticEmbed, similarEmbed].filter((p) => p && p.trim()))
+    );
 
     return {
       serverUrl: this.normaliseServerUrl(serverUrl),
       tableName,
-      embeddingModel,
-      chunkTable,
+      embeddingProfiles,
     };
   }
 
@@ -86,15 +96,13 @@ export class PostSyncService {
     };
   }
 
-  private buildPayload(posts: Post[], config: SyncSettings) {
+  private buildPayload(posts: Post[], config: SyncSettings, forceEmbed: boolean) {
     const payload: any = {
       posts: posts.map((p) => this.mapPostToPayload(p)),
       table_name: config.tableName,
-      embedding_profile: config.embeddingModel,
+      embedding_profiles: config.embeddingProfiles,
+      force_embed: Boolean(forceEmbed),
     };
-    if (config.chunkTable) {
-      payload.embed_chunk_table = config.chunkTable;
-    }
     return payload;
   }
 
@@ -132,13 +140,13 @@ export class PostSyncService {
     }
   }
 
-  private async syncPosts(posts: Post[], settingsOverride?: SyncSettings): Promise<SyncResult[]> {
+  private async syncPosts(posts: Post[], settingsOverride?: SyncSettings, forceEmbed: boolean = false): Promise<SyncResult[]> {
     if (posts.length === 0) return [];
     const config = settingsOverride ?? (await this.loadSettings());
     if (!config) throw new Error('Sync settings not configured');
 
     const endpoint = this.buildEndpoint(config.serverUrl);
-    const payload = this.buildPayload(posts, config);
+    const payload = this.buildPayload(posts, config, forceEmbed);
     let results: SyncResult[] = [];
 
     try {
@@ -208,6 +216,6 @@ export class PostSyncService {
   public async forceResyncAllPosts(): Promise<SyncResult[]> {
     await this.repo.resetSyncStateForAll();
     const pending = await this.repo.getPendingSyncPosts();
-    return this.syncPosts(pending);
+    return this.syncPosts(pending, undefined, true);
   }
 }
