@@ -71,6 +71,12 @@ export const PostSidebar: React.FC<SidebarProps> = ({
     router.push(`/similar/${post.id}`);
   };
 
+  const handleOpenAuthorPage = () => {
+    if (!post?.author) return;
+    toggleSidebar();
+    router.push(`/author/${encodeURIComponent(post.author)}`);
+  };
+
   if (!sidebarVisible) return null;
 
   return (
@@ -161,11 +167,20 @@ export const PostSidebar: React.FC<SidebarProps> = ({
               </Text>
             </Text>
             <Text style={styles.sidebarText}>
+              Posted: {formatDate(post.redditCreatedAt)}
+            </Text>
+            <Text style={styles.sidebarText}>
               Added: {formatDate(post.addedAt)}
             </Text>
             <Text style={styles.sidebarText}>
-              Posted: {formatDate(post.redditCreatedAt)}
+              Synced:{" "}
+              {post.syncedAt ? formatDate(post.syncedAt) : "Not synced yet"}
             </Text>
+            {post.lastSyncError ? (
+              <Text style={[styles.sidebarText, styles.errorText]}>
+                Last error: {post.lastSyncError}
+              </Text>
+            ) : null}
             <Text style={styles.sidebarText}>Bookmark #{post.id}</Text>
             <Text style={styles.sidebarText}>
               Word count:{" "}
@@ -181,6 +196,19 @@ export const PostSidebar: React.FC<SidebarProps> = ({
           {/* Similar */}
           <View style={styles.sidebarSection}>
             <Text style={styles.sidebarSectionTitle}>Similar Posts</Text>
+            <TouchableOpacity
+              style={[styles.similarButton, { marginTop: spacing.xs }]}
+              onPress={handleOpenAuthorPage}
+              disabled={!post?.author}
+            >
+              <Ionicons
+                name="person-outline"
+                size={18}
+                color={palette.foreground}
+                style={{ marginRight: spacing.s }}
+              />
+              <Text style={styles.similarButtonText}>Author Posts</Text>
+            </TouchableOpacity>
             <TouchableOpacity style={styles.similarButton} onPress={handleOpenSimilarPage}>
               <Ionicons
                 name="sparkles-outline"
@@ -188,7 +216,7 @@ export const PostSidebar: React.FC<SidebarProps> = ({
                 color={palette.foreground}
                 style={{ marginRight: spacing.s }}
               />
-              <Text style={styles.similarButtonText}>View Similar Posts</Text>
+              <Text style={styles.similarButtonText}>Similar Posts</Text>
             </TouchableOpacity>
           </View>
 
@@ -259,6 +287,9 @@ const styles = StyleSheet.create({
     color: palette.muted,
     lineHeight: 20,
     padding: 0,
+  },
+  errorText: {
+    color: palette.favHeartRed,
   },
   similarButton: {
     flexDirection: "row",
