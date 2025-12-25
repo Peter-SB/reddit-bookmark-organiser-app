@@ -70,8 +70,6 @@ export function FolderSelector({
 
   return (
     <View style={styles.container}>
-      {/* <Text style={styles.title}>Folders</Text> */}
-
       {/* Selected folders display */}
       <View style={styles.selectedContainer}>
         {selectedFolders.map((folder) => (
@@ -149,9 +147,7 @@ export function FolderSelector({
 }
 
 const styles = StyleSheet.create({
-  container: {
-    marginBottom: spacing.l,
-  },
+  container: {},
   title: {
     fontSize: fontSizes.title,
     fontWeight: "600",
@@ -186,8 +182,8 @@ const styles = StyleSheet.create({
     // borderWidth: 1,
     borderColor: palette.border,
     borderRadius: 8,
-    paddingHorizontal: spacing.s,
     paddingVertical: spacing.s,
+
     fontSize: fontSizes.body,
     color: palette.foreground,
     backgroundColor: palette.background,

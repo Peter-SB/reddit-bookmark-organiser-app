@@ -92,20 +92,13 @@ export default function AuthorPostsScreen() {
         <Text style={styles.headerTitle} numberOfLines={1}>
           {authorName ? `Posts by u/${authorName}` : "Same Author"}
         </Text>
-        <TouchableOpacity
-          onPress={handleRefresh}
-          style={styles.headerIconButton}
-          disabled={refreshing || loading}
-        >
-          <Icon name="refresh" size={24} color={palette.foreground} />
-        </TouchableOpacity>
       </View>
 
       {(loading || refreshing) && (
         <View style={styles.loadingRow}>
           <ActivityIndicator size="small" color={palette.accent} />
           <Text style={[styles.statusText, { marginLeft: spacing.s }]}>
-            Refreshing posts...
+            Getting posts...
           </Text>
         </View>
       )}

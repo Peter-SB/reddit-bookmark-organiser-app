@@ -1,2 +1,2 @@
-export const DEFAULT_SEARCH_RESULTS = 10;
+export const DEFAULT_SEARCH_RESULTS = 50;
 export const DEFAULT_SEARCH_INCLUDE_TEXT = true;

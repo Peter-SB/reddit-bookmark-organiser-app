@@ -127,6 +127,15 @@ export const PostSidebar: React.FC<SidebarProps> = ({
               textAlignVertical="top"
             />
           </View>
+          {/* Folder */}
+          <View style={styles.sidebarSection}>
+            <Text style={styles.sidebarSectionTitle}>Folder</Text>
+            <FolderSelector
+              postId={post?.id || 0}
+              selectedFolderIds={postFolderIds}
+              onFoldersChange={handleFolderChange}
+            />
+          </View>
           {/* Post Info */}
           <View style={styles.sidebarSection}>
             <Text style={styles.sidebarSectionTitle}>Post Info</Text>
@@ -173,8 +182,13 @@ export const PostSidebar: React.FC<SidebarProps> = ({
               Added: {formatDate(post.addedAt)}
             </Text>
             <Text style={styles.sidebarText}>
-              Synced:{" "}
-              {post.syncedAt ? formatDate(post.syncedAt) : "Not synced yet"}
+              Synced: {/* {post.syncedAt ? formatDate(post.syncedAt) : ""} */}
+              {post.lastSyncStatus
+                ? ` ${
+                    post.lastSyncStatus.charAt(0).toUpperCase() +
+                    post.lastSyncStatus.slice(1)
+                  }`
+                : "Not synced yet"}
             </Text>
             {post.lastSyncError ? (
               <Text style={[styles.sidebarText, styles.errorText]}>
@@ -209,7 +223,10 @@ export const PostSidebar: React.FC<SidebarProps> = ({
               />
               <Text style={styles.similarButtonText}>Author Posts</Text>
             </TouchableOpacity>
-            <TouchableOpacity style={styles.similarButton} onPress={handleOpenSimilarPage}>
+            <TouchableOpacity
+              style={styles.similarButton}
+              onPress={handleOpenSimilarPage}
+            >
               <Ionicons
                 name="sparkles-outline"
                 size={18}
@@ -219,19 +236,7 @@ export const PostSidebar: React.FC<SidebarProps> = ({
               <Text style={styles.similarButtonText}>Similar Posts</Text>
             </TouchableOpacity>
           </View>
-
-          {/* Folder */}
-          <View style={styles.sidebarSection}>
-            <Text style={styles.sidebarSectionTitle}>Folder</Text>
-            <FolderSelector
-              postId={post?.id || 0}
-              selectedFolderIds={postFolderIds}
-              onFoldersChange={handleFolderChange}
-            />
-            {/* {postFolderIds.length == 0 && (
-              <Text style={styles.sidebarText}>No folders selected</Text>
-            )} */}
-          </View>
+          <View style={{ height: 200 }} />
         </ScrollView>
       </Animated.View>
     </>
@@ -287,6 +292,7 @@ const styles = StyleSheet.create({
     color: palette.muted,
     lineHeight: 20,
     padding: 0,
+    paddingTop: spacing.xs,
   },
   errorText: {
     color: palette.favHeartRed,

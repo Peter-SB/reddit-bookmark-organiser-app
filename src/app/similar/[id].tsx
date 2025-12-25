@@ -1,6 +1,9 @@
 import { PostCard } from "@/components/PostCard";
 import { palette } from "@/constants/Colors";
-import { DEFAULT_SEARCH_INCLUDE_TEXT, DEFAULT_SEARCH_RESULTS } from "@/constants/search";
+import {
+  DEFAULT_SEARCH_INCLUDE_TEXT,
+  DEFAULT_SEARCH_RESULTS,
+} from "@/constants/search";
 import { spacing } from "@/constants/spacing";
 import { fontSizes, fontWeights } from "@/constants/typography";
 import { usePosts } from "@/hooks/usePosts";
@@ -58,7 +61,7 @@ export default function SimilarPostsScreen() {
       const res = await SemanticSearchService.similar({
         postId,
         includeText: DEFAULT_SEARCH_INCLUDE_TEXT,
-        k: DEFAULT_SEARCH_RESULTS,
+        k: 999,
       });
       setResults(res.results);
     } catch (err: any) {
@@ -113,7 +116,10 @@ export default function SimilarPostsScreen() {
             <Text style={styles.fallbackMeta}>r/{item.metadata.subreddit}</Text>
           ) : null}
           {item.metadata?.url ? (
-            <Text style={[styles.fallbackMeta, { color: palette.accent }]} numberOfLines={1}>
+            <Text
+              style={[styles.fallbackMeta, { color: palette.accent }]}
+              numberOfLines={1}
+            >
               {item.metadata.url}
             </Text>
           ) : null}
@@ -131,13 +137,6 @@ export default function SimilarPostsScreen() {
           <Icon name="arrow-back" size={26} color={palette.foreground} />
         </TouchableOpacity>
         <Text style={styles.headerTitle}>Similar Posts</Text>
-        <TouchableOpacity
-          onPress={fetchSimilar}
-          style={styles.headerIconButton}
-          disabled={loading || !Number.isFinite(postId)}
-        >
-          <Icon name="refresh" size={24} color={palette.foreground} />
-        </TouchableOpacity>
       </View>
 
       {error ? <Text style={styles.errorText}>{error}</Text> : null}
@@ -145,7 +144,9 @@ export default function SimilarPostsScreen() {
       {loading && (
         <View style={styles.loadingRow}>
           <ActivityIndicator size="small" color={palette.accent} />
-          <Text style={[styles.statusText, { marginLeft: spacing.s }]}>Searching...</Text>
+          <Text style={[styles.statusText, { marginLeft: spacing.s }]}>
+            Searching...
+          </Text>
         </View>
       )}
 
@@ -161,7 +162,7 @@ export default function SimilarPostsScreen() {
             <View style={styles.emptyState}>
               <Text style={styles.emptyTitle}>No similar posts yet</Text>
               <Text style={styles.emptySubtitle}>
-                Try refreshing or syncing embeddings to populate suggestions.
+                Try syncing embeddings to populate suggestions.
               </Text>
             </View>
           ) : null
@@ -190,6 +191,8 @@ const styles = StyleSheet.create({
     fontSize: fontSizes.large,
     fontWeight: fontWeights.semibold,
     color: palette.foreground,
+    flex: 1,
+    marginHorizontal: spacing.m,
   },
   headerIconButton: {
     padding: spacing.xs,

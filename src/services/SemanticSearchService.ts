@@ -21,7 +21,7 @@ export type SemanticSearchParams = {
 export type SimilarSearchParams = {
   postId: number;
   k?: number;
-  includeText?: boolean;
+  includeText?: boolean; // todo: remove param
 };
 
 export type SemanticSearchResult = {

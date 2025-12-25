@@ -20,6 +20,8 @@ import {
   BackHandler,
   Dimensions,
   Modal,
+  KeyboardAvoidingView,
+  Platform,
   ScrollView,
   StyleSheet,
   Text,
@@ -210,7 +212,6 @@ export default function PostScreen() {
   const toggleFontOption = () => {
     setFontOptionIdx((idx) => (idx + 1) % fontOptions.length);
   };
-
   useEffect(() => {
     (async () => {
       try {
@@ -437,99 +438,109 @@ export default function PostScreen() {
         </View>
 
         {/* Content */}
-        <ScrollView style={styles.content} showsVerticalScrollIndicator={true}>
-          {/* Title */}
-          <View style={styles.titleSection}>
-            {isEditing ? (
-              <TextInput
-                style={styles.title}
-                value={editedTitle}
-                onChangeText={setEditedTitle}
-                multiline
-                placeholder="Post title..."
-              />
-            ) : (
-              <Text style={styles.title}>{editedTitle}</Text>
-            )}
-            <View style={styles.metadata}>
-              <Text style={styles.metadataText}>
-                {formatDate(post.redditCreatedAt)}
-              </Text>
-              <Text style={styles.separator}>•</Text>
-              <Text style={[styles.metadataText]}>
-                {formatRedditUser(post.author)}
-              </Text>
-              <Text style={styles.separator}>•</Text>
-              <Text style={[styles.metadataText]}>r/{post.subreddit}</Text>
-            </View>
-
-            {/* Rating & Read */}
-            <View style={styles.ratingSection}>
-              <StarRating
-                rating={editedRating || 0}
-                onRate={openRatingModal}
-                size={16}
-              />
-              <TouchableOpacity
-                onPress={handleToggleRead}
-                style={styles.readToggle}
-              >
-                <Ionicons
-                  name={
-                    editedIsRead
-                      ? "checkmark-circle"
-                      : "checkmark-circle-outline"
-                  }
-                  size={16}
-                  color={editedIsRead ? palette.accent : palette.muted}
+        <KeyboardAvoidingView
+          style={styles.contentWrapper}
+          behavior={Platform.OS === "ios" ? "padding" : "height"}
+          keyboardVerticalOffset={insets.top}
+        >
+          <ScrollView
+            style={styles.content}
+            showsVerticalScrollIndicator={true}
+            keyboardShouldPersistTaps="handled"
+          >
+            {/* Title */}
+            <View style={styles.titleSection}>
+              {isEditing ? (
+                <TextInput
+                  style={styles.title}
+                  value={editedTitle}
+                  onChangeText={setEditedTitle}
+                  multiline
+                  placeholder="Post title..."
                 />
-                <Text style={styles.readText}>
-                  {editedIsRead ? "Read" : "Unread"}
+              ) : (
+                <Text style={styles.title}>{editedTitle}</Text>
+              )}
+              <View style={styles.metadata}>
+                <Text style={styles.metadataText}>
+                  {formatDate(post.redditCreatedAt)}
                 </Text>
-              </TouchableOpacity>
-              <TouchableOpacity
-                onPress={handleToggleFavorite}
-                style={styles.readToggle}
-              >
-                <Ionicons
-                  name={editedIsFavorite ? "heart" : "heart-outline"}
-                  size={18}
-                  color={editedIsFavorite ? palette.favHeartRed : palette.muted}
+                <Text style={styles.separator}>•</Text>
+                <Text style={[styles.metadataText]}>
+                  {formatRedditUser(post.author)}
+                </Text>
+                <Text style={styles.separator}>•</Text>
+                <Text style={[styles.metadataText]}>r/{post.subreddit}</Text>
+              </View>
+
+              {/* Rating & Read */}
+              <View style={styles.ratingSection}>
+                <StarRating
+                  rating={editedRating || 0}
+                  onRate={openRatingModal}
+                  size={16}
                 />
-              </TouchableOpacity>
+                <TouchableOpacity
+                  onPress={handleToggleRead}
+                  style={styles.readToggle}
+                >
+                  <Ionicons
+                    name={
+                      editedIsRead
+                        ? "checkmark-circle"
+                        : "checkmark-circle-outline"
+                    }
+                    size={16}
+                    color={editedIsRead ? palette.accent : palette.muted}
+                  />
+                  <Text style={styles.readText}>
+                    {editedIsRead ? "Read" : "Unread"}
+                  </Text>
+                </TouchableOpacity>
+                <TouchableOpacity
+                  onPress={handleToggleFavorite}
+                  style={styles.readToggle}
+                >
+                  <Ionicons
+                    name={editedIsFavorite ? "heart" : "heart-outline"}
+                    size={18}
+                    color={
+                      editedIsFavorite ? palette.favHeartRed : palette.muted
+                    }
+                  />
+                </TouchableOpacity>
+              </View>
             </View>
-          </View>
-          {/* Summary */}
-          {showAiSummary && (
-            <View style={styles.summarySection}>
-              <PostSummary
-                post={post}
-                onSave={setEditedSummary}
-                currentFont={currentFont}
-                editedSummary={editedSummary}
-                setEditedSummary={setEditedSummary}
-              />
-            </View>
-          )}
-
-          {/* Body */}
-          <View style={styles.bodySection}>
-            {isEditing ? (
-              <TextInput
-                style={[styles.body, currentFont]}
-                value={editedBody}
-                onChangeText={setEditedBody}
-                multiline
-                placeholder="Post content..."
-                textAlignVertical="top"
-              />
-            ) : (
-              <Text style={[styles.body, currentFont]}>{editedBody}</Text>
+            {/* Summary */}
+            {showAiSummary && (
+              <View style={styles.summarySection}>
+                <PostSummary
+                  post={post}
+                  onSave={setEditedSummary}
+                  currentFont={currentFont}
+                  editedSummary={editedSummary}
+                  setEditedSummary={setEditedSummary}
+                />
+              </View>
             )}
-          </View>
 
-          {/* Notes */}
-          {isEditing && (
+            {/* Body */}
+            <View style={styles.bodySection}>
+              {isEditing ? (
+                <TextInput
+                  style={[styles.body, currentFont]}
+                  value={editedBody}
+                  onChangeText={setEditedBody}
+                  multiline
+                  placeholder="Post content..."
+                  textAlignVertical="top"
+                />
+              ) : (
+                <Text style={[styles.body, currentFont]}>{editedBody}</Text>
+              )}
+            </View>
+
+            {/* Notes */}
             <View style={styles.notesSection}>
               <Text style={styles.sectionTitle}>Notes</Text>
               <TextInput
@@ -541,16 +552,15 @@ export default function PostScreen() {
                 textAlignVertical="top"
               />
             </View>
-          )}
 
-          {/* Save / Delete */}
-          {isEditing && (
-            <View style={styles.actionSection}>
+            {/* Save / Delete */}
+            <View style={styles.border}>
               <View
                 style={{
                   flexDirection: "row",
                   gap: spacing.m,
                   justifyContent: "center",
+                  paddingTop: spacing.m,
                 }}
               >
                 <TouchableOpacity
@@ -599,8 +609,8 @@ export default function PostScreen() {
                 </TouchableOpacity>
               </View>
             </View>
-          )}
-        </ScrollView>
+          </ScrollView>
+        </KeyboardAvoidingView>
       </Animated.View>
 
       {/* Sidebar overlay & Sidebar extracted to component */}
@@ -706,6 +716,9 @@ const styles = StyleSheet.create({
     padding: spacing.xs,
   },
   content: {
+    flex: 1,
+  },
+  contentWrapper: {
     flex: 1,
   },
   titleSection: {
@@ -850,5 +863,9 @@ const styles = StyleSheet.create({
   },
   modalButton: {
     padding: spacing.s,
+  },
+  border: {
+    borderTopWidth: 1,
+    borderTopColor: palette.border,
   },
 });

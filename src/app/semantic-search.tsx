@@ -20,7 +20,10 @@ import Icon from "react-native-vector-icons/MaterialIcons";
 import { SearchBar } from "@/components/SearchBar";
 import { PostCard } from "@/components/PostCard";
 import { palette } from "@/constants/Colors";
-import { DEFAULT_SEARCH_INCLUDE_TEXT, DEFAULT_SEARCH_RESULTS } from "@/constants/search";
+import {
+  DEFAULT_SEARCH_INCLUDE_TEXT,
+  DEFAULT_SEARCH_RESULTS,
+} from "@/constants/search";
 import { spacing } from "@/constants/spacing";
 import { fontSizes, fontWeights } from "@/constants/typography";
 import { usePosts } from "@/hooks/usePosts";
@@ -48,6 +51,12 @@ export default function SemanticSearchScreen() {
     }, [refreshPosts])
   );
 
+  useFocusEffect(
+    useCallback(() => {
+      setModalVisible(true);
+    }, [])
+  );
+
   const postsMap = useMemo(() => {
     const map = new Map<number, (typeof posts)[number]>();
     posts.forEach((p) => map.set(p.id, p));
@@ -61,8 +70,12 @@ export default function SemanticSearchScreen() {
       return;
     }
     const parsedK = parseInt(kInput, 10);
-    const k = Number.isFinite(parsedK) && parsedK > 0 ? parsedK : DEFAULT_SEARCH_RESULTS;
+    const k =
+      Number.isFinite(parsedK) && parsedK > 0
+        ? parsedK
+        : DEFAULT_SEARCH_RESULTS;
 
+    setModalVisible(false);
     setLoading(true);
     setError(null);
     try {
@@ -108,7 +121,10 @@ export default function SemanticSearchScreen() {
           <Text style={styles.fallbackMeta}>r/{item.metadata.subreddit}</Text>
         ) : null}
         {item.metadata?.url ? (
-          <Text style={[styles.fallbackMeta, { color: palette.accent }]} numberOfLines={1}>
+          <Text
+            style={[styles.fallbackMeta, { color: palette.accent }]}
+            numberOfLines={1}
+          >
             {item.metadata.url}
           </Text>
         ) : null}
@@ -138,16 +154,18 @@ export default function SemanticSearchScreen() {
             ? `Results for "${lastQuery}" (${results.length})`
             : "Search your synced embeddings for similar posts."}
         </Text>
+
+        {loading && (
+          <View style={styles.loadingRow}>
+            <ActivityIndicator size="small" color={palette.accent} />
+            <Text style={[styles.statusText, { marginLeft: spacing.s }]}>
+              Searching...
+            </Text>
+          </View>
+        )}
       </View>
 
       {error ? <Text style={styles.errorText}>{error}</Text> : null}
-
-      {loading && (
-        <View style={styles.loadingRow}>
-          <ActivityIndicator size="small" color={palette.accent} />
-          <Text style={[styles.statusText, { marginLeft: spacing.s }]}>Searching...</Text>
-        </View>
-      )}
 
       <FlatList
         data={results}
@@ -160,10 +178,6 @@ export default function SemanticSearchScreen() {
           !loading ? (
             <View style={styles.emptyState}>
               <Text style={styles.emptyTitle}>No results yet</Text>
-              <Text style={styles.emptySubtitle}>
-                Tap the search icon to open semantic search, choose how many results to
-                return, and optionally include text snippets.
-              </Text>
             </View>
           ) : null
         }
@@ -184,12 +198,12 @@ export default function SemanticSearchScreen() {
             style={styles.modalCenter}
           >
             <View style={styles.modalCard}>
-              <View style={styles.modalHeader}>
+              {/* <View style={styles.modalHeader}>
                 <Text style={styles.modalTitle}>Semantic search</Text>
                 <TouchableOpacity onPress={() => setModalVisible(false)}>
                   <Icon name="close" size={22} color={palette.foreground} />
                 </TouchableOpacity>
-              </View>
+              </View> */}
               <SearchBar
                 value={query}
                 onChangeText={setQuery}
@@ -205,33 +219,36 @@ export default function SemanticSearchScreen() {
                   keyboardType="number-pad"
                   placeholder={String(DEFAULT_SEARCH_RESULTS)}
                   placeholderTextColor={palette.muted}
-                  maxLength={3}
+                  maxLength={4}
                 />
               </View>
-              <View style={styles.switchRow}>
-                <View style={{ flex: 1 }}>
-                  <Text style={styles.inputLabel}>Include text in results</Text>
-                  <Text style={styles.helperText}>
-                    When on, snippets from the matched chunk are shown.
-                  </Text>
+              <View style={styles.bottomRow}>
+                <View style={styles.switchRow}>
+                  <View>
+                    <Text style={styles.inputLabel}>Show text snippets</Text>
+                  </View>
+                  <Switch
+                    value={includeText}
+                    onValueChange={setIncludeText}
+                    thumbColor={includeText ? palette.accent : palette.border}
+                    trackColor={{ true: palette.border, false: palette.border }}
+                  />
                 </View>
-                <Switch
-                  value={includeText}
-                  onValueChange={setIncludeText}
-                  thumbColor={includeText ? palette.accent : palette.border}
-                  trackColor={{ true: palette.border, false: palette.border }}
-                />
+                <TouchableOpacity
+                  style={styles.searchButton}
+                  onPress={handleSearch}
+                  disabled={loading}
+                >
+                  <Icon
+                    name="manage-search"
+                    size={20}
+                    color={palette.background}
+                  />
+                  <Text style={styles.searchButtonText}>
+                    {loading ? "Searching..." : "Search"}
+                  </Text>
+                </TouchableOpacity>
               </View>
-              <TouchableOpacity
-                style={styles.searchButton}
-                onPress={handleSearch}
-                disabled={loading}
-              >
-                <Icon name="manage-search" size={20} color={palette.background} />
-                <Text style={styles.searchButtonText}>
-                  {loading ? "Searching..." : "Run Search"}
-                </Text>
-              </TouchableOpacity>
             </View>
           </KeyboardAvoidingView>
         </View>
@@ -266,6 +283,9 @@ const styles = StyleSheet.create({
   statusRow: {
     paddingHorizontal: spacing.m,
     paddingVertical: spacing.s,
+    borderBottomWidth: 1,
+    borderBottomColor: palette.border,
+    backgroundColor: palette.background,
   },
   statusText: {
     fontSize: fontSizes.body,
@@ -279,8 +299,8 @@ const styles = StyleSheet.create({
   loadingRow: {
     flexDirection: "row",
     alignItems: "center",
-    paddingHorizontal: spacing.m,
-    paddingBottom: spacing.s,
+    // paddingHorizontal: spacing.m,
+    paddingTop: spacing.s,
   },
   resultText: {
     fontSize: fontSizes.small,
@@ -365,7 +385,7 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.15,
     shadowRadius: 12,
     elevation: 8,
-    gap: spacing.m,
+    gap: spacing.s,
   },
   modalHeader: {
     flexDirection: "row",
@@ -389,7 +409,6 @@ const styles = StyleSheet.create({
   },
   input: {
     flex: 0.3,
-    minWidth: 70,
     borderWidth: 1,
     borderColor: palette.border,
     borderRadius: 8,
@@ -399,6 +418,11 @@ const styles = StyleSheet.create({
     textAlign: "center",
   },
   switchRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+  },
+  bottomRow: {
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "space-between",
@@ -415,6 +439,7 @@ const styles = StyleSheet.create({
     backgroundColor: palette.foreground,
     borderRadius: 10,
     paddingVertical: spacing.s,
+    paddingHorizontal: spacing.s,
     gap: spacing.s,
   },
   searchButtonText: {
