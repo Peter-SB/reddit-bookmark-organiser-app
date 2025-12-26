@@ -19,7 +19,7 @@ export class DatabaseService {
   }
 
   public static async getInstance(): Promise<DatabaseService> {
-    console.debug('DatabaseService.getInstance() called');
+    // console.debug('DatabaseService.getInstance() called');
 
     if (DatabaseService.instance && await DatabaseService.instance.isConnectionValid()) {
       return DatabaseService.instance;

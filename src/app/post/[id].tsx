@@ -441,7 +441,6 @@ export default function PostScreen() {
         <KeyboardAvoidingView
           style={styles.contentWrapper}
           behavior={Platform.OS === "ios" ? "padding" : "height"}
-          keyboardVerticalOffset={insets.top}
         >
           <ScrollView
             style={styles.content}
