@@ -3,6 +3,7 @@ import { palette } from "@/constants/Colors";
 import { spacing } from "@/constants/spacing";
 import { fontSizes, fontWeights } from "@/constants/typography";
 import { usePosts } from "@/hooks/usePosts";
+import { openRedditUser } from "@/utils/redditLinks";
 import { useFocusEffect, useLocalSearchParams, useRouter } from "expo-router";
 import React, { useCallback, useEffect, useMemo, useState } from "react";
 import {
@@ -90,7 +91,19 @@ export default function AuthorPostsScreen() {
           <Icon name="arrow-back" size={26} color={palette.foreground} />
         </TouchableOpacity>
         <Text style={styles.headerTitle} numberOfLines={1}>
-          {authorName ? `Posts by u/${authorName}` : "Same Author"}
+          {authorName ? (
+            <>
+              {"Posts by "}
+              <Text
+                style={styles.headerLink}
+                onPress={() => openRedditUser(authorName)}
+              >
+                {`u/${authorName}`}
+              </Text>
+            </>
+          ) : (
+            "Same Author"
+          )}
         </Text>
       </View>
 
@@ -150,6 +163,9 @@ const styles = StyleSheet.create({
     color: palette.foreground,
     flex: 1,
     marginHorizontal: spacing.m,
+  },
+  headerLink: {
+    textDecorationLine: "underline",
   },
   headerIconButton: {
     padding: spacing.xs,
