@@ -9,6 +9,7 @@ import {
 import { Post } from '@/models/models';
 import { PostRepository } from '@/repository/PostRepository';
 import { SettingsRepository } from '@/repository/SettingsRepository';
+import { parseDbDate } from '@/utils/datetimeUtils';
 
 const DEFAULT_SYNC_BATCH_SIZE = 10;
 
@@ -81,9 +82,9 @@ export class PostSyncService {
       bodyText: post.customBody ?? post.bodyText ?? '',
       author: post.author,
       subreddit: post.subreddit,
-      redditCreatedAt: post.redditCreatedAt?.toISOString(),
-      addedAt: post.addedAt?.toISOString(),
-      updatedAt: post.updatedAt?.toISOString(),
+      redditCreatedAt: post.redditCreatedAt,
+      addedAt: post.addedAt,
+      updatedAt: post.updatedAt,
       customTitle: post.customTitle ?? undefined,
       customBody: post.customBody ?? undefined,
       notes: post.notes ?? undefined,
@@ -128,7 +129,7 @@ export class PostSyncService {
 
       if (result.success) {
         if (result.updatedAt) {
-          const parsedUpdatedAt = new Date(result.updatedAt);
+          const parsedUpdatedAt = parseDbDate(result.updatedAt);
           if (!Number.isNaN(parsedUpdatedAt.getTime())) {
             syncedAt = parsedUpdatedAt;
           }

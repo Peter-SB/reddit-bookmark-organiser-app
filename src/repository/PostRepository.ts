@@ -3,6 +3,7 @@ import { Post } from '@/models/models';
 import type { SQLiteDatabase } from 'expo-sqlite';
 import { DatabaseService } from '../services/DatabaseService';
 import { MinHashService } from '../services/MinHashService';
+import { parseDbDate } from '../utils/datetimeUtils';
 
 type PostRow = {
   id: number;
@@ -58,8 +59,8 @@ export class PostRepository {
       subreddit: row.subreddit,
       redditCreatedAt: new Date(row.redditCreatedAt),
       addedAt: new Date(row.addedAt),
-      updatedAt: new Date(row.updatedAt),
-      syncedAt: row.syncedAt ? new Date(row.syncedAt) : null,
+      updatedAt: parseDbDate(row.updatedAt),
+      syncedAt: row.syncedAt ? parseDbDate(row.syncedAt) : null,
       lastSyncStatus: row.lastSyncStatus ?? undefined,
       lastSyncError: row.lastSyncError ?? undefined,
       customTitle: row.customTitle ?? undefined,
@@ -82,6 +83,7 @@ export class PostRepository {
 
   public async getAll(): Promise<Post[]> {
     const rows = await this.db.getAllAsync<PostRow>(`SELECT * FROM posts ORDER BY addedAt DESC`);
+    console.debug(`Retrieved ${rows.length} posts from database`);
     return Promise.all(rows.map(r => this.mapRowToPost(r)));
   }
 
@@ -94,6 +96,8 @@ export class PostRepository {
   public async create(post: Omit<Post,'id'>): Promise<number> {
     const addedAt = post.addedAt ?? new Date();
     const updatedAt = post.updatedAt ?? addedAt ?? new Date();
+    const syncedAt = post.syncedAt ? post.syncedAt : new Date(0);
+
 
     // Use provided MinHash if present, otherwise generate from body text
     let bodyMinHash: string | null = null;
@@ -104,7 +108,6 @@ export class PostRepository {
       bodyMinHash = sig ? JSON.stringify(sig) : null;
     }
 
-    const syncedAt = post.syncedAt ? post.syncedAt.toISOString() : null;
 
     const result = await this.db.runAsync(
       `INSERT INTO posts (
@@ -123,7 +126,7 @@ export class PostRepository {
       post.redditCreatedAt.toISOString(),
       addedAt.toISOString(),
       updatedAt.toISOString(),
-      syncedAt,
+      syncedAt.toISOString(),
       post.lastSyncStatus ?? null,
       post.lastSyncError ?? null,
       post.customTitle ?? null,
@@ -191,6 +194,7 @@ export class PostRepository {
     const rows = await this.db.getAllAsync<PostRow>(
       `SELECT * FROM posts WHERE syncedAt IS NULL OR datetime(syncedAt) < datetime(updatedAt)`
     );
+    console.debug(`Found ${rows.length} pending sync posts`);
     return Promise.all(rows.map(r => this.mapRowToPost(r)));
   }
 

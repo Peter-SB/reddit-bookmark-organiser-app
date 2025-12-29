@@ -66,7 +66,7 @@ describe("PostSyncService", () => {
             post_id: 1,
             success: true,
             status: "synced",
-            updated_at: "2024-03-01T12:00:00Z",
+            updated_at: "2024-03-01T12:00:00",
           },
         ],
       }),
@@ -92,7 +92,7 @@ describe("PostSyncService", () => {
   });
 
   it("keeps previous syncedAt on failure", async () => {
-    const previousSync = new Date("2024-02-01T00:00:00Z");
+    const previousSync = new Date("2024-02-01T00:00:00");
     repoMock.getPendingSyncPosts.mockResolvedValue([
       { ...basePost, syncedAt: previousSync },
     ]);
@@ -116,7 +116,7 @@ describe("PostSyncService", () => {
   });
 
   it("falls back to previous syncedAt when server omits updated_at", async () => {
-    const previousSync = new Date("2024-02-15T08:00:00Z");
+    const previousSync = new Date("2024-02-15T08:00:00");
     repoMock.getPendingSyncPosts.mockResolvedValue([
       { ...basePost, syncedAt: previousSync },
     ]);
@@ -156,7 +156,7 @@ describe("PostSyncService", () => {
           post_id: p.id,
           success: true,
           status: "synced",
-          updated_at: "2024-03-01T00:00:00Z",
+          updated_at: "2024-03-01T00:00:00",
         })),
       }),
     });

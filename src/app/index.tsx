@@ -111,26 +111,29 @@ export default function HomeScreen() {
   );
 
   const handleAddPost = useCallback(
-      async (url: string) => {
-        if (isAdding) return;
-        setIsAdding(true);
-        try {
-          const postData = await getPostData(url);
-          const addAndSync = async () => {
-            const created = await addPost(postData);
-            await syncSinglePost(created.id);
-            setIsInputVisible(false);
-          };
-          const safeAddAndSync = () =>
-            addAndSync().catch((err) => {
-              console.error("Failed to add post:", err);
-              Alert.alert("Error", `Failed to add post: ${(err as Error).message}`);
-            });
-  
-          // Check for exact duplicates (existing logic)
-          const exactDuplicates = posts.filter(
-            (p) => p.redditId === postData.redditId
-          );
+    async (url: string) => {
+      if (isAdding) return;
+      setIsAdding(true);
+      try {
+        const postData = await getPostData(url);
+        const addAndSync = async () => {
+          const created = await addPost(postData);
+          await syncSinglePost(created.id);
+          setIsInputVisible(false);
+        };
+        const safeAddAndSync = () =>
+          addAndSync().catch((err) => {
+            console.error("Failed to add post:", err);
+            Alert.alert(
+              "Error",
+              `Failed to add post: ${(err as Error).message}`
+            );
+          });
+
+        // Check for exact duplicates (existing logic)
+        const exactDuplicates = posts.filter(
+          (p) => p.redditId === postData.redditId
+        );
 
         // Check for similar content using MinHash
         const similarPosts = await checkForSimilarPosts(
@@ -142,16 +145,16 @@ export default function HomeScreen() {
           Alert.alert(
             "Duplicate Post",
             "This post appears to already exist. Add anyway?",
-              [
-                { text: "Cancel", style: "cancel" },
-                {
-                  text: "Add Anyway",
-                  onPress: () => safeAddAndSync(),
-                },
-              ]
-            );
-          } else if (similarPosts.length > 0) {
-            const similarTitles = similarPosts
+            [
+              { text: "Cancel", style: "cancel" },
+              {
+                text: "Add Anyway",
+                onPress: () => safeAddAndSync(),
+              },
+            ]
+          );
+        } else if (similarPosts.length > 0) {
+          const similarTitles = similarPosts
             .slice(0, 2)
             .map((p) => `"${p.title}"`)
             .join("\n");
@@ -161,27 +164,34 @@ export default function HomeScreen() {
               similarPosts.length
             } post(s) with similar content:\n\n${similarTitles}${
               similarPosts.length > 3 ? "\n...and more" : ""
-              }\n\nAdd anyway?`,
-              [
-                { text: "Cancel", style: "cancel" },
-                {
-                  text: "Add Anyway",
-                  onPress: () => safeAddAndSync(),
-                },
-              ]
-            );
-          } else {
-            await addAndSync();
-          }
-        } catch (e) {
-          console.error("Failed to add post:", e);
-          Alert.alert("Error", `Failed to add post: ${(e as Error).message}`);
-        } finally {
-          setIsAdding(false);
+            }\n\nAdd anyway?`,
+            [
+              { text: "Cancel", style: "cancel" },
+              {
+                text: "Add Anyway",
+                onPress: () => safeAddAndSync(),
+              },
+            ]
+          );
+        } else {
+          await addAndSync();
         }
-      },
-      [isAdding, getPostData, posts, checkForSimilarPosts, addPost, syncSinglePost]
-    );
+      } catch (e) {
+        console.error("Failed to add post:", e);
+        Alert.alert("Error", `Failed to add post: ${(e as Error).message}`);
+      } finally {
+        setIsAdding(false);
+      }
+    },
+    [
+      isAdding,
+      getPostData,
+      posts,
+      checkForSimilarPosts,
+      addPost,
+      syncSinglePost,
+    ]
+  );
 
   const handleSelect = (key: string | number | (number | string)[]) => {
     // key can be "home" | "search" | "favorites" | "unread" | "settings" | folder.id | array of folder ids
