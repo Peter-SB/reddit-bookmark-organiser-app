@@ -36,10 +36,15 @@ export default function SemanticSearchScreen() {
   const router = useRouter();
   const { posts, refreshPosts } = usePosts();
 
+  const SNIPPET_PREVIEW_CHAR_LIMIT = 240;
+
   const [query, setQuery] = useState("");
   const [kInput, setKInput] = useState(String(DEFAULT_SEARCH_RESULTS));
   const [includeText, setIncludeText] = useState(DEFAULT_SEARCH_INCLUDE_TEXT);
   const [results, setResults] = useState<SemanticSearchResult[]>([]);
+  const [expandedResults, setExpandedResults] = useState<Set<string>>(
+    () => new Set()
+  );
   const [modalVisible, setModalVisible] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -78,6 +83,7 @@ export default function SemanticSearchScreen() {
     setModalVisible(false);
     setLoading(true);
     setError(null);
+    setExpandedResults(new Set());
     try {
       const response = await SemanticSearchService.search({
         query: trimmed,
@@ -94,12 +100,50 @@ export default function SemanticSearchScreen() {
     }
   }, [query, kInput, includeText]);
 
-  const renderResult = ({ item }: { item: SemanticSearchResult }) => {
+  const toggleExpanded = useCallback((key: string) => {
+    setExpandedResults((prev) => {
+      const next = new Set(prev);
+      if (next.has(key)) {
+        next.delete(key);
+      } else {
+        next.add(key);
+      }
+      return next;
+    });
+  }, []);
+
+  const renderResult = ({
+    item,
+    index,
+  }: {
+    item: SemanticSearchResult;
+    index: number;
+  }) => {
+    const resultKey = `${item.postId}-${index}`;
     const post = postsMap.get(item.postId);
+    const trimmedText = item.text?.trim() ?? "";
+    const isExpanded = expandedResults.has(resultKey);
+    const canExpand = trimmedText.length > SNIPPET_PREVIEW_CHAR_LIMIT;
+    const previewText =
+      !isExpanded && canExpand
+        ? `${trimmedText.slice(0, SNIPPET_PREVIEW_CHAR_LIMIT).trimEnd()}…`
+        : trimmedText;
     const snippet =
-      item.text && item.text.trim().length > 0 ? (
-        <Text style={styles.resultText} numberOfLines={6}>
-          {item.text.trim()}
+      trimmedText.length > 0 ? (
+        <Text style={styles.resultText}>
+          {previewText}
+          {canExpand ? (
+            <Text
+              style={styles.readMoreText}
+              onPress={(event) => {
+                event.stopPropagation?.();
+                toggleExpanded(resultKey);
+              }}
+              suppressHighlighting
+            >
+              {isExpanded ? " Read less" : " Read more"}
+            </Text>
+          ) : null}
         </Text>
       ) : undefined;
 
@@ -306,6 +350,11 @@ const styles = StyleSheet.create({
     fontSize: fontSizes.small,
     color: palette.foreground,
     lineHeight: 18,
+  },
+  readMoreText: {
+    fontSize: fontSizes.small,
+    fontWeight: fontWeights.medium,
+    color: palette.foregroundMidLight,
   },
   fallbackCard: {
     padding: spacing.m,

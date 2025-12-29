@@ -43,7 +43,7 @@ export const PostCard: React.FC<PostCardProps> = ({ post, footer }) => {
       activeOpacity={0.8}
     >
       {/* Top row: Title */}
-      <View style={styles.topRow}>
+      <View>
         <Text
           style={[styles.title, post.isRead && styles.readTitle]}
           numberOfLines={4}
@@ -112,9 +112,6 @@ const styles = StyleSheet.create({
     borderWidth: 0,
     borderBottomWidth: 1,
     borderColor: palette.border,
-  },
-  topRow: {
-    marginBottom: spacing.s,
   },
   title: {
     fontSize: fontSizes.title * 0.9,

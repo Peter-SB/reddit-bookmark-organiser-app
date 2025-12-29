@@ -165,7 +165,7 @@ const styles = StyleSheet.create({
     marginHorizontal: spacing.m,
   },
   headerLink: {
-    textDecorationLine: "underline",
+    // textDecorationLine: "underline",
   },
   headerIconButton: {
     padding: spacing.xs,
