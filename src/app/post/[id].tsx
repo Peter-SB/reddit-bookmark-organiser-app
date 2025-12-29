@@ -1,5 +1,6 @@
 import { PostSidebar } from "@/components/PostSidebar";
 import PostSummary from "@/components/PostSummary";
+import { ShareBookmarkButton } from "@/components/ShareBookmarkButton";
 import { StarRating } from "@/components/StarRating";
 import { palette } from "@/constants/Colors";
 import { spacing } from "@/constants/spacing";
@@ -575,13 +576,14 @@ export default function PostScreen() {
                   >
                     <Ionicons
                       name="trash"
-                      size={18}
+                      size={24}
                       color="#FF3B30"
                       style={{ marginRight: spacing.xs }}
                     />
-                    <Text style={styles.deleteButtonText}>Delete Post</Text>
+                    <Text style={styles.deleteButtonText}></Text>
                   </View>
                 </TouchableOpacity>
+                <ShareBookmarkButton title={editedTitle} body={editedBody} />
                 <TouchableOpacity
                   style={[
                     styles.saveButton,
@@ -599,11 +601,11 @@ export default function PostScreen() {
                   >
                     <Ionicons
                       name="save-outline"
-                      size={18}
-                      color={palette.accent}
+                      size={24}
+                      color={palette.saveGreen}
                       style={{ marginRight: spacing.xs }}
                     />
-                    <Text style={styles.saveButtonText}>Save Changes</Text>
+                    <Text style={styles.saveButtonText}></Text>
                   </View>
                 </TouchableOpacity>
               </View>
