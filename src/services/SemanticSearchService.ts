@@ -16,6 +16,7 @@ export type SemanticSearchParams = {
   query: string;
   k?: number;
   includeText?: boolean;
+  unique?: boolean;
 };
 
 export type SimilarSearchParams = {
@@ -98,6 +99,7 @@ export class SemanticSearchService {
       embedding_profile: embeddingModel,
       table_name: chunkTable,
       include_text: params.includeText ?? DEFAULT_SEARCH_INCLUDE_TEXT,
+      unique: params.unique ?? false,
     };
 
     let response: Response;

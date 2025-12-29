@@ -41,6 +41,7 @@ export default function SemanticSearchScreen() {
   const [query, setQuery] = useState("");
   const [kInput, setKInput] = useState(String(DEFAULT_SEARCH_RESULTS));
   const [includeText, setIncludeText] = useState(DEFAULT_SEARCH_INCLUDE_TEXT);
+  const [showUnique, setShowUnique] = useState(false);
   const [results, setResults] = useState<SemanticSearchResult[]>([]);
   const [expandedResults, setExpandedResults] = useState<Set<string>>(
     () => new Set()
@@ -89,6 +90,7 @@ export default function SemanticSearchScreen() {
         query: trimmed,
         k,
         includeText,
+        unique: showUnique,
       });
       setResults(response.results);
       setLastQuery(trimmed);
@@ -98,7 +100,7 @@ export default function SemanticSearchScreen() {
     } finally {
       setLoading(false);
     }
-  }, [query, kInput, includeText]);
+  }, [query, kInput, includeText, showUnique]);
 
   const toggleExpanded = useCallback((key: string) => {
     setExpandedResults((prev) => {
@@ -254,7 +256,7 @@ export default function SemanticSearchScreen() {
                 placeholder="Search by meaning or topic..."
                 cancelButtonCallback={() => setQuery("")}
               />
-              <View style={styles.inputRow}>
+              <View style={styles.switchRow}>
                 <Text style={styles.inputLabel}>Results to return</Text>
                 <TextInput
                   style={styles.input}
@@ -266,18 +268,33 @@ export default function SemanticSearchScreen() {
                   maxLength={4}
                 />
               </View>
-              <View style={styles.bottomRow}>
-                <View style={styles.switchRow}>
-                  <View>
-                    <Text style={styles.inputLabel}>Show text snippets</Text>
-                  </View>
-                  <Switch
-                    value={includeText}
-                    onValueChange={setIncludeText}
-                    thumbColor={includeText ? palette.accent : palette.border}
-                    trackColor={{ true: palette.border, false: palette.border }}
-                  />
+              <View style={styles.switchRow}>
+                <View>
+                  <Text style={styles.inputLabel}>Show text snippets</Text>
                 </View>
+                <Switch
+                  value={includeText}
+                  onValueChange={setIncludeText}
+                  thumbColor={
+                    includeText ? palette.foregroundMidLight : palette.border
+                  }
+                  trackColor={{ true: palette.border, false: palette.border }}
+                />
+              </View>
+              <View style={styles.switchRow}>
+                <View>
+                  <Text style={styles.inputLabel}>Show unique</Text>
+                </View>
+                <Switch
+                  value={showUnique}
+                  onValueChange={setShowUnique}
+                  thumbColor={
+                    showUnique ? palette.foregroundMidLight : palette.border
+                  }
+                  trackColor={{ true: palette.border, false: palette.border }}
+                />
+              </View>
+              <View style={styles.searchRow}>
                 <TouchableOpacity
                   style={styles.searchButton}
                   onPress={handleSearch}
@@ -470,11 +487,13 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "space-between",
+    height: 40,
   },
-  bottomRow: {
+  searchRow: {
+    paddingTop: spacing.s,
     flexDirection: "row",
     alignItems: "center",
-    justifyContent: "space-between",
+    justifyContent: "flex-end",
   },
   helperText: {
     fontSize: fontSizes.small,
@@ -485,10 +504,10 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "center",
-    backgroundColor: palette.foreground,
+    backgroundColor: palette.foregroundLight,
     borderRadius: 10,
     paddingVertical: spacing.s,
-    paddingHorizontal: spacing.s,
+    paddingHorizontal: spacing.m,
     gap: spacing.s,
   },
   searchButtonText: {
