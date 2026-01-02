@@ -26,6 +26,7 @@ type PostRow = {
   rating: number | null;
   isRead: number;
   isFavorite: number;
+  isDeleted: number;
   folderId: number | null;
   extraFields: string | null;
   summary: string | null;
@@ -82,13 +83,18 @@ export class PostRepository {
   }
 
   public async getAll(): Promise<Post[]> {
-    const rows = await this.db.getAllAsync<PostRow>(`SELECT * FROM posts ORDER BY addedAt DESC`);
+    const rows = await this.db.getAllAsync<PostRow>(
+      `SELECT * FROM posts WHERE isDeleted = 0 ORDER BY addedAt DESC`
+    );
     console.debug(`Retrieved ${rows.length} posts from database`);
     return Promise.all(rows.map(r => this.mapRowToPost(r)));
   }
 
   public async getById(id: number): Promise<Post | null> {
-    const r = await this.db.getFirstAsync<PostRow>(`SELECT * FROM posts WHERE id = ?`, id);
+    const r = await this.db.getFirstAsync<PostRow>(
+      `SELECT * FROM posts WHERE id = ? AND isDeleted = 0`,
+      id
+    );
     if (!r) return null;
     return this.mapRowToPost(r);
   }
@@ -163,7 +169,10 @@ export class PostRepository {
       id: number;
       bodyMinHash: string | null;
     }>(`SELECT id, bodyMinHash
-        FROM posts WHERE bodyMinHash IS NOT NULL AND bodyMinHash != ''`);
+        FROM posts
+        WHERE isDeleted = 0
+          AND bodyMinHash IS NOT NULL
+          AND bodyMinHash != ''`);
 
     const similarPosts: Post[] = [];
     
@@ -192,7 +201,9 @@ export class PostRepository {
 
   public async getPendingSyncPosts(): Promise<Post[]> {
     const rows = await this.db.getAllAsync<PostRow>(
-      `SELECT * FROM posts WHERE syncedAt IS NULL OR datetime(syncedAt) < datetime(updatedAt)`
+      `SELECT * FROM posts
+       WHERE isDeleted = 0
+         AND (syncedAt IS NULL OR datetime(syncedAt) < datetime(updatedAt))`
     );
     console.debug(`Found ${rows.length} pending sync posts`);
     return Promise.all(rows.map(r => this.mapRowToPost(r)));
@@ -277,7 +288,13 @@ export class PostRepository {
   }
 
   public async delete(id: number): Promise<number> {
-    const result = await this.db.runAsync(`DELETE FROM posts WHERE id = ?`, id);
+    const result = await this.db.runAsync(
+      `UPDATE posts
+         SET isDeleted = 1,
+             updatedAt = CURRENT_TIMESTAMP
+       WHERE id = ?`,
+      id
+    );
     return result.changes;
   }
 

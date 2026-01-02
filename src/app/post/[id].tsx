@@ -265,7 +265,7 @@ export default function PostScreen() {
   const handleDelete = async () => {
     Alert.alert(
       "Delete Post",
-      "Are you sure you want to permanently delete this post? This cannot be undone.",
+      "Are you sure you want to delete this post?",
       [
         { text: "Cancel", style: "cancel" },
         {

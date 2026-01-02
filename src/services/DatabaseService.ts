@@ -108,6 +108,7 @@ export class DatabaseService {
         rating            REAL,
         isRead            INTEGER NOT NULL DEFAULT 0,
         isFavorite        INTEGER NOT NULL DEFAULT 0,
+        isDeleted         INTEGER NOT NULL DEFAULT 0,
         extraFields       TEXT,
         bodyMinHash       TEXT,
         summary           TEXT
@@ -148,6 +149,10 @@ export class DatabaseService {
     const hasLastSyncError = columns.some((col: any) => col.name === 'lastSyncError');
     if (!hasLastSyncError) {
       await this.db.execAsync(`ALTER TABLE posts ADD COLUMN lastSyncError TEXT;`);
+    }
+    const hasIsDeleted = columns.some((col: any) => col.name === 'isDeleted');
+    if (!hasIsDeleted) {
+      await this.db.execAsync(`ALTER TABLE posts ADD COLUMN isDeleted INTEGER NOT NULL DEFAULT 0;`);
     }
   }
 

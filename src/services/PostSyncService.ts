@@ -94,6 +94,7 @@ export class PostSyncService {
       extraFields: post.extraFields ?? undefined,
       bodyMinHash: post.bodyMinHash ?? undefined,
       summary: post.summary ?? undefined,
+      //todo: add deleted flag
     };
   }
 
