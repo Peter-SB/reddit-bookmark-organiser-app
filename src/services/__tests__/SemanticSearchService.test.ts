@@ -58,7 +58,7 @@ describe("SemanticSearchService", () => {
         k: 3,
         include_text: true,
         embedding_profile: "semantic-model",
-        table_name: "chunks_semantic-model_posts",
+        table_name: "posts",
       })
     );
     expect(res.results[0]).toEqual(
@@ -105,7 +105,7 @@ describe("SemanticSearchService", () => {
         k: 4,
         include_text: false,
         embedding_profile: "similar-model",
-        table_name: "chunks_similar-model_posts",
+        table_name: "posts",
       })
     );
     expect(res).toEqual(

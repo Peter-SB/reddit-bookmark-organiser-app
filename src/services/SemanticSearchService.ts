@@ -73,9 +73,7 @@ export class SemanticSearchService {
     const embeddingModel =
       (settings[profileKey] || DEFAULT_EMBED_MODEL).trim() ||
       DEFAULT_EMBED_MODEL;
-    const chunkTable = `chunks_${embeddingModel}_${tableName}`;
-
-    return { serverUrlRaw, chunkTable, embeddingModel };
+    return { serverUrlRaw, tableName, embeddingModel };
   }
 
   static async search(
@@ -84,7 +82,7 @@ export class SemanticSearchService {
     const q = params.query.trim();
     if (!q) throw new Error("Enter a search query to continue.");
 
-    const { serverUrlRaw, chunkTable, embeddingModel } =
+    const { serverUrlRaw, tableName, embeddingModel } =
       await this.buildSearchConfig(SYNC_SEMANTIC_EMBED_MODEL_KEY);
 
     const kRaw =
@@ -97,7 +95,7 @@ export class SemanticSearchService {
       q,
       k,
       embedding_profile: embeddingModel,
-      table_name: chunkTable,
+      table_name: tableName,
       include_text: params.includeText ?? DEFAULT_SEARCH_INCLUDE_TEXT,
       unique: params.unique ?? false,
     };
@@ -156,7 +154,7 @@ export class SemanticSearchService {
       throw new Error("Valid post ID required to search for similar posts.");
     }
 
-    const { serverUrlRaw, chunkTable, embeddingModel } =
+    const { serverUrlRaw, tableName, embeddingModel } =
       await this.buildSearchConfig(SYNC_SIMILAR_EMBED_MODEL_KEY);
 
     const kRaw =
@@ -169,7 +167,7 @@ export class SemanticSearchService {
       post_id: postId,
       k,
       embedding_profile: embeddingModel,
-      table_name: chunkTable,
+      table_name: tableName,
       include_text: false,
     };
 
