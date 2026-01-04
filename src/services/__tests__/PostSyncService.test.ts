@@ -81,6 +81,10 @@ describe("PostSyncService", () => {
       "http://example.com/sync",
       expect.objectContaining({ method: "POST" })
     );
+    const body = JSON.parse(fetchMock.mock.calls[0][1].body);
+    expect(body.posts[0]).toEqual(
+      expect.objectContaining({ isDeleted: false })
+    );
     expect(repoMock.updateSyncState).toHaveBeenCalledWith(
       1,
       "synced",

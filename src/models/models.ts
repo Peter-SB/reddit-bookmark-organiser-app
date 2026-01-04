@@ -36,6 +36,8 @@ export interface Post {
   rating?: number;       // 1–5 stars (float)
   isRead: boolean;
   isFavorite: boolean;
+  /** Soft delete flag */
+  isDeleted?: boolean;
 
   /** Folder association (one per post) */
   folderIds: number[];

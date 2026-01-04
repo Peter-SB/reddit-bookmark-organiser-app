@@ -91,10 +91,10 @@ export class PostSyncService {
       rating: post.rating ?? undefined,
       isRead: post.isRead,
       isFavorite: post.isFavorite,
+      isDeleted: Boolean(post.isDeleted),
       extraFields: post.extraFields ?? undefined,
       bodyMinHash: post.bodyMinHash ?? undefined,
       summary: post.summary ?? undefined,
-      //todo: add deleted flag
     };
   }
 

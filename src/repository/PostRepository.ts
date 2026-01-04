@@ -70,6 +70,7 @@ export class PostRepository {
       rating: row.rating ?? undefined,
       isRead: row.isRead === 1,
       isFavorite: row.isFavorite === 1,
+      isDeleted: row.isDeleted === 1,
       extraFields,
       summary: row.summary ?? undefined,
       folderIds: await this.loadFolderIds(row.id),
@@ -120,8 +121,8 @@ export class PostRepository {
          redditId, url, title, bodyText, bodyMinHash, author, subreddit,
          redditCreatedAt, addedAt, updatedAt, syncedAt, lastSyncStatus, lastSyncError,
          customTitle, customBody, notes, rating,
-         isRead, isFavorite, extraFields, summary
-       ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+         isRead, isFavorite, isDeleted, extraFields, summary
+       ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
       post.redditId,
       post.url,
       post.title,
@@ -141,6 +142,7 @@ export class PostRepository {
       post.rating ?? null,
       post.isRead ? 1 : 0,
       post.isFavorite ? 1 : 0,
+      post.isDeleted ? 1 : 0,
       post.extraFields ? JSON.stringify(post.extraFields) : null,
       post.summary ?? null,
     );
@@ -202,8 +204,7 @@ export class PostRepository {
   public async getPendingSyncPosts(): Promise<Post[]> {
     const rows = await this.db.getAllAsync<PostRow>(
       `SELECT * FROM posts
-       WHERE isDeleted = 0
-         AND (syncedAt IS NULL OR datetime(syncedAt) < datetime(updatedAt))`
+       WHERE syncedAt IS NULL OR datetime(syncedAt) < datetime(updatedAt)`
     );
     console.debug(`Found ${rows.length} pending sync posts`);
     return Promise.all(rows.map(r => this.mapRowToPost(r)));
