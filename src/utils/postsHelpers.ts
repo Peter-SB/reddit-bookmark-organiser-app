@@ -50,21 +50,53 @@ export function sortPosts(
   orderBy: string,
   orderDirection: "asc" | "desc"
 ) {
+  const toTime = (value?: Date | string | number | null) => {
+    if (!value) return null;
+    const time = new Date(value as any).getTime();
+    return Number.isNaN(time) ? null : time;
+  };
+
+  const compare = (left: any, right: any) => {
+    if (left < right) return orderDirection === "asc" ? -1 : 1;
+    if (left > right) return orderDirection === "asc" ? 1 : -1;
+    return 0;
+  };
+
   return [...posts].sort((a, b) => {
+    if (orderBy === "updatedAt") {
+      const aAdded = toTime(a.addedAt);
+      const bAdded = toTime(b.addedAt);
+      const aUpdated = toTime(a.updatedAt);
+      const bUpdated = toTime(b.updatedAt);
+      const aEffectiveUpdated =
+        aUpdated !== null &&
+        aAdded !== null &&
+        Math.abs(aUpdated - aAdded) > 1000
+          ? aUpdated
+          : null;
+      const bEffectiveUpdated =
+        bUpdated !== null &&
+        bAdded !== null &&
+        Math.abs(bUpdated - bAdded) > 1000
+          ? bUpdated
+          : null;
+
+      const aHasUpdated = aEffectiveUpdated !== null;
+      const bHasUpdated = bEffectiveUpdated !== null;
+
+      if (aHasUpdated && bHasUpdated)
+        return compare(aEffectiveUpdated, bEffectiveUpdated);
+      if (aHasUpdated !== bHasUpdated) return aHasUpdated ? -1 : 1;
+      if (aAdded !== null && bAdded !== null) return compare(aAdded, bAdded);
+      return 0;
+    }
+
     let aValue: any;
     let bValue: any;
     switch (orderBy) {
       case "addedAt":
         aValue = new Date(a.addedAt).getTime();
         bValue = new Date(b.addedAt).getTime();
-        break;
-      case "updatedAt":
-        aValue = a.updatedAt
-          ? new Date(a.updatedAt as any).getTime()
-          : new Date(a.addedAt).getTime();
-        bValue = b.updatedAt
-          ? new Date(b.updatedAt as any).getTime()
-          : new Date(b.addedAt).getTime();
         break;
       case "rating":
         aValue = (a as any).rating ?? 0;
@@ -82,8 +114,6 @@ export function sortPosts(
         aValue = new Date(a.addedAt).getTime();
         bValue = new Date(b.addedAt).getTime();
     }
-    if (aValue < bValue) return orderDirection === "asc" ? -1 : 1;
-    if (aValue > bValue) return orderDirection === "asc" ? 1 : -1;
-    return 0;
+    return compare(aValue, bValue);
   });
 }
