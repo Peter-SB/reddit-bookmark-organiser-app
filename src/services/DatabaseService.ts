@@ -124,6 +124,20 @@ export class DatabaseService {
         key   TEXT PRIMARY KEY,
         value TEXT
       );
+
+      CREATE TABLE IF NOT EXISTS highlights (
+        id          INTEGER PRIMARY KEY AUTOINCREMENT,
+        post_id     INTEGER NOT NULL REFERENCES posts(id) ON DELETE CASCADE,
+        text        TEXT    NOT NULL,
+        note        TEXT,
+        start_offset INTEGER,
+        end_offset   INTEGER,
+        created_at   TEXT    NOT NULL DEFAULT CURRENT_TIMESTAMP,
+        updated_at   TEXT    NOT NULL DEFAULT CURRENT_TIMESTAMP,
+        is_deleted   INTEGER NOT NULL DEFAULT 0
+      );
+
+      CREATE INDEX IF NOT EXISTS idx_highlights_post_id ON highlights(post_id);
     `);
 
     // Migration: add minHash column if it doesn't exist

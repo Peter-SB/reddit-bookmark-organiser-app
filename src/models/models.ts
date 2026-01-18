@@ -71,3 +71,24 @@ export interface PostFolder {
   /** Folder ID (FK) */
   folderId: number;
 }
+
+export interface Highlight {
+  /** Internal primary key */
+  id: number;
+  /** Post ID (FK reference to posts table) */
+  postId: number;
+  /** The captured highlight text */
+  text: string;
+  /** Optional note attached to the highlight */
+  note?: string;
+  /** Start offset for highlighting in UI (optional) */
+  startOffset?: number;
+  /** End offset for highlighting in UI (optional) */
+  endOffset?: number;
+  /** When the highlight was created */
+  createdAt: Date;
+  /** When the highlight was last updated */
+  updatedAt: Date;
+  /** Soft delete flag */
+  isDeleted?: boolean;
+}
