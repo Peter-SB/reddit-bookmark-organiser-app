@@ -211,7 +211,7 @@ const styles = StyleSheet.create({
     marginBottom: spacing.m,
   },
   modalTitle: {
-    fontSize: fontSizes.h3,
+    fontSize: fontSizes.title,
     fontWeight: fontWeights.bold,
     color: palette.foreground,
   },
@@ -224,14 +224,14 @@ const styles = StyleSheet.create({
     padding: spacing.m,
     gap: spacing.m,
     borderRadius: 8,
-    backgroundColor: palette.backgroundLight,
+    backgroundColor: palette.backgroundDarker,
   },
   actionButtonText: {
     fontSize: fontSizes.body,
     color: palette.foreground,
   },
   deleteButton: {
-    backgroundColor: palette.backgroundLight,
+    backgroundColor: palette.backgroundDarker,
   },
   deleteText: {
     color: palette.favHeartRed,
@@ -241,19 +241,19 @@ const styles = StyleSheet.create({
   },
   label: {
     fontSize: fontSizes.body,
-    fontWeight: fontWeights.semiBold,
+    fontWeight: fontWeights.semibold,
     color: palette.foreground,
     marginBottom: spacing.xs,
   },
   textInput: {
-    backgroundColor: palette.backgroundLight,
+    backgroundColor: palette.backgroundDarker,
     borderRadius: 8,
     padding: spacing.m,
     fontSize: fontSizes.body,
     color: palette.foreground,
     minHeight: 80,
     borderWidth: 1,
-    borderColor: palette.backgroundMid,
+    borderColor: palette.border,
   },
   buttonRow: {
     flexDirection: "row",
@@ -267,14 +267,14 @@ const styles = StyleSheet.create({
     alignItems: "center",
   },
   cancelButton: {
-    backgroundColor: palette.backgroundMid,
+    backgroundColor: palette.border,
   },
   saveButton: {
     backgroundColor: palette.accent,
   },
   buttonText: {
     fontSize: fontSizes.body,
-    fontWeight: fontWeights.semiBold,
+    fontWeight: fontWeights.semibold,
     color: palette.foreground,
   },
   saveButtonText: {

@@ -61,7 +61,6 @@ export default function PostScreen() {
     addHighlight,
     updateHighlight,
     removeHighlight,
-    getHighlightsByPostId,
   } = useHighlights(id ? parseInt(id) : undefined);
 
   const [post, setPost] = useState<Post | null>(null);
@@ -242,7 +241,7 @@ export default function PostScreen() {
         if (settings["SHOW_AI_SUMMARY"] !== undefined) {
           setShowAiSummary(settings["SHOW_AI_SUMMARY"] === "true");
         }
-      } catch (err) {
+      } catch {
         // fallback to true if error
         setShowAiSummary(true);
       }

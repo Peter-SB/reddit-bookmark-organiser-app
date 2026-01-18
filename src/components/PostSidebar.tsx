@@ -236,7 +236,7 @@ export const PostSidebar: React.FC<SidebarProps> = ({
                   <Ionicons
                     name="ellipsis-horizontal"
                     size={18}
-                    color={palette.foregroundMuted}
+                    color={palette.muted}
                   />
                 </TouchableOpacity>
               ))
@@ -341,7 +341,7 @@ const styles = StyleSheet.create({
     // borderRadius: 8,
     paddingVertical: spacing.s,
     // paddingHorizontal: spacing.m,
-    // backgroundColor: palette.backgroundMidLight,
+    // backgroundColor: palette.backgroundDarker,
   },
   similarButtonText: {
     color: palette.foreground,
@@ -350,18 +350,18 @@ const styles = StyleSheet.create({
   },
   emptyText: {
     fontSize: fontSizes.small,
-    color: palette.foregroundMuted,
+    color: palette.muted,
     fontStyle: "italic",
   },
   highlightItem: {
     flexDirection: "row",
     alignItems: "center",
-    backgroundColor: palette.backgroundLight,
+    backgroundColor: palette.backgroundDarker,
     borderRadius: 8,
     padding: spacing.s,
     marginBottom: spacing.s,
     borderWidth: 1,
-    borderColor: palette.backgroundMid,
+    borderColor: palette.border,
   },
   highlightContent: {
     flex: 1,
@@ -374,7 +374,7 @@ const styles = StyleSheet.create({
   },
   highlightNote: {
     fontSize: fontSizes.small,
-    color: palette.foregroundMuted,
+    color: palette.muted,
     fontStyle: "italic",
   },
 });

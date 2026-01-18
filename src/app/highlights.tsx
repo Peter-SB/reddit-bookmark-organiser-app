@@ -45,7 +45,7 @@ export default function HighlightsScreen() {
       >
         <View style={styles.highlightContent}>
           <Text style={styles.highlightText} numberOfLines={2}>
-            "{item.text}"
+            &ldquo;{item.text}&rdquo;
           </Text>
           {item.note && (
             <Text style={styles.noteText} numberOfLines={1}>
@@ -56,7 +56,7 @@ export default function HighlightsScreen() {
             <Ionicons
               name="document-text-outline"
               size={14}
-              color={palette.foregroundMuted}
+              color={palette.muted}
             />{" "}
             {postTitle}
           </Text>
@@ -64,7 +64,7 @@ export default function HighlightsScreen() {
         <Ionicons
           name="chevron-forward"
           size={20}
-          color={palette.foregroundMuted}
+          color={palette.muted}
         />
       </TouchableOpacity>
     );
@@ -94,7 +94,7 @@ export default function HighlightsScreen() {
           <Ionicons
             name="bookmark-outline"
             size={64}
-            color={palette.foregroundMuted}
+            color={palette.muted}
           />
           <Text style={styles.emptyText}>No highlights yet</Text>
           <Text style={styles.emptySubtext}>
@@ -125,14 +125,14 @@ const styles = StyleSheet.create({
     paddingHorizontal: spacing.m,
     paddingVertical: spacing.m,
     borderBottomWidth: 1,
-    borderBottomColor: palette.backgroundMid,
+    borderBottomColor: palette.border,
   },
   backButton: {
     padding: spacing.s,
     width: 40,
   },
   headerTitle: {
-    fontSize: fontSizes.h2,
+    fontSize: fontSizes.large,
     fontWeight: fontWeights.bold,
     color: palette.foreground,
   },
@@ -143,14 +143,14 @@ const styles = StyleSheet.create({
     padding: spacing.xl,
   },
   emptyText: {
-    fontSize: fontSizes.h3,
-    fontWeight: fontWeights.semiBold,
-    color: palette.foregroundMuted,
+    fontSize: fontSizes.title,
+    fontWeight: fontWeights.semibold,
+    color: palette.muted,
     marginTop: spacing.l,
   },
   emptySubtext: {
     fontSize: fontSizes.body,
-    color: palette.foregroundMuted,
+    color: palette.muted,
     marginTop: spacing.s,
     textAlign: "center",
   },
@@ -158,14 +158,14 @@ const styles = StyleSheet.create({
     padding: spacing.m,
   },
   highlightCard: {
-    backgroundColor: palette.backgroundLight,
+    backgroundColor: palette.backgroundDarker,
     borderRadius: 12,
     padding: spacing.m,
     marginBottom: spacing.m,
     flexDirection: "row",
     alignItems: "center",
     borderWidth: 1,
-    borderColor: palette.backgroundMid,
+    borderColor: palette.border,
   },
   highlightContent: {
     flex: 1,
@@ -179,12 +179,12 @@ const styles = StyleSheet.create({
   },
   noteText: {
     fontSize: fontSizes.small,
-    color: palette.foregroundMuted,
+    color: palette.muted,
     marginTop: spacing.xs,
   },
   postTitle: {
     fontSize: fontSizes.small,
-    color: palette.foregroundMuted,
+    color: palette.muted,
     marginTop: spacing.xs,
   },
 });
