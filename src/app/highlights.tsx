@@ -5,8 +5,8 @@ import { useHighlights } from "@/hooks/useHighlights";
 import { usePosts } from "@/hooks/usePosts";
 import { Highlight } from "@/models/models";
 import { Ionicons } from "@expo/vector-icons";
-import { useRouter } from "expo-router";
-import React from "react";
+import { useRouter, useFocusEffect } from "expo-router";
+import React, { useCallback } from "react";
 import {
   ActivityIndicator,
   FlatList,
@@ -23,8 +23,15 @@ import {
 export default function HighlightsScreen() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
-  const { highlights, loading } = useHighlights();
+  const { highlights, loading, refreshHighlights } = useHighlights();
   const { posts } = usePosts();
+
+  // Refresh highlights when screen comes into focus
+  useFocusEffect(
+    useCallback(() => {
+      refreshHighlights();
+    }, [refreshHighlights])
+  );
 
   const getPostTitle = (postId: number): string => {
     const post = posts.find((p) => p.id === postId);

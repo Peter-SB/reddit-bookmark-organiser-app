@@ -31,7 +31,6 @@ export const HighlightActionModal: React.FC<HighlightActionModalProps> = ({
   onDelete,
 }) => {
   const insets = useSafeAreaInsets();
-  const [isEditing, setIsEditing] = useState(false);
   const [editedText, setEditedText] = useState("");
   const [editedNote, setEditedNote] = useState("");
 
@@ -42,17 +41,12 @@ export const HighlightActionModal: React.FC<HighlightActionModalProps> = ({
     }
   }, [highlight]);
 
-  const handleEdit = () => {
-    setIsEditing(true);
-  };
-
   const handleSave = async () => {
     if (!highlight) return;
     await onUpdate(highlight.id, {
       text: editedText,
       note: editedNote,
     });
-    setIsEditing(false);
     onClose();
   };
 
@@ -76,7 +70,6 @@ export const HighlightActionModal: React.FC<HighlightActionModalProps> = ({
   };
 
   const handleCancel = () => {
-    setIsEditing(false);
     if (highlight) {
       setEditedText(highlight.text);
       setEditedNote(highlight.note || "");
@@ -107,85 +100,55 @@ export const HighlightActionModal: React.FC<HighlightActionModalProps> = ({
           onPress={(e) => e.stopPropagation()}
         >
           <View style={styles.modalHeader}>
-            <Text style={styles.modalTitle}>
-              {isEditing ? "Edit Highlight" : "Highlight"}
-            </Text>
+            <Text style={styles.modalTitle}>Edit Highlight</Text>
             <TouchableOpacity onPress={handleCancel}>
               <Ionicons name="close" size={24} color={palette.foreground} />
             </TouchableOpacity>
           </View>
 
-          {isEditing ? (
-            <View style={styles.editContainer}>
-              <Text style={styles.label}>Highlight Text</Text>
-              <TextInput
-                style={styles.textInput}
-                value={editedText}
-                onChangeText={setEditedText}
-                multiline
-                textAlignVertical="top"
-              />
-              <Text style={styles.label}>Note</Text>
-              <TextInput
-                style={styles.textInput}
-                value={editedNote}
-                onChangeText={setEditedNote}
-                multiline
-                placeholder="Add a note..."
-                textAlignVertical="top"
-              />
-              <View style={styles.buttonRow}>
-                <TouchableOpacity
-                  style={[styles.button, styles.cancelButton]}
-                  onPress={handleCancel}
-                >
-                  <Text style={styles.buttonText}>Cancel</Text>
-                </TouchableOpacity>
-                <TouchableOpacity
-                  style={[styles.button, styles.saveButton]}
-                  onPress={handleSave}
-                >
-                  <Text style={[styles.buttonText, styles.saveButtonText]}>
-                    Save
-                  </Text>
-                </TouchableOpacity>
-              </View>
-            </View>
-          ) : (
-            <View style={styles.actionContainer}>
-              <TouchableOpacity style={styles.actionButton} onPress={handleEdit}>
-                <Ionicons
-                  name="create-outline"
-                  size={20}
-                  color={palette.foreground}
-                />
-                <Text style={styles.actionButtonText}>
-                  {highlight.note ? "Edit Note" : "Add Note"}
-                </Text>
-              </TouchableOpacity>
-              <TouchableOpacity style={styles.actionButton} onPress={handleEdit}>
-                <Ionicons
-                  name="pencil-outline"
-                  size={20}
-                  color={palette.foreground}
-                />
-                <Text style={styles.actionButtonText}>Edit Highlight</Text>
-              </TouchableOpacity>
+          <View style={styles.editContainer}>
+            <Text style={styles.label}>Highlight Text</Text>
+            <TextInput
+              style={styles.textInput}
+              value={editedText}
+              onChangeText={setEditedText}
+              multiline
+              textAlignVertical="top"
+            />
+            <Text style={styles.label}>Note</Text>
+            <TextInput
+              style={styles.textInput}
+              value={editedNote}
+              onChangeText={setEditedNote}
+              multiline
+              placeholder="Add a note..."
+              textAlignVertical="top"
+            />
+            <View style={styles.buttonRow}>
               <TouchableOpacity
-                style={[styles.actionButton, styles.deleteButton]}
+                style={[styles.button, styles.deleteButton]}
                 onPress={handleDelete}
               >
                 <Ionicons
                   name="trash-outline"
                   size={20}
                   color={palette.favHeartRed}
+                  style={{ marginRight: spacing.xs }}
                 />
-                <Text style={[styles.actionButtonText, styles.deleteText]}>
+                <Text style={[styles.buttonText, styles.deleteText]}>
                   Delete
                 </Text>
               </TouchableOpacity>
+              <TouchableOpacity
+                style={[styles.button, styles.saveButton]}
+                onPress={handleSave}
+              >
+                <Text style={[styles.buttonText, styles.saveButtonText]}>
+                  Save
+                </Text>
+              </TouchableOpacity>
             </View>
-          )}
+          </View>
         </TouchableOpacity>
       </TouchableOpacity>
     </Modal>
@@ -215,27 +178,6 @@ const styles = StyleSheet.create({
     fontWeight: fontWeights.bold,
     color: palette.foreground,
   },
-  actionContainer: {
-    gap: spacing.xs,
-  },
-  actionButton: {
-    flexDirection: "row",
-    alignItems: "center",
-    padding: spacing.m,
-    gap: spacing.m,
-    borderRadius: 8,
-    backgroundColor: palette.backgroundDarker,
-  },
-  actionButtonText: {
-    fontSize: fontSizes.body,
-    color: palette.foreground,
-  },
-  deleteButton: {
-    backgroundColor: palette.backgroundDarker,
-  },
-  deleteText: {
-    color: palette.favHeartRed,
-  },
   editContainer: {
     gap: spacing.m,
   },
@@ -247,7 +189,7 @@ const styles = StyleSheet.create({
   },
   textInput: {
     backgroundColor: palette.backgroundDarker,
-    borderRadius: 8,
+    borderRadius: 12,
     padding: spacing.m,
     fontSize: fontSizes.body,
     color: palette.foreground,
@@ -262,12 +204,16 @@ const styles = StyleSheet.create({
   },
   button: {
     flex: 1,
+    flexDirection: "row",
     padding: spacing.m,
-    borderRadius: 8,
+    borderRadius: 12,
     alignItems: "center",
+    justifyContent: "center",
   },
-  cancelButton: {
-    backgroundColor: palette.border,
+  deleteButton: {
+    backgroundColor: palette.backgroundDarker,
+    borderWidth: 1,
+    borderColor: palette.border,
   },
   saveButton: {
     backgroundColor: palette.accent,
@@ -276,6 +222,9 @@ const styles = StyleSheet.create({
     fontSize: fontSizes.body,
     fontWeight: fontWeights.semibold,
     color: palette.foreground,
+  },
+  deleteText: {
+    color: palette.favHeartRed,
   },
   saveButtonText: {
     color: "#fff",

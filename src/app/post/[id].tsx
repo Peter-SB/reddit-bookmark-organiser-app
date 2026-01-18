@@ -380,13 +380,23 @@ export default function PostScreen() {
     }
 
     try {
-      await addHighlight(post.id, {
+      const newHighlight = await addHighlight(post.id, {
         text: selectedText,
         startOffset: start,
         endOffset: end,
       });
+      
+      // Clear selection by resetting the TextInput selection
       setTextSelection(null);
-      Alert.alert("Success", "Highlight added");
+      if (bodyInputRef.current) {
+        bodyInputRef.current.setNativeProps({
+          selection: { start: 0, end: 0 }
+        });
+      }
+      
+      // Open the edit modal for the newly created highlight
+      setSelectedHighlight(newHighlight);
+      setHighlightModalVisible(true);
     } catch (error) {
       console.error("Error adding highlight:", error);
       Alert.alert("Error", "Failed to add highlight");

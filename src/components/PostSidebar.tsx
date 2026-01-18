@@ -211,6 +211,36 @@ export const PostSidebar: React.FC<SidebarProps> = ({
             </Text>
           </View>
 
+          {/* Similar */}
+          <View style={styles.sidebarSection}>
+            <Text style={styles.sidebarSectionTitle}>Similar Posts</Text>
+            <TouchableOpacity
+              style={[styles.similarButton, { marginTop: spacing.xs }]}
+              onPress={handleOpenAuthorPage}
+              disabled={!post?.author}
+            >
+              <Ionicons
+                name="person-outline"
+                size={18}
+                color={palette.foreground}
+                style={{ marginRight: spacing.s }}
+              />
+              <Text style={styles.similarButtonText}>Author Posts</Text>
+            </TouchableOpacity>
+            <TouchableOpacity
+              style={styles.similarButton}
+              onPress={handleOpenSimilarPage}
+            >
+              <Ionicons
+                name="sparkles-outline"
+                size={18}
+                color={palette.foreground}
+                style={{ marginRight: spacing.s }}
+              />
+              <Text style={styles.similarButtonText}>Similar Posts</Text>
+            </TouchableOpacity>
+          </View>
+
           {/* Highlights */}
           <View style={styles.sidebarSection}>
             <Text style={styles.sidebarSectionTitle}>Highlights</Text>
@@ -241,36 +271,6 @@ export const PostSidebar: React.FC<SidebarProps> = ({
                 </TouchableOpacity>
               ))
             )}
-          </View>
-
-          {/* Similar */}
-          <View style={styles.sidebarSection}>
-            <Text style={styles.sidebarSectionTitle}>Similar Posts</Text>
-            <TouchableOpacity
-              style={[styles.similarButton, { marginTop: spacing.xs }]}
-              onPress={handleOpenAuthorPage}
-              disabled={!post?.author}
-            >
-              <Ionicons
-                name="person-outline"
-                size={18}
-                color={palette.foreground}
-                style={{ marginRight: spacing.s }}
-              />
-              <Text style={styles.similarButtonText}>Author Posts</Text>
-            </TouchableOpacity>
-            <TouchableOpacity
-              style={styles.similarButton}
-              onPress={handleOpenSimilarPage}
-            >
-              <Ionicons
-                name="sparkles-outline"
-                size={18}
-                color={palette.foreground}
-                style={{ marginRight: spacing.s }}
-              />
-              <Text style={styles.similarButtonText}>Similar Posts</Text>
-            </TouchableOpacity>
           </View>
           <View style={{ height: 200 }} />
         </ScrollView>
