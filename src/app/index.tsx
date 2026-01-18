@@ -194,7 +194,7 @@ export default function HomeScreen() {
   );
 
   const handleSelect = (key: string | number | (number | string)[]) => {
-    // key can be "home" | "search" | "favorites" | "unread" | "settings" | folder.id | array of folder ids
+    // key can be "home" | "search" | "favorites" | "unread" | "settings" | "highlights" | folder.id | array of folder ids
     console.log("Selected:", key);
     if (key === "home") {
       setSearch("");
@@ -207,6 +207,8 @@ export default function HomeScreen() {
       });
     } else if (key === "semantic-search") {
       router.push("/semantic-search" as any);
+    } else if (key === "highlights") {
+      router.push("/highlights" as any);
     } else if (key === "settings") {
       router.push("/settings" as any);
     } else if (key === "search") {

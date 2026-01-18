@@ -72,6 +72,7 @@ export default function RootLayout() {
       <Stack>
         <Stack.Screen name="index" options={{ headerShown: false }} />
         <Stack.Screen name="post/[id]" options={{ headerShown: false }} />
+        <Stack.Screen name="highlights" options={{ headerShown: false }} />
         <Stack.Screen name="settings" options={{ headerShown: false }} />
         <Stack.Screen name="semantic-search" options={{ headerShown: false }} />
         <Stack.Screen name="similar/[id]" options={{ headerShown: false }} />

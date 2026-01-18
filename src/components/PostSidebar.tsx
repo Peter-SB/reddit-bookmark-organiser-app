@@ -1,7 +1,7 @@
 import { palette } from "@/constants/Colors";
 import { spacing } from "@/constants/spacing";
 import { fontSizes, fontWeights } from "@/constants/typography";
-import { Post } from "@/models/models";
+import { Post, Highlight } from "@/models/models";
 import {
   openRedditPost,
   openRedditSubreddit,
@@ -34,6 +34,8 @@ interface SidebarProps {
   setEditedNotes: (notes: string) => void;
   formatDate: (dt: Date) => string;
   setFolders: (postId: number, folderIds: number[]) => Promise<void>;
+  highlights?: Highlight[];
+  onHighlightPress?: (highlight: Highlight) => void;
 }
 
 export const PostSidebar: React.FC<SidebarProps> = ({
@@ -49,6 +51,8 @@ export const PostSidebar: React.FC<SidebarProps> = ({
   setEditedNotes,
   formatDate,
   setFolders,
+  highlights = [],
+  onHighlightPress,
 }) => {
   const router = useRouter();
   const [postFolderIds, setPostFolderIds] = useState<number[]>([]);
@@ -207,6 +211,38 @@ export const PostSidebar: React.FC<SidebarProps> = ({
             </Text>
           </View>
 
+          {/* Highlights */}
+          <View style={styles.sidebarSection}>
+            <Text style={styles.sidebarSectionTitle}>Highlights</Text>
+            {highlights.length === 0 ? (
+              <Text style={styles.emptyText}>No highlights yet</Text>
+            ) : (
+              highlights.map((highlight) => (
+                <TouchableOpacity
+                  key={highlight.id}
+                  style={styles.highlightItem}
+                  onPress={() => onHighlightPress?.(highlight)}
+                >
+                  <View style={styles.highlightContent}>
+                    <Text style={styles.highlightText} numberOfLines={2}>
+                      {highlight.text}
+                    </Text>
+                    {highlight.note && (
+                      <Text style={styles.highlightNote} numberOfLines={1}>
+                        {highlight.note}
+                      </Text>
+                    )}
+                  </View>
+                  <Ionicons
+                    name="ellipsis-horizontal"
+                    size={18}
+                    color={palette.foregroundMuted}
+                  />
+                </TouchableOpacity>
+              ))
+            )}
+          </View>
+
           {/* Similar */}
           <View style={styles.sidebarSection}>
             <Text style={styles.sidebarSectionTitle}>Similar Posts</Text>
@@ -311,5 +347,34 @@ const styles = StyleSheet.create({
     color: palette.foreground,
     fontSize: fontSizes.body,
     fontWeight: fontWeights.normal,
+  },
+  emptyText: {
+    fontSize: fontSizes.small,
+    color: palette.foregroundMuted,
+    fontStyle: "italic",
+  },
+  highlightItem: {
+    flexDirection: "row",
+    alignItems: "center",
+    backgroundColor: palette.backgroundLight,
+    borderRadius: 8,
+    padding: spacing.s,
+    marginBottom: spacing.s,
+    borderWidth: 1,
+    borderColor: palette.backgroundMid,
+  },
+  highlightContent: {
+    flex: 1,
+    gap: spacing.xs,
+  },
+  highlightText: {
+    fontSize: fontSizes.small,
+    color: palette.foreground,
+    lineHeight: 18,
+  },
+  highlightNote: {
+    fontSize: fontSizes.small,
+    color: palette.foregroundMuted,
+    fontStyle: "italic",
   },
 });

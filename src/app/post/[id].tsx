@@ -2,18 +2,20 @@ import { PostSidebar } from "@/components/PostSidebar";
 import PostSummary from "@/components/PostSummary";
 import { ShareBookmarkButton } from "@/components/ShareBookmarkButton";
 import { StarRating } from "@/components/StarRating";
+import { HighlightActionModal } from "@/components/HighlightActionModal";
 import { palette } from "@/constants/Colors";
 import { spacing } from "@/constants/spacing";
 import { fontSizes, fontWeights } from "@/constants/typography";
 import { fontOptions } from "@/constants/fontOptions";
 import { usePosts } from "@/hooks/usePosts";
 import { usePostSync } from "@/hooks/usePostSync";
-import { Post } from "@/models/models";
+import { useHighlights } from "@/hooks/useHighlights";
+import { Post, Highlight } from "@/models/models";
 import { SettingsRepository } from "@/repository/SettingsRepository";
 import { Ionicons, MaterialCommunityIcons } from "@expo/vector-icons";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { useLocalSearchParams, useRouter } from "expo-router";
-import React, { useCallback, useEffect, useState } from "react";
+import React, { useCallback, useEffect, useState, useRef } from "react";
 import {
   ActivityIndicator,
   Alert,
@@ -54,6 +56,13 @@ export default function PostScreen() {
     toggleFavorite,
   } = usePosts();
   const { syncSinglePost } = usePostSync({ autoStart: false });
+  const {
+    highlights,
+    addHighlight,
+    updateHighlight,
+    removeHighlight,
+    getHighlightsByPostId,
+  } = useHighlights(id ? parseInt(id) : undefined);
 
   const [post, setPost] = useState<Post | null>(null);
 
@@ -79,6 +88,17 @@ export default function PostScreen() {
 
   const [fontOptionIdx, setFontOptionIdx] = useState(0);
   const [showAiSummary, setShowAiSummary] = useState(true);
+
+  // Highlight-related state
+  const [textSelection, setTextSelection] = useState<{
+    start: number;
+    end: number;
+  } | null>(null);
+  const [selectedHighlight, setSelectedHighlight] = useState<Highlight | null>(
+    null
+  );
+  const [highlightModalVisible, setHighlightModalVisible] = useState(false);
+  const bodyInputRef = useRef<TextInput>(null);
 
   const hasUnsavedChanges = useCallback(() => {
     if (!post) return false;
@@ -345,6 +365,66 @@ export default function PostScreen() {
 
   const formatRedditUser = (u: string) => (u.startsWith("u/") ? u : `u/${u}`);
 
+  // Highlight handlers
+  const handleAddHighlight = async () => {
+    if (!post || !textSelection) return;
+    const { start, end } = textSelection;
+    if (start === end) {
+      Alert.alert("No text selected", "Please select text to highlight");
+      return;
+    }
+
+    const selectedText = editedBody.substring(start, end);
+    if (selectedText.trim().length === 0) {
+      Alert.alert("Invalid selection", "Please select valid text");
+      return;
+    }
+
+    try {
+      await addHighlight(post.id, {
+        text: selectedText,
+        startOffset: start,
+        endOffset: end,
+      });
+      setTextSelection(null);
+      Alert.alert("Success", "Highlight added");
+    } catch (error) {
+      console.error("Error adding highlight:", error);
+      Alert.alert("Error", "Failed to add highlight");
+    }
+  };
+
+  const handleHighlightPress = (highlight: Highlight) => {
+    setSelectedHighlight(highlight);
+    setHighlightModalVisible(true);
+  };
+
+  const handleUpdateHighlight = async (
+    id: number,
+    changes: { text?: string; note?: string }
+  ) => {
+    try {
+      await updateHighlight(id, changes);
+    } catch (error) {
+      console.error("Error updating highlight:", error);
+      Alert.alert("Error", "Failed to update highlight");
+    }
+  };
+
+  const handleDeleteHighlight = async (id: number) => {
+    try {
+      await removeHighlight(id);
+    } catch (error) {
+      console.error("Error deleting highlight:", error);
+      Alert.alert("Error", "Failed to delete highlight");
+    }
+  };
+
+  const handleSelectionChange = (event: any) => {
+    const { selection } = event.nativeEvent;
+    setTextSelection(selection);
+  };
+
   return (
     <SafeAreaView style={styles.container}>
       <Animated.View
@@ -418,6 +498,28 @@ export default function PostScreen() {
             </TouchableOpacity>
           </View>
           <View style={[styles.headerActions, { alignItems: "center" }]}>
+            <TouchableOpacity
+              onPress={handleAddHighlight}
+              style={[
+                styles.actionButton,
+                {
+                  opacity:
+                    textSelection && textSelection.start !== textSelection.end
+                      ? 1
+                      : 0.4,
+                },
+              ]}
+              hitSlop={1}
+              disabled={
+                !textSelection || textSelection.start === textSelection.end
+              }
+            >
+              <Ionicons
+                name="bookmark-outline"
+                size={20}
+                color={palette.foreground}
+              />
+            </TouchableOpacity>
             <TouchableOpacity
               onPress={toggleFontOption}
               style={styles.actionButton}
@@ -526,18 +628,18 @@ export default function PostScreen() {
 
             {/* Body */}
             <View style={styles.bodySection}>
-              {isEditing ? (
-                <TextInput
-                  style={[styles.body, currentFont]}
-                  value={editedBody}
-                  onChangeText={setEditedBody}
-                  multiline
-                  placeholder="Post content..."
-                  textAlignVertical="top"
-                />
-              ) : (
-                <Text style={[styles.body, currentFont]}>{editedBody}</Text>
-              )}
+              <TextInput
+                ref={bodyInputRef}
+                style={[styles.body, currentFont]}
+                value={editedBody}
+                onChangeText={setEditedBody}
+                onSelectionChange={handleSelectionChange}
+                multiline
+                placeholder="Post content..."
+                textAlignVertical="top"
+                editable={isEditing}
+                selectTextOnFocus={false}
+              />
             </View>
 
             {/* Notes */}
@@ -628,6 +730,15 @@ export default function PostScreen() {
         setEditedNotes={setEditedNotes}
         formatDate={formatDate}
         setFolders={setFolders}
+        highlights={highlights}
+        onHighlightPress={handleHighlightPress}
+      />
+      <HighlightActionModal
+        visible={highlightModalVisible}
+        highlight={selectedHighlight}
+        onClose={() => setHighlightModalVisible(false)}
+        onUpdate={handleUpdateHighlight}
+        onDelete={handleDeleteHighlight}
       />
       <Modal
         transparent

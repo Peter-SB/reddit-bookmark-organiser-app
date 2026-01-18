@@ -316,6 +316,25 @@ export const MenuSidebar: React.FC<MenuSidebarProps> = ({
             <View style={styles.dividerLine} />
           </View>
 
+          {/* Highlights */}
+          <TouchableOpacity
+            style={styles.item}
+            onPress={() => {
+              onSelect("highlights");
+              onClose();
+            }}
+          >
+            <View style={styles.iconContainer}>
+              <Icon
+                name="highlight"
+                size={24}
+                style={styles.icon}
+                color={palette.foreground}
+              />
+            </View>
+            <Text style={styles.label}>Highlights</Text>
+          </TouchableOpacity>
+
           {/* Folders expandable */}
           <TouchableOpacity style={styles.item} onPress={toggleFolders}>
             <View style={styles.iconContainer}>
