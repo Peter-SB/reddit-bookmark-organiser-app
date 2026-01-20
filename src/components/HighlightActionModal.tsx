@@ -7,6 +7,7 @@ import React, { useState } from "react";
 import {
   Alert,
   Modal,
+  ScrollView,
   StyleSheet,
   Text,
   TextInput,
@@ -15,12 +16,18 @@ import {
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
+import { fontOptions } from "@/constants/fontOptions";
+
 interface HighlightActionModalProps {
   visible: boolean;
   highlight: Highlight | null;
   onClose: () => void;
-  onUpdate: (id: number, changes: { text?: string; note?: string }) => Promise<void>;
+  onUpdate: (
+    id: number,
+    changes: { text?: string; note?: string },
+  ) => Promise<void>;
   onDelete: (id: number) => Promise<void>;
+  fontOptionIdx: number;
 }
 
 export const HighlightActionModal: React.FC<HighlightActionModalProps> = ({
@@ -29,6 +36,7 @@ export const HighlightActionModal: React.FC<HighlightActionModalProps> = ({
   onClose,
   onUpdate,
   onDelete,
+  fontOptionIdx,
 }) => {
   const insets = useSafeAreaInsets();
   const [editedText, setEditedText] = useState("");
@@ -52,21 +60,8 @@ export const HighlightActionModal: React.FC<HighlightActionModalProps> = ({
 
   const handleDelete = () => {
     if (!highlight) return;
-    Alert.alert(
-      "Delete Highlight",
-      "Are you sure you want to delete this highlight?",
-      [
-        { text: "Cancel", style: "cancel" },
-        {
-          text: "Delete",
-          style: "destructive",
-          onPress: async () => {
-            await onDelete(highlight.id);
-            onClose();
-          },
-        },
-      ]
-    );
+    onDelete(highlight.id);
+    onClose();
   };
 
   const handleCancel = () => {
@@ -95,7 +90,7 @@ export const HighlightActionModal: React.FC<HighlightActionModalProps> = ({
           activeOpacity={1}
           style={[
             styles.modalContent,
-            { paddingBottom: Math.max(insets.bottom, spacing.m) },
+            // { paddingBottom: Math.max(insets.bottom, spacing.m) },
           ]}
           onPress={(e) => e.stopPropagation()}
         >
@@ -106,10 +101,23 @@ export const HighlightActionModal: React.FC<HighlightActionModalProps> = ({
             </TouchableOpacity>
           </View>
 
-          <View style={styles.editContainer}>
+          <ScrollView
+            style={[styles.editContainer]}
+            contentContainerStyle={{}}
+            ref={(ref) => {
+              if (ref) {
+                setTimeout(() => {
+                  ref.scrollToEnd({ animated: false });
+                }, 1);
+              }
+            }}
+          >
             <Text style={styles.label}>Highlight Text</Text>
             <TextInput
-              style={styles.textInput}
+              style={[
+                styles.textInput,
+                { fontSize: fontOptions[fontOptionIdx].fontSize * 1.1 },
+              ]}
               value={editedText}
               onChangeText={setEditedText}
               multiline
@@ -117,7 +125,10 @@ export const HighlightActionModal: React.FC<HighlightActionModalProps> = ({
             />
             <Text style={styles.label}>Note</Text>
             <TextInput
-              style={styles.textInput}
+              style={[
+                styles.textInput,
+                { fontSize: fontOptions[fontOptionIdx].fontSize * 1.1 },
+              ]}
               value={editedNote}
               onChangeText={setEditedNote}
               multiline
@@ -144,11 +155,11 @@ export const HighlightActionModal: React.FC<HighlightActionModalProps> = ({
                 onPress={handleSave}
               >
                 <Text style={[styles.buttonText, styles.saveButtonText]}>
-                  Save
+                  OK
                 </Text>
               </TouchableOpacity>
             </View>
-          </View>
+          </ScrollView>
         </TouchableOpacity>
       </TouchableOpacity>
     </Modal>
@@ -166,6 +177,7 @@ const styles = StyleSheet.create({
     borderTopLeftRadius: 20,
     borderTopRightRadius: 20,
     padding: spacing.m,
+    maxHeight: "90%",
   },
   modalHeader: {
     flexDirection: "row",

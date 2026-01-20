@@ -22,6 +22,7 @@ import {
   Animated,
   BackHandler,
   Dimensions,
+  Keyboard,
   Modal,
   KeyboardAvoidingView,
   Platform,
@@ -56,12 +57,8 @@ export default function PostScreen() {
     toggleFavorite,
   } = usePosts();
   const { syncSinglePost } = usePostSync({ autoStart: false });
-  const {
-    highlights,
-    addHighlight,
-    updateHighlight,
-    removeHighlight,
-  } = useHighlights(id ? parseInt(id) : undefined);
+  const { highlights, addHighlight, updateHighlight, removeHighlight } =
+    useHighlights(id ? parseInt(id) : undefined);
 
   const [post, setPost] = useState<Post | null>(null);
 
@@ -94,7 +91,7 @@ export default function PostScreen() {
     end: number;
   } | null>(null);
   const [selectedHighlight, setSelectedHighlight] = useState<Highlight | null>(
-    null
+    null,
   );
   const [highlightModalVisible, setHighlightModalVisible] = useState(false);
   const bodyInputRef = useRef<TextInput>(null);
@@ -188,7 +185,7 @@ export default function PostScreen() {
             },
           },
         ],
-        { cancelable: true }
+        { cancelable: true },
       );
     } else {
       animateAndGoBack();
@@ -202,7 +199,7 @@ export default function PostScreen() {
     };
     const subscription = BackHandler.addEventListener(
       "hardwareBackPress",
-      onBackPress
+      onBackPress,
     );
     return () => subscription.remove();
   }, [editedTitle, editedBody, editedNotes, post, handleBack]);
@@ -296,7 +293,7 @@ export default function PostScreen() {
           },
         },
       ],
-      { cancelable: true }
+      { cancelable: true },
     );
   };
 
@@ -385,15 +382,21 @@ export default function PostScreen() {
         startOffset: start,
         endOffset: end,
       });
-      
+
       // Clear selection by resetting the TextInput selection
+      console.log("Clearing text selection");
       setTextSelection(null);
+      Keyboard.dismiss();
       if (bodyInputRef.current) {
         bodyInputRef.current.setNativeProps({
-          selection: { start: 0, end: 0 }
+          selection: { start: 0, end: 0 },
         });
+        bodyInputRef.current.blur();
       }
-      
+      // Hack: Deselect by toggling edit mode quickly
+      setIsEditing(false);
+      setTimeout(() => setIsEditing(true), 2);
+
       // Open the edit modal for the newly created highlight
       setSelectedHighlight(newHighlight);
       setHighlightModalVisible(true);
@@ -410,7 +413,7 @@ export default function PostScreen() {
 
   const handleUpdateHighlight = async (
     id: number,
-    changes: { text?: string; note?: string }
+    changes: { text?: string; note?: string },
   ) => {
     try {
       await updateHighlight(id, changes);
@@ -483,7 +486,7 @@ export default function PostScreen() {
                         },
                       },
                     ],
-                    { cancelable: true }
+                    { cancelable: true },
                   );
                 }}
                 style={styles.actionButton}
@@ -748,6 +751,7 @@ export default function PostScreen() {
         onClose={() => setHighlightModalVisible(false)}
         onUpdate={handleUpdateHighlight}
         onDelete={handleDeleteHighlight}
+        fontOptionIdx={fontOptionIdx}
       />
       <Modal
         transparent
@@ -779,7 +783,7 @@ export default function PostScreen() {
                   if (isNaN(v) || v < 0 || v > 5) {
                     Alert.alert(
                       "Invalid",
-                      "Enter a number between 0.0 and 5.0"
+                      "Enter a number between 0.0 and 5.0",
                     );
                     return;
                   }
