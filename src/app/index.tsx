@@ -77,7 +77,7 @@ export default function HomeScreen() {
       readFilter,
     }),
     orderBy,
-    orderDirection
+    orderDirection,
   );
 
   const postsListRef = useRef<FlatList<Post>>(null);
@@ -107,7 +107,7 @@ export default function HomeScreen() {
     useCallback(() => {
       refreshPosts();
       refreshFolders();
-    }, [refreshPosts, refreshFolders])
+    }, [refreshPosts, refreshFolders]),
   );
 
   const handleAddPost = useCallback(
@@ -126,19 +126,19 @@ export default function HomeScreen() {
             console.error("Failed to add post:", err);
             Alert.alert(
               "Error",
-              `Failed to add post: ${(err as Error).message}`
+              `Failed to add post: ${(err as Error).message}`,
             );
           });
 
         // Check for exact duplicates (existing logic)
         const exactDuplicates = posts.filter(
-          (p) => p.redditId === postData.redditId
+          (p) => p.redditId === postData.redditId,
         );
 
         // Check for similar content using MinHash
         const similarPosts = await checkForSimilarPosts(
           postData.bodyText || "",
-          0.8
+          0.8,
         );
 
         if (exactDuplicates.length > 0) {
@@ -151,7 +151,7 @@ export default function HomeScreen() {
                 text: "Add Anyway",
                 onPress: () => safeAddAndSync(),
               },
-            ]
+            ],
           );
         } else if (similarPosts.length > 0) {
           const similarTitles = similarPosts
@@ -171,9 +171,10 @@ export default function HomeScreen() {
                 text: "Add Anyway",
                 onPress: () => safeAddAndSync(),
               },
-            ]
+            ],
           );
         } else {
+          setIsAdding(false);
           await addAndSync();
         }
       } catch (e) {
@@ -190,7 +191,7 @@ export default function HomeScreen() {
       checkForSimilarPosts,
       addPost,
       syncSinglePost,
-    ]
+    ],
   );
 
   const handleSelect = (key: string | number | (number | string)[]) => {
@@ -356,8 +357,8 @@ export default function HomeScreen() {
               {isAdding
                 ? "Adding post..."
                 : redditApiLoading
-                ? "Fetching from Reddit..."
-                : "Loading posts..."}
+                  ? "Fetching from Reddit..."
+                  : "Loading posts..."}
             </Text>
           </View>
         )}
