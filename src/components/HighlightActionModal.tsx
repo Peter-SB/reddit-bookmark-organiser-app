@@ -41,6 +41,7 @@ export const HighlightActionModal: React.FC<HighlightActionModalProps> = ({
   const insets = useSafeAreaInsets();
   const [editedText, setEditedText] = useState("");
   const [editedNote, setEditedNote] = useState("");
+  const scrollViewRef = React.useRef<ScrollView>(null);
 
   React.useEffect(() => {
     if (highlight) {
@@ -48,6 +49,15 @@ export const HighlightActionModal: React.FC<HighlightActionModalProps> = ({
       setEditedNote(highlight.note || "");
     }
   }, [highlight]);
+
+  // Scroll to end only when modal becomes visible
+  React.useEffect(() => {
+    if (visible && scrollViewRef.current) {
+      setTimeout(() => {
+        scrollViewRef.current?.scrollToEnd({ animated: false });
+      }, 1);
+    }
+  }, [visible]);
 
   const handleSave = async () => {
     if (!highlight) return;
@@ -104,13 +114,7 @@ export const HighlightActionModal: React.FC<HighlightActionModalProps> = ({
           <ScrollView
             style={[styles.editContainer]}
             contentContainerStyle={{}}
-            ref={(ref) => {
-              if (ref) {
-                setTimeout(() => {
-                  ref.scrollToEnd({ animated: false });
-                }, 1);
-              }
-            }}
+            ref={scrollViewRef}
           >
             <Text style={styles.label}>Highlight Text</Text>
             <TextInput

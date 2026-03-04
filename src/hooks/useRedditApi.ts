@@ -14,6 +14,9 @@ export const STORAGE_KEYS = {
 const TOKEN_URL = 'https://www.reddit.com/api/v1/access_token';
 const API_BASE = 'https://oauth.reddit.com';
 
+const TOKEN_KEY  = 'reddit_access_token';
+const EXPIRY_KEY = 'reddit_token_expires_at';
+
 const POST_URL_RE       = /^\/r\/[^\/]+\/comments\/([a-z0-9]+)(?:\/[^\/]+)?\/?$/i;
 const USER_POST_URL_RE  = /^\/user\/[^\/]+\/comments\/([a-z0-9]+)(?:\/[^\/]+)?\/?$/i;
 const SHORT_S_RE        = /^\/r\/[^\/]+\/s\/[A-Za-z0-9_-]+\/?$/i;
@@ -25,9 +28,6 @@ type TokenResponse = {
   expires_in: number;
   scope: string;
 };
-
-const TOKEN_KEY  = 'reddit_access_token';
-const EXPIRY_KEY = 'reddit_token_expires_at';
 
 interface UseRedditApiResult {
   loading: boolean;

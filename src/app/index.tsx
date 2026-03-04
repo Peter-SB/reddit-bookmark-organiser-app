@@ -44,9 +44,8 @@ export default function HomeScreen() {
   const {
     posts,
     loading: postsLoading,
-    addPost,
     refreshPosts,
-    checkForSimilarPosts,
+    handleAddPost: addPostFromUrl,
   } = usePosts();
   const { folders, deleteFolder, refreshFolders } = useFolders();
   const { getPostData, loading: redditApiLoading } = useRedditApi();
@@ -115,83 +114,17 @@ export default function HomeScreen() {
       if (isAdding) return;
       setIsAdding(true);
       try {
-        const postData = await getPostData(url);
-        const addAndSync = async () => {
-          const created = await addPost(postData);
-          await syncSinglePost(created.id);
-          setIsInputVisible(false);
-        };
-        const safeAddAndSync = () =>
-          addAndSync().catch((err) => {
-            console.error("Failed to add post:", err);
-            Alert.alert(
-              "Error",
-              `Failed to add post: ${(err as Error).message}`,
-            );
-          });
-
-        // Check for exact duplicates (existing logic)
-        const exactDuplicates = posts.filter(
-          (p) => p.redditId === postData.redditId,
-        );
-
-        // Check for similar content using MinHash
-        const similarPosts = await checkForSimilarPosts(
-          postData.bodyText || "",
-          0.8,
-        );
-
-        if (exactDuplicates.length > 0) {
-          Alert.alert(
-            "Duplicate Post",
-            "This post appears to already exist. Add anyway?",
-            [
-              { text: "Cancel", style: "cancel" },
-              {
-                text: "Add Anyway",
-                onPress: () => safeAddAndSync(),
-              },
-            ],
-          );
-        } else if (similarPosts.length > 0) {
-          const similarTitles = similarPosts
-            .slice(0, 2)
-            .map((p) => `"${p.title}"`)
-            .join("\n");
-          Alert.alert(
-            "Similar Content Found",
-            `Found ${
-              similarPosts.length
-            } post(s) with similar content:\n\n${similarTitles}${
-              similarPosts.length > 3 ? "\n...and more" : ""
-            }\n\nAdd anyway?`,
-            [
-              { text: "Cancel", style: "cancel" },
-              {
-                text: "Add Anyway",
-                onPress: () => safeAddAndSync(),
-              },
-            ],
-          );
-        } else {
-          setIsAdding(false);
-          await addAndSync();
-        }
-      } catch (e) {
-        console.error("Failed to add post:", e);
-        Alert.alert("Error", `Failed to add post: ${(e as Error).message}`);
+        await addPostFromUrl(url, {
+          getPostData,
+          syncSinglePost,
+          onBeforeAdd: () => setIsAdding(false),
+          onSuccess: () => setIsInputVisible(false),
+        });
       } finally {
         setIsAdding(false);
       }
     },
-    [
-      isAdding,
-      getPostData,
-      posts,
-      checkForSimilarPosts,
-      addPost,
-      syncSinglePost,
-    ],
+    [isAdding, addPostFromUrl, getPostData, syncSinglePost],
   );
 
   const handleSelect = (key: string | number | (number | string)[]) => {
