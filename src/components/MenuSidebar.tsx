@@ -47,6 +47,7 @@ export interface MenuSidebarProps {
   orderDirection?: "asc" | "desc";
   onOrderByChange?: (val: string) => void;
   onOrderDirectionChange?: (val: "asc" | "desc") => void;
+  onRandomReseed?: () => void;
 }
 
 export const MenuSidebar: React.FC<MenuSidebarProps> = ({
@@ -65,6 +66,7 @@ export const MenuSidebar: React.FC<MenuSidebarProps> = ({
   orderDirection = "desc",
   onOrderByChange,
   onOrderDirectionChange,
+  onRandomReseed,
 }) => {
   const insets = useSafeAreaInsets();
   const screenWidth = Dimensions.get("window").width;
@@ -94,6 +96,7 @@ export const MenuSidebar: React.FC<MenuSidebarProps> = ({
     { key: "rating", label: "Rating" },
     { key: "title", label: "Title" },
     { key: "length", label: "Length" },
+    { key: "random", label: "Random" },
   ];
 
   // slide + fade animations
@@ -312,6 +315,7 @@ export const MenuSidebar: React.FC<MenuSidebarProps> = ({
               setLocalOrderDirection(val);
               if (onOrderDirectionChange) onOrderDirectionChange(val);
             }}
+            onRandomReseed={onRandomReseed}
           />
           <View style={styles.dividerContainer}>
             <View style={styles.dividerLine} />

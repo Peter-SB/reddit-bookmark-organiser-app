@@ -45,11 +45,33 @@ export function filterPosts(
     });
 }
 
+function seededRandom(seed: number) {
+  // Mulberry32 PRNG – deterministic, fast, good distribution
+  let s = seed >>> 0;
+  return () => {
+    s += 0x6d2b79f5;
+    let t = Math.imul(s ^ (s >>> 15), 1 | s);
+    t ^= t + Math.imul(t ^ (t >>> 7), 61 | t);
+    return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+  };
+}
+
 export function sortPosts(
   posts: Post[],
   orderBy: string,
-  orderDirection: "asc" | "desc"
+  orderDirection: "asc" | "desc",
+  randomSeed?: number
 ) {
+  if (orderBy === "random") {
+    const rand = seededRandom(randomSeed ?? 0);
+    const result = [...posts];
+    for (let i = result.length - 1; i > 0; i--) {
+      const j = Math.floor(rand() * (i + 1));
+      [result[i], result[j]] = [result[j], result[i]];
+    }
+    return result;
+  }
+
   const toTime = (value?: Date | string | number | null) => {
     if (!value) return null;
     const time = new Date(value as any).getTime();

@@ -10,6 +10,7 @@ interface OrderByRowProps {
   localOrderDirection: "asc" | "desc";
   onOrderByChange?: (val: string) => void;
   onOrderDirectionChange?: (val: "asc" | "desc") => void;
+  onRandomReseed?: () => void;
 }
 
 interface OrderByRowState {
@@ -62,23 +63,38 @@ export class OrderByRow extends React.Component<
               justifyContent: "flex-end",
             }}
           >
-            {/* Direction arrow */}
-            <TouchableOpacity
-              style={styles.orderDirectionButton}
-              onPress={this.handleDirectionChange}
-              accessibilityLabel="Toggle order direction"
-            >
-              <Icon
-                name={
-                  localOrderDirection === "asc"
-                    ? "arrow-upward"
-                    : "arrow-downward"
-                }
-                size={18}
-                color={palette.foreground}
-                style={{ marginLeft: 6, opacity: 0.7 }}
-              />
-            </TouchableOpacity>
+            {/* Direction arrow or Reseed button */}
+            {localOrderBy === "random" ? (
+              <TouchableOpacity
+                style={styles.orderDirectionButton}
+                onPress={() => this.props.onRandomReseed && this.props.onRandomReseed()}
+                accessibilityLabel="Reseed random order"
+              >
+                <Icon
+                  name="refresh"
+                  size={18}
+                  color={palette.foreground}
+                  style={{ marginLeft: 6, opacity: 0.7 }}
+                />
+              </TouchableOpacity>
+            ) : (
+              <TouchableOpacity
+                style={styles.orderDirectionButton}
+                onPress={this.handleDirectionChange}
+                accessibilityLabel="Toggle order direction"
+              >
+                <Icon
+                  name={
+                    localOrderDirection === "asc"
+                      ? "arrow-upward"
+                      : "arrow-downward"
+                  }
+                  size={18}
+                  color={palette.foreground}
+                  style={{ marginLeft: 6, opacity: 0.7 }}
+                />
+              </TouchableOpacity>
+            )}
             {/* Dropdown selector */}
             <View style={styles.orderDropdownContainer}>
               <TouchableOpacity

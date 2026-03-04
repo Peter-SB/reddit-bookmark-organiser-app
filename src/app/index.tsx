@@ -64,6 +64,7 @@ export default function HomeScreen() {
   // Add state for orderBy and orderDirection
   const [orderBy, setOrderBy] = useState<string>("addedAt");
   const [orderDirection, setOrderDirection] = useState<"asc" | "desc">("desc");
+  const [randomSeed, setRandomSeed] = useState<number>(() => Date.now());
 
   const insets = useSafeAreaInsets();
 
@@ -77,6 +78,7 @@ export default function HomeScreen() {
     }),
     orderBy,
     orderDirection,
+    randomSeed,
   );
 
   const postsListRef = useRef<FlatList<Post>>(null);
@@ -234,6 +236,7 @@ export default function HomeScreen() {
         orderDirection={orderDirection}
         onOrderByChange={setOrderBy}
         onOrderDirectionChange={setOrderDirection}
+        onRandomReseed={() => setRandomSeed(Date.now())}
       />
 
       <View style={styles.header}>
