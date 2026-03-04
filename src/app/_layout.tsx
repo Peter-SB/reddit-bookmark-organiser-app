@@ -35,7 +35,7 @@ export default function RootLayout() {
       if (state === "active") {
         // Reopen if needed; cheap due to health check + in-flight lock
         DatabaseService.getInstance().catch((e) =>
-          console.error("DB re-open on resume failed", e)
+          console.error("DB re-open on resume failed", e),
         );
       }
     });
@@ -72,10 +72,12 @@ export default function RootLayout() {
       <Stack>
         <Stack.Screen name="index" options={{ headerShown: false }} />
         <Stack.Screen name="post/[id]" options={{ headerShown: false }} />
+        <Stack.Screen name="highlights" options={{ headerShown: false }} />
         <Stack.Screen name="settings" options={{ headerShown: false }} />
         <Stack.Screen name="semantic-search" options={{ headerShown: false }} />
         <Stack.Screen name="similar/[id]" options={{ headerShown: false }} />
         <Stack.Screen name="author/[author]" options={{ headerShown: false }} />
+        <Stack.Screen name="author/import" options={{ headerShown: false }} />
         <Stack.Screen name="+not-found" />
       </Stack>
       <StatusBar style="auto" />

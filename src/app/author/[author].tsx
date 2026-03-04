@@ -23,7 +23,7 @@ export default function AuthorPostsScreen() {
   const { author } = useLocalSearchParams<{ author?: string | string[] }>();
   const authorParam = useMemo(() => {
     if (!author) return "";
-    return Array.isArray(author) ? author[0] ?? "" : author;
+    return Array.isArray(author) ? (author[0] ?? "") : author;
   }, [author]);
 
   const authorName = useMemo(() => {
@@ -42,7 +42,7 @@ export default function AuthorPostsScreen() {
   useFocusEffect(
     useCallback(() => {
       refreshPosts();
-    }, [refreshPosts])
+    }, [refreshPosts]),
   );
 
   useEffect(() => {
@@ -59,7 +59,7 @@ export default function AuthorPostsScreen() {
       };
       const sub = BackHandler.addEventListener("hardwareBackPress", onBack);
       return () => sub.remove();
-    }, [router])
+    }, [router]),
   );
 
   const authorPosts = useMemo(() => {
@@ -76,7 +76,7 @@ export default function AuthorPostsScreen() {
 
   const renderItem = useCallback(
     ({ item }: { item: (typeof posts)[number] }) => <PostCard post={item} />,
-    []
+    [],
   );
 
   const statusText =
@@ -134,6 +134,29 @@ export default function AuthorPostsScreen() {
               <Text style={styles.emptySubtitle}>
                 Try syncing or importing more posts from this author.
               </Text>
+            </View>
+          ) : null
+        }
+        ListFooterComponent={
+          authorPosts.length > 0 && authorName ? (
+            <View style={styles.footerContainer}>
+              <TouchableOpacity
+                style={styles.importButton}
+                onPress={() =>
+                  router.push(
+                    `/author/import?author=${encodeURIComponent(authorName)}`,
+                  )
+                }
+              >
+                <Icon
+                  name="cloud-download"
+                  size={24}
+                  color={palette.foregroundLight}
+                />
+                <Text style={styles.importButtonText}>
+                  Find More Posts by {authorName}
+                </Text>
+              </TouchableOpacity>
             </View>
           ) : null
         }
@@ -205,5 +228,31 @@ const styles = StyleSheet.create({
     color: palette.muted,
     textAlign: "center",
     lineHeight: 20,
+  },
+  footerContainer: {
+    padding: spacing.m,
+    alignItems: "center",
+    borderTopWidth: 1,
+    borderTopColor: palette.border,
+    // marginTop: spacing.m,
+  },
+  importButton: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    marginTop: spacing.s,
+    marginBottom: spacing.m,
+    paddingVertical: spacing.m,
+    paddingHorizontal: spacing.l,
+    backgroundColor: palette.backgroundMidLight,
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: palette.border,
+    gap: spacing.s,
+  },
+  importButtonText: {
+    fontSize: fontSizes.body,
+    fontWeight: fontWeights.semibold,
+    color: palette.foregroundLight,
   },
 });
