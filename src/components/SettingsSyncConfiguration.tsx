@@ -53,7 +53,9 @@ export default function SettingsSyncConfiguration() {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [statusMessage, setStatusMessage] = useState<string | null>(null);
-  const { syncPending, syncing, lastSyncAt, forceResyncAll } = usePostSync({ autoStart: false });
+  const { syncPending, syncing, lastSyncAt, forceResyncAll } = usePostSync({
+    autoStart: false,
+  });
 
   useEffect(() => {
     (async () => {
@@ -65,10 +67,14 @@ export default function SettingsSyncConfiguration() {
           SYNC_SEMANTIC_EMBED_MODEL_KEY,
           SYNC_SIMILAR_EMBED_MODEL_KEY,
         ]);
-        if (settings[SYNC_SERVER_URL_KEY]) setServerUrl(settings[SYNC_SERVER_URL_KEY]);
-        if (settings[SYNC_TABLE_NAME_KEY]) setTableName(settings[SYNC_TABLE_NAME_KEY]);
-        if (settings[SYNC_SEMANTIC_EMBED_MODEL_KEY]) setSemanticEmbeddingModel(settings[SYNC_SEMANTIC_EMBED_MODEL_KEY]);
-        if (settings[SYNC_SIMILAR_EMBED_MODEL_KEY]) setSimilarEmbeddingModel(settings[SYNC_SIMILAR_EMBED_MODEL_KEY]);
+        if (settings[SYNC_SERVER_URL_KEY])
+          setServerUrl(settings[SYNC_SERVER_URL_KEY]);
+        if (settings[SYNC_TABLE_NAME_KEY])
+          setTableName(settings[SYNC_TABLE_NAME_KEY]);
+        if (settings[SYNC_SEMANTIC_EMBED_MODEL_KEY])
+          setSemanticEmbeddingModel(settings[SYNC_SEMANTIC_EMBED_MODEL_KEY]);
+        if (settings[SYNC_SIMILAR_EMBED_MODEL_KEY])
+          setSimilarEmbeddingModel(settings[SYNC_SIMILAR_EMBED_MODEL_KEY]);
       } catch (err) {
         console.warn("Failed to load sync settings:", err);
       } finally {
@@ -88,7 +94,9 @@ export default function SettingsSyncConfiguration() {
       setProfilesLoading(true);
       setProfilesError(null);
       try {
-        const res = await fetch(`${normaliseServerUrl(url)}/embedding-profiles`);
+        const res = await fetch(
+          `${normaliseServerUrl(url)}/embedding-profiles`,
+        );
         if (!res.ok) {
           throw new Error(`HTTP ${res.status}`);
         }
@@ -123,9 +131,18 @@ export default function SettingsSyncConfiguration() {
     try {
       await Promise.all([
         SettingsRepository.setSetting(SYNC_SERVER_URL_KEY, serverUrl.trim()),
-        SettingsRepository.setSetting(SYNC_TABLE_NAME_KEY, tableName.trim() || DEFAULT_SYNC_TABLE),
-        SettingsRepository.setSetting(SYNC_SEMANTIC_EMBED_MODEL_KEY, semanticEmbeddingModel.trim() || DEFAULT_EMBED_MODEL),
-        SettingsRepository.setSetting(SYNC_SIMILAR_EMBED_MODEL_KEY, similarEmbeddingModel.trim() || DEFAULT_EMBED_MODEL),
+        SettingsRepository.setSetting(
+          SYNC_TABLE_NAME_KEY,
+          tableName.trim() || DEFAULT_SYNC_TABLE,
+        ),
+        SettingsRepository.setSetting(
+          SYNC_SEMANTIC_EMBED_MODEL_KEY,
+          semanticEmbeddingModel.trim() || DEFAULT_EMBED_MODEL,
+        ),
+        SettingsRepository.setSetting(
+          SYNC_SIMILAR_EMBED_MODEL_KEY,
+          similarEmbeddingModel.trim() || DEFAULT_EMBED_MODEL,
+        ),
       ]);
       setStatusMessage("Sync settings saved.");
     } catch (err) {
@@ -146,7 +163,9 @@ export default function SettingsSyncConfiguration() {
       }
       const success = results.filter((r) => r.success).length;
       const failed = results.length - success;
-      setStatusMessage(`Sync finished: ${success} succeeded${failed ? `, ${failed} failed` : ""}.`);
+      setStatusMessage(
+        `Sync finished: ${success} succeeded${failed ? `, ${failed} failed` : ""}.`,
+      );
     } catch (err) {
       console.error("Manual sync failed:", err);
       Alert.alert("Sync failed", (err as Error).message);
@@ -164,7 +183,7 @@ export default function SettingsSyncConfiguration() {
       const success = results.filter((r) => r.success).length;
       const failed = results.length - success;
       setStatusMessage(
-        `Force re-sync finished: ${success} succeeded${failed ? `, ${failed} failed` : ""}.`
+        `Force re-sync finished: ${success} succeeded${failed ? `, ${failed} failed` : ""}.`,
       );
     } catch (err) {
       console.error("Force re-sync failed:", err);
@@ -207,7 +226,11 @@ export default function SettingsSyncConfiguration() {
       <Text style={styles.label}>Semantic Search Embedding</Text>
       <View style={styles.pickerContainer}>
         {profilesLoading ? (
-          <ActivityIndicator size="small" color={palette.accent} style={{ paddingVertical: spacing.s }} />
+          <ActivityIndicator
+            size="small"
+            color={palette.accent}
+            style={{ paddingVertical: spacing.s }}
+          />
         ) : (
           <Picker
             selectedValue={semanticEmbeddingModel}
@@ -229,7 +252,11 @@ export default function SettingsSyncConfiguration() {
       <Text style={styles.label}>Similar Posts Embedding</Text>
       <View style={styles.pickerContainer}>
         {profilesLoading ? (
-          <ActivityIndicator size="small" color={palette.accent} style={{ paddingVertical: spacing.s }} />
+          <ActivityIndicator
+            size="small"
+            color={palette.accent}
+            style={{ paddingVertical: spacing.s }}
+          />
         ) : (
           <Picker
             selectedValue={similarEmbeddingModel}
@@ -265,11 +292,14 @@ export default function SettingsSyncConfiguration() {
           onPress={triggerManualSync}
           disabled={syncing}
         >
-          <Text style={styles.buttonText}>{syncing ? "Syncing..." : "Sync Pending Now"}</Text>
+          <Text style={styles.buttonText}>
+            {syncing ? "Syncing..." : "Sync Pending Now"}
+          </Text>
         </TouchableOpacity>
       </View>
 
-      <TouchableOpacity
+      {/* Disabled for safety */}
+      {/* <TouchableOpacity
         style={[styles.button, styles.fullWidthButton, syncing && styles.buttonDisabled]}
         onPress={triggerForceResync}
         disabled={syncing}
@@ -277,11 +307,13 @@ export default function SettingsSyncConfiguration() {
         <Text style={styles.buttonText}>
           {syncing ? "Re-syncing..." : "Force Re-sync All Posts"}
         </Text>
-      </TouchableOpacity>
+      </TouchableOpacity> */}
 
       {statusMessage && <Text style={styles.status}>{statusMessage}</Text>}
       {lastSyncAt && (
-        <Text style={styles.status}>Last successful sync: {lastSyncAt.toLocaleString()}</Text>
+        <Text style={styles.status}>
+          Last successful sync: {lastSyncAt.toLocaleString()}
+        </Text>
       )}
     </View>
   );

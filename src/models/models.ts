@@ -35,6 +35,7 @@ export interface Post {
   notes?: string;
   rating?: number;       // 1–5 stars (float)
   isRead: boolean;
+  readAt?: Date | null;  // When the post was last marked as read (only updated when transitioning to read)
   isFavorite: boolean;
   /** Soft delete flag */
   isDeleted?: boolean;

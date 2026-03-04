@@ -98,6 +98,15 @@ export function sortPosts(
         aValue = new Date(a.addedAt).getTime();
         bValue = new Date(b.addedAt).getTime();
         break;
+      case "readAt": {
+        const aRead = toTime(a.readAt);
+        const bRead = toTime(b.readAt);
+        // Nulls sort last regardless of direction
+        if (aRead === null && bRead === null) return 0;
+        if (aRead === null) return 1;
+        if (bRead === null) return -1;
+        return compare(aRead, bRead);
+      }
       case "rating":
         aValue = (a as any).rating ?? 0;
         bValue = (b as any).rating ?? 0;

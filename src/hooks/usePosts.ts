@@ -199,7 +199,12 @@ export function usePosts(): UsePostsResult {
     if (!repo) throw new Error('PostRepository not ready');
     const p = await repo.getById(id);
     if (!p) return;
-    await repo.update({ ...p, isRead: !p.isRead });
+    const newIsRead = !p.isRead;
+    await repo.update({
+      ...p,
+      isRead: newIsRead,
+      readAt: newIsRead ? new Date() : p.readAt,
+    });
     await loadPosts();
   }, [repo, loadPosts]);
 

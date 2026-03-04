@@ -111,7 +111,8 @@ export class DatabaseService {
         isDeleted         INTEGER NOT NULL DEFAULT 0,
         extraFields       TEXT,
         bodyMinHash       TEXT,
-        summary           TEXT
+        summary           TEXT,
+        readAt            TEXT
       );
 
       CREATE TABLE IF NOT EXISTS post_folders (
@@ -167,6 +168,13 @@ export class DatabaseService {
     const hasIsDeleted = columns.some((col: any) => col.name === 'isDeleted');
     if (!hasIsDeleted) {
       await this.db.execAsync(`ALTER TABLE posts ADD COLUMN isDeleted INTEGER NOT NULL DEFAULT 0;`);
+    }
+    // Migration: add readAt column if it doesn't exist
+    const hasReadAt = columns.some((col: any) => col.name === 'readAt');
+    if (!hasReadAt) {
+      await this.db.execAsync(`ALTER TABLE posts ADD COLUMN readAt TEXT;`);
+      // Backfill: for posts already marked as read, use updatedAt as the read timestamp
+      await this.db.execAsync(`UPDATE posts SET readAt = updatedAt WHERE isRead = 1;`);
     }
   }
 

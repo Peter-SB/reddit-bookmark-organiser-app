@@ -185,6 +185,11 @@ export const PostSidebar: React.FC<SidebarProps> = ({
             <Text style={styles.sidebarText}>
               Added: {formatDate(post.addedAt)}
             </Text>
+            {post.readAt && (
+              <Text style={styles.sidebarText}>
+                Read: {formatDate(post.readAt)}
+              </Text>
+            )}
             <Text style={styles.sidebarText}>
               Synced: {/* {post.syncedAt ? formatDate(post.syncedAt) : ""} */}
               {post.lastSyncStatus

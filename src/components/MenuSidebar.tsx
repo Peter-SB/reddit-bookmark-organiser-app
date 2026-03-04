@@ -90,6 +90,7 @@ export const MenuSidebar: React.FC<MenuSidebarProps> = ({
   const orderOptions = [
     { key: "addedAt", label: "Added at" },
     { key: "updatedAt", label: "Updated at" },
+    { key: "readAt", label: "Read at" },
     { key: "rating", label: "Rating" },
     { key: "title", label: "Title" },
     { key: "length", label: "Length" },
@@ -136,7 +137,7 @@ export const MenuSidebar: React.FC<MenuSidebarProps> = ({
           },
         },
       ],
-      { cancelable: true }
+      { cancelable: true },
     );
   };
 
@@ -372,7 +373,7 @@ export const MenuSidebar: React.FC<MenuSidebarProps> = ({
                       let newSelected: number[];
                       if (isSelected) {
                         newSelected = selectedFolders.filter(
-                          (id) => id !== item.id
+                          (id) => id !== item.id,
                         );
                       } else {
                         newSelected = [...selectedFolders, item.id];

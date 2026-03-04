@@ -30,6 +30,7 @@ type PostRow = {
   folderId: number | null;
   extraFields: string | null;
   summary: string | null;
+  readAt: string | null;
 };
 
 export class PostRepository {
@@ -73,6 +74,7 @@ export class PostRepository {
       isDeleted: row.isDeleted === 1,
       extraFields,
       summary: row.summary ?? undefined,
+      readAt: row.readAt ? parseDbDate(row.readAt) : null,
       folderIds: await this.loadFolderIds(row.id),
     };
   }
@@ -121,8 +123,8 @@ export class PostRepository {
          redditId, url, title, bodyText, bodyMinHash, author, subreddit,
          redditCreatedAt, addedAt, updatedAt, syncedAt, lastSyncStatus, lastSyncError,
          customTitle, customBody, notes, rating,
-         isRead, isFavorite, isDeleted, extraFields, summary
-       ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+         isRead, isFavorite, isDeleted, extraFields, summary, readAt
+       ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
       post.redditId,
       post.url,
       post.title,
@@ -145,6 +147,7 @@ export class PostRepository {
       post.isDeleted ? 1 : 0,
       post.extraFields ? JSON.stringify(post.extraFields) : null,
       post.summary ?? null,
+      post.readAt instanceof Date ? post.readAt.toISOString() : post.readAt ?? null,
     );
     const newId = result.lastInsertRowId;
     return newId;
@@ -261,6 +264,7 @@ export class PostRepository {
          isFavorite    = ?,
          extraFields   = ?,
          summary       = ?,
+         readAt        = ?,
          updatedAt     = CURRENT_TIMESTAMP
        WHERE id = ?`,
       post.title,
@@ -274,6 +278,7 @@ export class PostRepository {
       post.isFavorite ? 1 : 0,
       extraFields,
       post.summary ?? null,
+      post.readAt instanceof Date ? post.readAt.toISOString() : post.readAt ?? null,
       post.id
     );
 
