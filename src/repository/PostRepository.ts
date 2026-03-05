@@ -1,9 +1,24 @@
+import { OrderByOption } from "@/constants/orderBy";
 // src/repositories/PostRepository.ts
-import { Post } from '@/models/models';
+import { Post, PostListItem } from '@/models/models';
 import type { SQLiteDatabase } from 'expo-sqlite';
 import { DatabaseService } from '../services/DatabaseService';
 import { MinHashService } from '../services/MinHashService';
 import { parseDbDate } from '../utils/datetimeUtils';
+
+export type TripleFilter = 'all' | 'yes' | 'no';
+
+export type PostFilterOptions = {
+  /** Free-text search across title, customTitle, bodyText, customBody, notes, author, subreddit */
+  search?: string;
+  /** Only include posts belonging to at least one of these folder IDs */
+  selectedFolders?: number[];
+  favouritesFilter?: TripleFilter;
+  readFilter?: TripleFilter;
+  /** Column to sort by. 'random' shuffles client-side using the provided randomSeed. */
+  orderBy?: OrderByOption;
+  orderDirection?: 'asc' | 'desc';
+};
 
 type PostRow = {
   id: number;
@@ -40,7 +55,7 @@ export class PostRepository {
     this.db = db;
   }
 
-  private async mapRowToPost(row: PostRow): Promise<Post> {
+  private mapRowToPost(row: PostRow, folderIds: number[] = []): Post {
     let extraFields: Record<string, any> | undefined;
     if (row.extraFields) {
       try {
@@ -75,8 +90,38 @@ export class PostRepository {
       extraFields,
       summary: row.summary ?? undefined,
       readAt: row.readAt ? parseDbDate(row.readAt) : null,
-      folderIds: await this.loadFolderIds(row.id),
+      folderIds,
     };
+  }
+
+  /**
+   * Batch load all folder mappings into a lookup map.
+   * Single query instead of N+1.
+   */
+  private async loadAllFolderIds(postIds?: number[]): Promise<Map<number, number[]>> {
+    const map = new Map<number, number[]>();
+    let rows: { post_id: number; folder_id: number }[];
+    if (postIds && postIds.length > 0) {
+      // For a small set of posts, filter by IDs
+      const placeholders = postIds.map(() => '?').join(',');
+      rows = await this.db.getAllAsync<{ post_id: number; folder_id: number }>(
+        `SELECT post_id, folder_id FROM post_folders WHERE post_id IN (${placeholders})`,
+        ...postIds
+      );
+    } else {
+      rows = await this.db.getAllAsync<{ post_id: number; folder_id: number }>(
+        `SELECT post_id, folder_id FROM post_folders`
+      );
+    }
+    for (const row of rows) {
+      const arr = map.get(row.post_id);
+      if (arr) {
+        arr.push(row.folder_id);
+      } else {
+        map.set(row.post_id, [row.folder_id]);
+      }
+    }
+    return map;
   }
 
   public static async create(): Promise<PostRepository> {
@@ -90,7 +135,200 @@ export class PostRepository {
       `SELECT * FROM posts WHERE isDeleted = 0 ORDER BY addedAt DESC`
     );
     console.debug(`Retrieved ${rows.length} posts from database`);
-    return Promise.all(rows.map(r => this.mapRowToPost(r)));
+    // Batch load all folder IDs in a single query (fixes N+1)
+    const folderMap = await this.loadAllFolderIds();
+    return rows.map(r => this.mapRowToPost(r, folderMap.get(r.id) ?? []));
+  }
+
+  /**
+   * Lightweight query for list screens - skips heavy text fields.
+   * Returns PostListItem[] with only the fields needed for rendering cards.
+   */
+  public async getAllListItems(): Promise<PostListItem[]> {
+    type ListRow = {
+      id: number;
+      redditId: string;
+      url: string;
+      title: string;
+      author: string;
+      subreddit: string;
+      redditCreatedAt: string;
+      addedAt: string;
+      updatedAt: string;
+      customTitle: string | null;
+      notes: string | null;
+      rating: number | null;
+      isRead: number;
+      isFavorite: number;
+      readAt: string | null;
+      wordCount: number;
+    };
+    const rows = await this.db.getAllAsync<ListRow>(
+      `SELECT
+         id, redditId, url, title, author, subreddit,
+         redditCreatedAt, addedAt, updatedAt,
+         customTitle, notes, rating, isRead, isFavorite, readAt,
+         CASE
+           WHEN COALESCE(customBody, bodyText) IS NULL OR COALESCE(customBody, bodyText) = '' THEN 0
+           ELSE LENGTH(TRIM(COALESCE(customBody, bodyText))) - LENGTH(REPLACE(TRIM(COALESCE(customBody, bodyText)), ' ', '')) + 1
+         END AS wordCount
+       FROM posts
+       WHERE isDeleted = 0
+       ORDER BY addedAt DESC`
+    );
+    console.debug(`Retrieved ${rows.length} post list items from database`);
+    const folderMap = await this.loadAllFolderIds();
+    return rows.map(r => ({
+      id: r.id,
+      redditId: r.redditId,
+      url: r.url,
+      title: r.title,
+      author: r.author,
+      subreddit: r.subreddit,
+      redditCreatedAt: new Date(r.redditCreatedAt),
+      addedAt: new Date(r.addedAt),
+      updatedAt: parseDbDate(r.updatedAt),
+      customTitle: r.customTitle ?? undefined,
+      notes: r.notes ?? undefined,
+      rating: r.rating ?? undefined,
+      isRead: r.isRead === 1,
+      isFavorite: r.isFavorite === 1,
+      readAt: r.readAt ? parseDbDate(r.readAt) : null,
+      folderIds: folderMap.get(r.id) ?? [],
+      wordCount: r.wordCount,
+    }));
+  }
+
+  /**
+   * Filtered + sorted lightweight query for the list screen.
+   *
+   * For orderBy === 'random', the rows are returned in database order;
+   * the caller is responsible for client-side seeded shuffling.
+   */
+  public async getFilteredListItems(options: PostFilterOptions = {}): Promise<PostListItem[]> {
+    const {
+      search,
+      selectedFolders,
+      favouritesFilter = 'all',
+      readFilter = 'all',
+      orderBy = OrderByOption.AddedAt,
+      orderDirection = 'desc',
+    } = options;
+
+    const conditions: string[] = ['isDeleted = 0'];
+    const params: (string | number)[] = [];
+
+    // Full-text search across title, body, notes, author, subreddit
+    const q = search?.trim();
+    if (q) {
+      const pattern = `%${q}%`;
+      conditions.push(
+        `(title LIKE ? OR COALESCE(customTitle,'') LIKE ? OR ` +
+        `COALESCE(bodyText,'') LIKE ? OR COALESCE(customBody,'') LIKE ? OR ` +
+        `COALESCE(notes,'') LIKE ? OR author LIKE ? OR subreddit LIKE ?)`
+      );
+      params.push(pattern, pattern, pattern, pattern, pattern, pattern, pattern);
+    }
+
+    // Folder filter
+    if (selectedFolders && selectedFolders.length > 0) {
+      const placeholders = selectedFolders.map(() => '?').join(',');
+      conditions.push(
+        `EXISTS (SELECT 1 FROM post_folders WHERE post_id = posts.id AND folder_id IN (${placeholders}))`
+      );
+      params.push(...selectedFolders);
+    }
+
+    if (favouritesFilter === 'yes') conditions.push('isFavorite = 1');
+    else if (favouritesFilter === 'no') conditions.push('isFavorite = 0');
+
+    if (readFilter === 'yes') conditions.push('isRead = 1');
+    else if (readFilter === 'no') conditions.push('isRead = 0');
+
+    const where = conditions.join(' AND ');
+    const dir = orderDirection.toUpperCase() as 'ASC' | 'DESC';
+
+    let orderClause = '';
+    switch (orderBy) {
+      case OrderByOption.Random:
+        // Caller handles seeded shuffle; return in natural DB order
+        orderClause = 'ORDER BY addedAt DESC';
+        break;
+      case OrderByOption.UpdatedAt: {
+        // Posts with a "real" update (updatedAt differs from addedAt by >1 s) sort first
+        const updateExpr = `ABS((julianday(updatedAt) - julianday(addedAt)) * 86400.0) > 1.0`;
+        orderClause =
+          `ORDER BY CASE WHEN ${updateExpr} THEN 0 ELSE 1 END ASC, ` +
+          `CASE WHEN ${updateExpr} THEN updatedAt ELSE addedAt END ${dir}`;
+        break;
+      }
+      case OrderByOption.ReadAt:
+        // NULL readAt always sorts last regardless of direction
+        orderClause = `ORDER BY CASE WHEN readAt IS NULL THEN 1 ELSE 0 END ASC, readAt ${dir}`;
+        break;
+      case OrderByOption.Rating:
+        orderClause = `ORDER BY COALESCE(rating, 0) ${dir}`;
+        break;
+      case OrderByOption.Title:
+        orderClause = `ORDER BY LOWER(title) ${dir}`;
+        break;
+      case OrderByOption.Length:
+        // wordCount is the SELECT alias; SQLite allows ORDER BY on SELECT aliases
+        orderClause = `ORDER BY wordCount ${dir}`;
+        break;
+      default:
+        orderClause = `ORDER BY addedAt ${dir}`;
+    }
+
+    type ListRow = {
+      id: number; redditId: string; url: string; title: string;
+      author: string; subreddit: string; redditCreatedAt: string;
+      addedAt: string; updatedAt: string; customTitle: string | null;
+      notes: string | null; rating: number | null; isRead: number;
+      isFavorite: number; readAt: string | null; wordCount: number;
+    };
+
+    const sql = `
+      SELECT
+        id, redditId, url, title, author, subreddit,
+        redditCreatedAt, addedAt, updatedAt,
+        customTitle, notes, rating, isRead, isFavorite, readAt,
+        CASE
+          WHEN COALESCE(customBody, bodyText) IS NULL OR COALESCE(customBody, bodyText) = '' THEN 0
+          ELSE LENGTH(TRIM(COALESCE(customBody, bodyText)))
+               - LENGTH(REPLACE(TRIM(COALESCE(customBody, bodyText)), ' ', '')) + 1
+        END AS wordCount
+      FROM posts
+      WHERE ${where}
+      ${orderClause}`;
+
+    const rows = await this.db.getAllAsync<ListRow>(sql, ...params);
+    console.debug(`getFilteredListItems: ${rows.length} rows (orderBy=${orderBy} ${dir})`);
+
+    const postIds = rows.map(r => r.id);
+    const folderMap = postIds.length > 0
+      ? await this.loadAllFolderIds(postIds)
+      : new Map<number, number[]>();
+
+    return rows.map(r => ({
+      id: r.id,
+      redditId: r.redditId,
+      url: r.url,
+      title: r.title,
+      author: r.author,
+      subreddit: r.subreddit,
+      redditCreatedAt: new Date(r.redditCreatedAt),
+      addedAt: new Date(r.addedAt),
+      updatedAt: parseDbDate(r.updatedAt),
+      customTitle: r.customTitle ?? undefined,
+      notes: r.notes ?? undefined,
+      rating: r.rating ?? undefined,
+      isRead: r.isRead === 1,
+      isFavorite: r.isFavorite === 1,
+      readAt: r.readAt ? parseDbDate(r.readAt) : null,
+      folderIds: folderMap.get(r.id) ?? [],
+      wordCount: r.wordCount,
+    }));
   }
 
   public async getById(id: number): Promise<Post | null> {
@@ -99,7 +337,8 @@ export class PostRepository {
       id
     );
     if (!r) return null;
-    return this.mapRowToPost(r);
+    const folderIds = await this.loadFolderIds(r.id);
+    return this.mapRowToPost(r, folderIds);
   }
 
   public async create(post: Omit<Post,'id'>): Promise<number> {
@@ -210,7 +449,9 @@ export class PostRepository {
        WHERE syncedAt IS NULL OR datetime(syncedAt) < datetime(updatedAt)`
     );
     console.debug(`Found ${rows.length} pending sync posts`);
-    return Promise.all(rows.map(r => this.mapRowToPost(r)));
+    const postIds = rows.map(r => r.id);
+    const folderMap = await this.loadAllFolderIds(postIds);
+    return rows.map(r => this.mapRowToPost(r, folderMap.get(r.id) ?? []));
   }
 
   public async updateSyncState(
@@ -302,6 +543,41 @@ export class PostRepository {
       id
     );
     return result.changes;
+  }
+
+  /**
+   * Toggle isFavorite directly in DB without loading the full post.
+   * Returns the new isFavorite value.
+   */
+  public async toggleFavoriteById(id: number): Promise<boolean> {
+    await this.db.runAsync(
+      `UPDATE posts SET isFavorite = CASE WHEN isFavorite = 1 THEN 0 ELSE 1 END, updatedAt = CURRENT_TIMESTAMP WHERE id = ?`,
+      id
+    );
+    const row = await this.db.getFirstAsync<{ isFavorite: number }>(
+      `SELECT isFavorite FROM posts WHERE id = ?`, id
+    );
+    return row?.isFavorite === 1;
+  }
+
+  /**
+   * Toggle isRead directly in DB without loading the full post.
+   * Returns the new isRead value.
+   */
+  public async toggleReadById(id: number): Promise<boolean> {
+    // If transitioning to read, set readAt. If transitioning to unread, leave readAt.
+    await this.db.runAsync(
+      `UPDATE posts SET
+         isRead = CASE WHEN isRead = 1 THEN 0 ELSE 1 END,
+         readAt = CASE WHEN isRead = 0 THEN CURRENT_TIMESTAMP ELSE readAt END,
+         updatedAt = CURRENT_TIMESTAMP
+       WHERE id = ?`,
+      id
+    );
+    const row = await this.db.getFirstAsync<{ isRead: number }>(
+      `SELECT isRead FROM posts WHERE id = ?`, id
+    );
+    return row?.isRead === 1;
   }
 
   private async loadFolderIds(postId: number): Promise<number[]> {

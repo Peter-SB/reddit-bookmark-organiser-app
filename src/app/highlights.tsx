@@ -30,12 +30,20 @@ export default function HighlightsScreen() {
   useFocusEffect(
     useCallback(() => {
       refreshHighlights();
-    }, [refreshHighlights])
+    }, [refreshHighlights]),
   );
 
+  // Build a title lookup map from the lightweight post list
+  const postTitleMap = React.useMemo(() => {
+    const map = new Map<number, string>();
+    for (const p of posts) {
+      map.set(p.id, p.customTitle || p.title);
+    }
+    return map;
+  }, [posts]);
+
   const getPostTitle = (postId: number): string => {
-    const post = posts.find((p) => p.id === postId);
-    return post?.customTitle || post?.title || "Unknown Post";
+    return postTitleMap.get(postId) || "Unknown Post";
   };
 
   const handleHighlightPress = (highlight: Highlight) => {
@@ -68,11 +76,7 @@ export default function HighlightsScreen() {
             {postTitle}
           </Text>
         </View>
-        <Ionicons
-          name="chevron-forward"
-          size={20}
-          color={palette.muted}
-        />
+        <Ionicons name="chevron-forward" size={20} color={palette.muted} />
       </TouchableOpacity>
     );
   };
@@ -98,11 +102,7 @@ export default function HighlightsScreen() {
         </View>
       ) : highlights.length === 0 ? (
         <View style={styles.centerContainer}>
-          <Ionicons
-            name="bookmark-outline"
-            size={64}
-            color={palette.muted}
-          />
+          <Ionicons name="bookmark-outline" size={64} color={palette.muted} />
           <Text style={styles.emptyText}>No highlights yet</Text>
           <Text style={styles.emptySubtext}>
             Select text in a post to create a highlight

@@ -5,10 +5,10 @@ import Ionicons from "react-native-vector-icons/Ionicons";
 import { palette } from "../constants/Colors";
 import { spacing } from "../constants/spacing";
 import { fontSizes, fontWeights } from "../constants/typography";
-import { Post } from "../models/models";
+import { Post, PostListItem } from "../models/models";
 
 interface PostCardProps {
-  post: Post;
+  post: Post | PostListItem;
   footer?: React.ReactNode;
 }
 
@@ -22,7 +22,7 @@ export const PostCard: React.FC<PostCardProps> = ({ post, footer }) => {
     const date = new Date(timestamp);
     const now = new Date();
     const diffInDays = Math.round(
-      (now.getTime() - date.getTime()) / (1000 * 60 * 60 * 24)
+      (now.getTime() - date.getTime()) / (1000 * 60 * 60 * 24),
     );
 
     if (diffInDays === 0) {
@@ -65,7 +65,11 @@ export const PostCard: React.FC<PostCardProps> = ({ post, footer }) => {
           <Text style={styles.separator}>•</Text>
           <Text style={styles.metadataText}>
             Words:{" "}
-            {(post.customBody ?? post.bodyText).trim().split(/\s+/).length}
+            {"wordCount" in post
+              ? post.wordCount
+              : (((post as Post).customBody ?? (post as Post).bodyText) || "")
+                  .trim()
+                  .split(/\s+/).length}
           </Text>
         </View>
 

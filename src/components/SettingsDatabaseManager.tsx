@@ -20,6 +20,7 @@ import {
   View,
 } from "react-native";
 import { DatabaseService, DEFAULT_DB } from "../services/DatabaseService";
+import { resetSharedPostsState } from "@/hooks/usePosts";
 
 export default function SettingsDatabaseManager() {
   const [files, setFiles] = useState<string[]>([]);
@@ -41,8 +42,8 @@ export default function SettingsDatabaseManager() {
       const all = await FileSystem.readDirectoryAsync(dir);
       setFiles(
         all.filter(
-          (f) => f.includes(".db") && !f.includes("wal") && !f.includes("shm")
-        )
+          (f) => f.includes(".db") && !f.includes("wal") && !f.includes("shm"),
+        ),
       );
 
       const svc = await DatabaseService.getInstance();
@@ -60,6 +61,7 @@ export default function SettingsDatabaseManager() {
 
   const onChangeDB = async (name: string) => {
     setLoading(true);
+    resetSharedPostsState();
     await DatabaseService.switchDatabase(name);
     setSelected(name);
     setLoading(false);
@@ -112,12 +114,12 @@ export default function SettingsDatabaseManager() {
         const fileUri = await FileSystem.StorageAccessFramework.createFileAsync(
           permission.directoryUri,
           selected,
-          "application/x-sqlite3"
+          "application/x-sqlite3",
         );
         await FileSystem.StorageAccessFramework.writeAsStringAsync(
           fileUri,
           base64,
-          { encoding: FileSystem.EncodingType.Base64 }
+          { encoding: FileSystem.EncodingType.Base64 },
         );
         Alert.alert("Success", `Saved to ${fileUri}`);
       } else {
@@ -187,12 +189,12 @@ export default function SettingsDatabaseManager() {
         const newFile = await FileSystem.StorageAccessFramework.createFileAsync(
           perm.directoryUri,
           filename,
-          "application/x-sqlite3"
+          "application/x-sqlite3",
         );
         await FileSystem.StorageAccessFramework.writeAsStringAsync(
           newFile,
           data,
-          { encoding: FileSystem.EncodingType.Base64 }
+          { encoding: FileSystem.EncodingType.Base64 },
         );
       } else {
         const dest = FileSystem.documentDirectory + "SQLite/" + filename;
@@ -237,7 +239,7 @@ export default function SettingsDatabaseManager() {
       ) {
         Alert.alert(
           "Permission denied",
-          "Cannot save files without storage permission."
+          "Cannot save files without storage permission.",
         );
         return false;
       }

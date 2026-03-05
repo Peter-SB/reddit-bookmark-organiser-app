@@ -53,6 +53,31 @@ export interface Post {
   summary?: string;
 }
 
+/**
+ * Lightweight version of Post for list/card rendering.
+ * Excludes heavy fields: bodyText, bodyMinHash, customBody, extraFields, summary.
+ */
+export interface PostListItem {
+  id: number;
+  redditId: string;
+  url: string;
+  title: string;
+  author: string;
+  subreddit: string;
+  redditCreatedAt: Date;
+  addedAt: Date;
+  updatedAt: Date;
+  customTitle?: string;
+  notes?: string;
+  rating?: number;
+  isRead: boolean;
+  isFavorite: boolean;
+  readAt?: Date | null;
+  folderIds: number[];
+  /** Pre-computed word count from SQL so we don't need to load bodyText */
+  wordCount: number;
+}
+
 export interface Folder {
   /** Internal primary key */
   id: number;

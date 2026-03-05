@@ -1,3 +1,4 @@
+import { OrderByOption } from "@/constants/orderBy";
 import React from "react";
 import { View, Text, TouchableOpacity, StyleSheet } from "react-native";
 import Icon from "react-native-vector-icons/MaterialIcons";
@@ -5,10 +6,13 @@ import { palette } from "@/constants/Colors";
 import { fontSizes } from "@/constants/typography";
 
 interface OrderByRowProps {
-  orderOptions: { key: string; label: string }[];
-  localOrderBy: string;
+  orderOptions: {
+    key: OrderByOption;
+    label: string;
+  }[];
+  localOrderBy: OrderByOption;
   localOrderDirection: "asc" | "desc";
-  onOrderByChange?: (val: string) => void;
+  onOrderByChange?: (val: OrderByOption) => void;
   onOrderDirectionChange?: (val: "asc" | "desc") => void;
   onRandomReseed?: () => void;
 }
@@ -36,7 +40,8 @@ export class OrderByRow extends React.Component<
   };
 
   handleOrderByChange = (key: string) => {
-    if (this.props.onOrderByChange) this.props.onOrderByChange(key);
+    if (this.props.onOrderByChange)
+      this.props.onOrderByChange(key as OrderByOption);
     this.setState({ dropdownOpen: false });
   };
 
@@ -67,7 +72,9 @@ export class OrderByRow extends React.Component<
             {localOrderBy === "random" ? (
               <TouchableOpacity
                 style={styles.orderDirectionButton}
-                onPress={() => this.props.onRandomReseed && this.props.onRandomReseed()}
+                onPress={() =>
+                  this.props.onRandomReseed && this.props.onRandomReseed()
+                }
                 accessibilityLabel="Reseed random order"
               >
                 <Icon

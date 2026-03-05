@@ -48,13 +48,13 @@ export default function PostScreen() {
   const router = useRouter();
 
   const {
-    posts,
     loading,
     updatePost: savePost,
     deletePost,
     setFolders,
     toggleRead,
     toggleFavorite,
+    getPostById,
   } = usePosts();
   const { syncSinglePost } = usePostSync({ autoStart: false });
   const { highlights, addHighlight, updateHighlight, removeHighlight } =
@@ -95,6 +95,9 @@ export default function PostScreen() {
   );
   const [highlightModalVisible, setHighlightModalVisible] = useState(false);
   const bodyInputRef = useRef<TextInput>(null);
+  // Ref to track which post ID has been initialised into the edit fields.
+  // Prevents re-initialisation while the user is actively editing.
+  const initialisedPostIdRef = useRef<number | null>(null);
 
   const hasUnsavedChanges = useCallback(() => {
     if (!post) return false;
@@ -143,6 +146,7 @@ export default function PostScreen() {
       updatedAt: new Date(),
     };
     const saved = await savePost(updated);
+    setPost(saved); // keep local post in sync so hasUnsavedChanges reads correctly
     await syncSinglePost(saved.id);
   }, [
     post,
@@ -192,9 +196,17 @@ export default function PostScreen() {
     }
   }, [hasUnsavedChanges, animateAndGoBack, handleSave, post]);
 
+  // Keep a ref to the latest handleBack so the BackHandler never needs to
+  // re-register when editing state changes (avoids the gap where Android's
+  // system back is unhandled and causes a blank-screen navigation).
+  const handleBackRef = useRef(handleBack);
+  useEffect(() => {
+    handleBackRef.current = handleBack;
+  }, [handleBack]);
+
   useEffect(() => {
     const onBackPress = () => {
-      handleBack();
+      handleBackRef.current();
       return true;
     };
     const subscription = BackHandler.addEventListener(
@@ -202,27 +214,35 @@ export default function PostScreen() {
       onBackPress,
     );
     return () => subscription.remove();
-  }, [editedTitle, editedBody, editedNotes, post, handleBack]);
+  }, []); // register once – handleBackRef always holds the latest version
 
-  // when posts load (or ID changes), find our post
   useEffect(() => {
-    if (id && !loading) {
-      const found = posts.find((p) => p.id === parseInt(id, 10));
-      if (!found) return;
+    if (!id) return;
+    const numericId = parseInt(id, 10);
+    let cancelled = false;
+    (async () => {
+      const found = await getPostById(numericId);
+      if (cancelled || !found) return;
 
       setPost(found);
 
-      if (!hasUnsavedChanges()) {
+      // Only initialise edit fields the first time this post ID is loaded.
+      // Skipping on re-renders preserves any in-progress edits.
+      if (initialisedPostIdRef.current !== numericId) {
+        initialisedPostIdRef.current = numericId;
         setEditedTitle(found.customTitle ?? found.title);
         setEditedBody(found.customBody ?? found.bodyText);
         setEditedNotes(found.notes ?? "");
         setEditedRating(found.rating ?? null);
         setEditedSummary(found.summary || "");
+        setEditedIsRead(found.isRead);
+        setEditedIsFavorite(found.isFavorite);
       }
-      setEditedIsRead(found.isRead);
-      setEditedIsFavorite(found.isFavorite);
-    }
-  }, [id, posts, loading, hasUnsavedChanges]);
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [id, getPostById]);
 
   const currentFont = fontOptions[fontOptionIdx];
 
