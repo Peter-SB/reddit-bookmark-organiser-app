@@ -325,13 +325,19 @@ export default function PostScreen() {
   const handleToggleRead = async () => {
     if (!post) return;
     await toggleRead(post.id);
-    await syncSinglePost(post.id);
+    const newIsRead = !post.isRead;
+    setPost((prev) => (prev ? { ...prev, isRead: newIsRead } : prev));
+    setEditedIsRead(newIsRead);
+    // syncSinglePost(post.id); Removed for now to avoid over syncing unnecessarily
   };
 
   const handleToggleFavorite = async () => {
     if (!post) return;
     await toggleFavorite(post.id);
-    await syncSinglePost(post.id);
+    const newIsFavorite = !post.isFavorite;
+    setPost((prev) => (prev ? { ...prev, isFavorite: newIsFavorite } : prev));
+    setEditedIsFavorite(newIsFavorite);
+    // syncSinglePost(post.id); Removed for now to avoid over syncing unnecessarily
   };
 
   const handleSetRating = async (rating: number | null) => {
