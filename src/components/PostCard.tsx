@@ -87,6 +87,14 @@ export const PostCard: React.FC<PostCardProps> = ({ post, footer }) => {
               />
             </View>
           )}
+          {post.isArchived && (
+            <Ionicons
+              name="archive"
+              size={16}
+              color={palette.archiveOrange}
+              style={{ marginRight: 2 }}
+            />
+          )}
           {post.isFavorite && (
             <Ionicons
               name="heart"

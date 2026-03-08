@@ -15,6 +15,7 @@ export type PostFilterOptions = {
   selectedFolders?: number[];
   favouritesFilter?: TripleFilter;
   readFilter?: TripleFilter;
+  archivedFilter?: TripleFilter;
   /** Column to sort by. 'random' shuffles client-side using the provided randomSeed. */
   orderBy?: OrderByOption;
   orderDirection?: 'asc' | 'desc';
@@ -42,6 +43,7 @@ type PostRow = {
   isRead: number;
   isFavorite: number;
   isDeleted: number;
+  isArchived: number;
   folderId: number | null;
   extraFields: string | null;
   summary: string | null;
@@ -87,6 +89,7 @@ export class PostRepository {
       isRead: row.isRead === 1,
       isFavorite: row.isFavorite === 1,
       isDeleted: row.isDeleted === 1,
+      isArchived: row.isArchived === 1,
       extraFields,
       summary: row.summary ?? undefined,
       readAt: row.readAt ? parseDbDate(row.readAt) : null,
@@ -160,6 +163,7 @@ export class PostRepository {
       rating: number | null;
       isRead: number;
       isFavorite: number;
+      isArchived: number;
       readAt: string | null;
       wordCount: number;
     };
@@ -167,7 +171,7 @@ export class PostRepository {
       `SELECT
          id, redditId, url, title, author, subreddit,
          redditCreatedAt, addedAt, updatedAt,
-         customTitle, notes, rating, isRead, isFavorite, readAt,
+         customTitle, notes, rating, isRead, isFavorite, isArchived, readAt,
          CASE
            WHEN COALESCE(customBody, bodyText) IS NULL OR COALESCE(customBody, bodyText) = '' THEN 0
            ELSE LENGTH(TRIM(COALESCE(customBody, bodyText))) - LENGTH(REPLACE(TRIM(COALESCE(customBody, bodyText)), ' ', '')) + 1
@@ -193,6 +197,7 @@ export class PostRepository {
       rating: r.rating ?? undefined,
       isRead: r.isRead === 1,
       isFavorite: r.isFavorite === 1,
+      isArchived: r.isArchived === 1,
       readAt: r.readAt ? parseDbDate(r.readAt) : null,
       folderIds: folderMap.get(r.id) ?? [],
       wordCount: r.wordCount,
@@ -211,6 +216,7 @@ export class PostRepository {
       selectedFolders,
       favouritesFilter = 'all',
       readFilter = 'all',
+      archivedFilter = 'no',
       orderBy = OrderByOption.AddedAt,
       orderDirection = 'desc',
     } = options;
@@ -244,6 +250,9 @@ export class PostRepository {
 
     if (readFilter === 'yes') conditions.push('isRead = 1');
     else if (readFilter === 'no') conditions.push('isRead = 0');
+
+    if (archivedFilter === 'yes') conditions.push('isArchived = 1');
+    else if (archivedFilter === 'no') conditions.push('isArchived = 0');
 
     const where = conditions.join(' AND ');
     const dir = orderDirection.toUpperCase() as 'ASC' | 'DESC';
@@ -285,14 +294,14 @@ export class PostRepository {
       author: string; subreddit: string; redditCreatedAt: string;
       addedAt: string; updatedAt: string; customTitle: string | null;
       notes: string | null; rating: number | null; isRead: number;
-      isFavorite: number; readAt: string | null; wordCount: number;
+      isFavorite: number; isArchived: number; readAt: string | null; wordCount: number;
     };
 
     const sql = `
       SELECT
         id, redditId, url, title, author, subreddit,
         redditCreatedAt, addedAt, updatedAt,
-        customTitle, notes, rating, isRead, isFavorite, readAt,
+        customTitle, notes, rating, isRead, isFavorite, isArchived, readAt,
         CASE
           WHEN COALESCE(customBody, bodyText) IS NULL OR COALESCE(customBody, bodyText) = '' THEN 0
           ELSE LENGTH(TRIM(COALESCE(customBody, bodyText)))
@@ -325,6 +334,7 @@ export class PostRepository {
       rating: r.rating ?? undefined,
       isRead: r.isRead === 1,
       isFavorite: r.isFavorite === 1,
+      isArchived: r.isArchived === 1,
       readAt: r.readAt ? parseDbDate(r.readAt) : null,
       folderIds: folderMap.get(r.id) ?? [],
       wordCount: r.wordCount,
@@ -362,8 +372,8 @@ export class PostRepository {
          redditId, url, title, bodyText, bodyMinHash, author, subreddit,
          redditCreatedAt, addedAt, updatedAt, syncedAt, lastSyncStatus, lastSyncError,
          customTitle, customBody, notes, rating,
-         isRead, isFavorite, isDeleted, extraFields, summary, readAt
-       ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+         isRead, isFavorite, isDeleted, isArchived, extraFields, summary, readAt
+       ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
       post.redditId,
       post.url,
       post.title,
@@ -384,6 +394,7 @@ export class PostRepository {
       post.isRead ? 1 : 0,
       post.isFavorite ? 1 : 0,
       post.isDeleted ? 1 : 0,
+      post.isArchived ? 1 : 0,
       post.extraFields ? JSON.stringify(post.extraFields) : null,
       post.summary ?? null,
       post.readAt instanceof Date ? post.readAt.toISOString() : post.readAt ?? null,
@@ -503,6 +514,7 @@ export class PostRepository {
          rating        = ?,
          isRead        = ?,
          isFavorite    = ?,
+         isArchived    = ?,
          extraFields   = ?,
          summary       = ?,
          readAt        = ?,
@@ -517,6 +529,7 @@ export class PostRepository {
       post.rating ?? null,
       post.isRead ? 1 : 0,
       post.isFavorite ? 1 : 0,
+      post.isArchived ? 1 : 0,
       extraFields,
       post.summary ?? null,
       post.readAt instanceof Date ? post.readAt.toISOString() : post.readAt ?? null,
@@ -559,6 +572,22 @@ export class PostRepository {
       `SELECT isFavorite FROM posts WHERE id = ?`, id
     );
     return row?.isFavorite === 1;
+  }
+
+  /**
+   * Toggle isArchived directly in DB without loading the full post.
+   * Returns the new isArchived value.
+   */
+  public async toggleArchivedById(id: number): Promise<boolean> {
+    const result = await this.db.runAsync(
+      `UPDATE posts SET isArchived = CASE WHEN isArchived = 1 THEN 0 ELSE 1 END, updatedAt = CURRENT_TIMESTAMP WHERE id = ?`,
+      id
+    );
+    if (result.changes === 0) return false;
+    const row = await this.db.getFirstAsync<{ isArchived: number }>(
+      `SELECT isArchived FROM posts WHERE id = ?`, id
+    );
+    return row?.isArchived === 1;
   }
 
   /**

@@ -28,6 +28,7 @@ export interface UsePostsResult {
   deletePost: (id: number) => Promise<void>;
   toggleRead: (id: number) => Promise<void>;
   toggleFavorite: (id: number) => Promise<void>;
+  toggleArchive: (id: number) => Promise<void>;
   checkForSimilarPosts: (bodyText: string, threshold?: number) => Promise<Post[]>;
   setFolders: (postId: number, newFolderIds: number[]) => Promise<void>;
   recomputeMissingMinHashes: () => Promise<number>;
@@ -306,6 +307,18 @@ export function usePosts(): UsePostsResult {
     notifyListeners();
   }, []);
 
+  const toggleArchive = useCallback(async (id: number) => {
+    console.debug('Toggling archive status for post:', id);
+    const repo = await initSharedRepo();
+    const newIsArchived = await repo.toggleArchivedById(id);
+
+    // Optimistic: update local state without reloading
+    sharedPosts = sharedPosts.map(p =>
+      p.id === id ? { ...p, isArchived: newIsArchived } : p
+    );
+    notifyListeners();
+  }, []);
+
   const setFolders = useCallback(
     async (postId: number, newFolderIds: number[]) => {
       console.debug('Setting folders for post:', postId + " ids:" + newFolderIds);
@@ -351,6 +364,7 @@ export function usePosts(): UsePostsResult {
     deletePost,
     toggleRead,
     toggleFavorite,
+    toggleArchive,
     checkForSimilarPosts,
     setFolders,
     recomputeMissingMinHashes,

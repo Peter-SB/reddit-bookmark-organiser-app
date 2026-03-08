@@ -53,6 +53,7 @@ export default function HomeScreen() {
 
   const [favouritesFilter, setFavouritesFilter] = useState<TripleFilter>("all");
   const [readFilter, setReadFilter] = useState<TripleFilter>("all");
+  const [archivedFilter, setArchivedFilter] = useState<TripleFilter>("no");
   const [search, setSearch] = useState("");
   // Track selected folders
   const [selectedFolders, setSelectedFolders] = useState<number[]>([]);
@@ -70,6 +71,7 @@ export default function HomeScreen() {
     selectedFolders,
     favouritesFilter,
     readFilter,
+    archivedFilter,
     orderBy,
     orderDirection,
     randomSeed,
@@ -130,6 +132,7 @@ export default function HomeScreen() {
       setSearch("");
       setFavouritesFilter("all");
       setReadFilter("all");
+      setArchivedFilter("no");
       setSelectedFolders([]);
       postsListRef.current?.scrollToOffset({
         offset: LIST_HEADER_HEIGHT,
@@ -223,8 +226,10 @@ export default function HomeScreen() {
         folders={folders}
         favouritesFilter={favouritesFilter}
         readFilter={readFilter}
+        archivedFilter={archivedFilter}
         onFavouritesFilterChange={setFavouritesFilter}
         onReadFilterChange={setReadFilter}
+        onArchivedFilterChange={setArchivedFilter}
         selectedFolders={selectedFolders}
         onSelectedFoldersChange={setSelectedFolders}
         onDeleteFolder={deleteFolder}
@@ -336,6 +341,8 @@ export default function HomeScreen() {
                 setReadFilter("all");
                 setOrderBy(OrderByOption.AddedAt);
                 setOrderDirection("desc");
+                setArchivedFilter("no");
+                setSelectedFolders([]);
                 postsListRef.current?.scrollToOffset({
                   offset: LIST_HEADER_HEIGHT,
                   animated: true,

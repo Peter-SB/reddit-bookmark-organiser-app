@@ -54,6 +54,7 @@ export default function PostScreen() {
     setFolders,
     toggleRead,
     toggleFavorite,
+    toggleArchive,
     getPostById,
   } = usePosts();
   const { syncSinglePost } = usePostSync({ autoStart: false });
@@ -328,6 +329,13 @@ export default function PostScreen() {
     setPost((prev) => (prev ? { ...prev, isRead: newIsRead } : prev));
     setEditedIsRead(newIsRead);
     // syncSinglePost(post.id); Removed for now to avoid over syncing unnecessarily
+  };
+
+  const handleToggleArchive = async () => {
+    if (!post) return;
+    await toggleArchive(post.id);
+    const newIsArchived = !post.isArchived;
+    setPost((prev) => (prev ? { ...prev, isArchived: newIsArchived } : prev));
   };
 
   const handleToggleFavorite = async () => {
@@ -635,6 +643,18 @@ export default function PostScreen() {
                   <Text style={styles.readText}>
                     {editedIsRead ? "Read" : "Unread"}
                   </Text>
+                </TouchableOpacity>
+                <TouchableOpacity
+                  onPress={handleToggleArchive}
+                  style={styles.readToggle}
+                >
+                  <Ionicons
+                    name={post.isArchived ? "archive" : "archive-outline"}
+                    size={18}
+                    color={
+                      post.isArchived ? palette.archiveOrange : palette.muted
+                    }
+                  />
                 </TouchableOpacity>
                 <TouchableOpacity
                   onPress={handleToggleFavorite}
@@ -1017,5 +1037,16 @@ const styles = StyleSheet.create({
   border: {
     borderTopWidth: 1,
     borderTopColor: palette.border,
+  },
+  archiveButton: {
+    backgroundColor: "transparent",
+    paddingVertical: spacing.m,
+    paddingHorizontal: spacing.l,
+    alignItems: "center",
+  },
+  archiveButtonText: {
+    color: palette.archiveOrange,
+    fontSize: fontSizes.body,
+    fontWeight: fontWeights.semibold,
   },
 });

@@ -109,6 +109,7 @@ export class DatabaseService {
         isRead            INTEGER NOT NULL DEFAULT 0,
         isFavorite        INTEGER NOT NULL DEFAULT 0,
         isDeleted         INTEGER NOT NULL DEFAULT 0,
+        isArchived        INTEGER NOT NULL DEFAULT 0,
         extraFields       TEXT,
         bodyMinHash       TEXT,
         summary           TEXT,
@@ -175,6 +176,11 @@ export class DatabaseService {
       await this.db.execAsync(`ALTER TABLE posts ADD COLUMN readAt TEXT;`);
       // Backfill: for posts already marked as read, use updatedAt as the read timestamp
       await this.db.execAsync(`UPDATE posts SET readAt = updatedAt WHERE isRead = 1;`);
+    }
+    // Migration: add isArchived column if it doesn't exist
+    const hasIsArchived = columns.some((col: any) => col.name === 'isArchived');
+    if (!hasIsArchived) {
+      await this.db.execAsync(`ALTER TABLE posts ADD COLUMN isArchived INTEGER NOT NULL DEFAULT 0;`);
     }
   }
 

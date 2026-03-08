@@ -39,8 +39,10 @@ export interface MenuSidebarProps {
   folders: Folder[];
   favouritesFilter: "all" | "yes" | "no";
   readFilter: "all" | "yes" | "no";
+  archivedFilter: "all" | "yes" | "no";
   onFavouritesFilterChange: (val: "all" | "yes" | "no") => void;
   onReadFilterChange: (val: "all" | "yes" | "no") => void;
+  onArchivedFilterChange: (val: "all" | "yes" | "no") => void;
   selectedFolders?: number[];
   onSelectedFoldersChange?: (ids: number[]) => void;
   onDeleteFolder?: (id: number) => void;
@@ -58,8 +60,10 @@ export const MenuSidebar: React.FC<MenuSidebarProps> = ({
   folders,
   favouritesFilter,
   readFilter,
+  archivedFilter,
   onFavouritesFilterChange,
   onReadFilterChange,
+  onArchivedFilterChange,
   selectedFolders = [],
   onSelectedFoldersChange,
   onDeleteFolder,
@@ -149,18 +153,20 @@ export const MenuSidebar: React.FC<MenuSidebarProps> = ({
     value,
     onChange,
     scale = 0.9,
+    order = ["all", "yes", "no"] as ("all" | "yes" | "no")[],
   }: {
     value: "all" | "yes" | "no";
     onChange: (v: "all" | "yes" | "no") => void;
     scale?: number;
+    order?: ("all" | "yes" | "no")[];
   }) => (
     <View
       style={[
         styles.segmentedContainer,
-        { transform: [{ scale }], opacity: value === "all" ? 0.5 : 1 },
+        { transform: [{ scale }], opacity: value === order[0] ? 0.5 : 1 },
       ]}
     >
-      {(["all", "yes", "no"] as const).map((option) => (
+      {order.map((option) => (
         <TouchableOpacity
           key={option}
           style={[styles.segment, value === option && styles.segmentActive]}
@@ -300,6 +306,27 @@ export const MenuSidebar: React.FC<MenuSidebarProps> = ({
             />
           </View>
 
+          {/* Archived segmented control */}
+          {/* Todo: Still deciding on UI. May readd or remove later  */}
+          {/* <View style={styles.filterRow}>
+            <View style={{ flexDirection: "row" }}>
+              <View style={styles.iconContainer}>
+                <Icon
+                  name="archive"
+                  size={20}
+                  color={palette.foreground}
+                  style={styles.icon}
+                />
+              </View>
+              <Text style={styles.filterLabel}>Archived:</Text>
+            </View>
+            <SegmentedControl
+              value={archivedFilter}
+              onChange={onArchivedFilterChange}
+              order={["no", "yes", "all"]}
+            />
+          </View> */}
+
           {/* Order By row */}
           <OrderByRow
             orderOptions={orderOptions}
@@ -336,6 +363,37 @@ export const MenuSidebar: React.FC<MenuSidebarProps> = ({
               />
             </View>
             <Text style={styles.label}>Highlights</Text>
+          </TouchableOpacity>
+
+          {/* Archived toggle button */}
+          <TouchableOpacity
+            style={styles.item}
+            onPress={() => {
+              let next: "all" | "yes" | "no";
+              if (archivedFilter === "yes") next = "all";
+              else if (archivedFilter === "all") next = "no";
+              else next = "yes";
+              onArchivedFilterChange(next);
+              onSelect("archived");
+              onClose();
+            }}
+          >
+            <View style={styles.iconContainer}>
+              <Icon
+                name="archive"
+                size={24}
+                style={styles.icon}
+                color={palette.foreground}
+              />
+            </View>
+            <Text style={styles.label}>
+              Archived{" "}
+              {archivedFilter === "yes"
+                ? "(Yes)"
+                : archivedFilter === "all"
+                  ? "(All)"
+                  : ""}
+            </Text>
           </TouchableOpacity>
 
           {/* Folders expandable */}
