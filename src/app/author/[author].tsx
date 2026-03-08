@@ -107,14 +107,15 @@ export default function AuthorPostsScreen() {
         </Text>
       </View>
 
-      {(loading || refreshing) && (
+      {/* Causing visual glitches. Todo: fix or remove */}
+      {/* {(loading || refreshing) && (
         <View style={styles.loadingRow}>
           <ActivityIndicator size="small" color={palette.accent} />
           <Text style={[styles.statusText, { marginLeft: spacing.s }]}>
             Getting posts...
           </Text>
         </View>
-      )}
+      )} */}
 
       {statusText ? <Text style={styles.errorText}>{statusText}</Text> : null}
 

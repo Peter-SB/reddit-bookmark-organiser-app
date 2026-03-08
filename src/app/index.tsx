@@ -2,6 +2,7 @@ import { LinearGradient } from "expo-linear-gradient";
 import * as Linking from "expo-linking";
 import { useFocusEffect, useRouter } from "expo-router";
 import React, { useCallback, useEffect, useRef, useState } from "react";
+import { OrderByOption } from "@/constants/orderBy";
 import {
   ActivityIndicator,
   Alert,
@@ -25,15 +26,15 @@ import { PostCard } from "@/components/PostCard";
 import { palette } from "@/constants/Colors";
 import { spacing } from "@/constants/spacing";
 import { fontSizes, fontWeights } from "@/constants/typography";
-import { Post } from "@/models/models";
+import { PostListItem } from "@/models/models";
 
 import { MenuSidebar } from "@/components/MenuSidebar";
 import { SearchBar } from "@/components/SearchBar";
 import { useFolders } from "@/hooks/useFolders";
+import { useFilteredPosts } from "@/hooks/useFilteredPosts";
 import { usePosts } from "@/hooks/usePosts";
 import { usePostSync } from "@/hooks/usePostSync";
 import { useRedditApi } from "@/hooks/useRedditApi";
-import { filterPosts, sortPosts } from "@/utils/postsHelpers";
 
 type TripleFilter = "all" | "yes" | "no";
 
@@ -41,12 +42,7 @@ const LIST_HEADER_HEIGHT = 44 + 2 * spacing.m; //
 
 export default function HomeScreen() {
   const router = useRouter();
-  const {
-    posts,
-    loading: postsLoading,
-    refreshPosts,
-    handleAddPost: addPostFromUrl,
-  } = usePosts();
+  const { handleAddPost: addPostFromUrl } = usePosts();
   const { folders, deleteFolder, refreshFolders } = useFolders();
   const { getPostData, loading: redditApiLoading } = useRedditApi();
   const { syncSinglePost } = usePostSync({ autoStart: false });
@@ -62,26 +58,24 @@ export default function HomeScreen() {
   const [selectedFolders, setSelectedFolders] = useState<number[]>([]);
 
   // Add state for orderBy and orderDirection
-  const [orderBy, setOrderBy] = useState<string>("addedAt");
+  const [orderBy, setOrderBy] = useState<OrderByOption>(OrderByOption.AddedAt);
   const [orderDirection, setOrderDirection] = useState<"asc" | "desc">("desc");
   const [randomSeed, setRandomSeed] = useState<number>(() => Date.now());
 
   const insets = useSafeAreaInsets();
 
-  // Filter posts by search string and selected folders
-  const filteredPosts = sortPosts(
-    filterPosts(posts, {
-      search,
-      selectedFolders,
-      favouritesFilter,
-      readFilter,
-    }),
+  // Filter and sort posts in SQL so body text is searchable
+  const { posts: filteredPosts } = useFilteredPosts({
+    search,
+    selectedFolders,
+    favouritesFilter,
+    readFilter,
     orderBy,
     orderDirection,
     randomSeed,
-  );
+  });
 
-  const postsListRef = useRef<FlatList<Post>>(null);
+  const postsListRef = useRef<FlatList<PostListItem>>(null);
 
   // Hide header on first render. Using this over InteractionManager because this only runs once.
   // InteractionManager would run every time the screen is focused, making searching ui glitch.
@@ -99,16 +93,16 @@ export default function HomeScreen() {
   const [read, setRead] = useState(0);
 
   useEffect(() => {
-    setTotal(filteredPosts.length);
-    setRead(total - filteredPosts.filter((p) => !p.isRead).length);
+    const newTotal = filteredPosts.length;
+    setTotal(newTotal);
+    setRead(newTotal - filteredPosts.filter((p) => !p.isRead).length);
   }, [filteredPosts]);
 
-  // Every time HomeScreen comes into focus, reload posts
+  // Posts are updated optimistically via shared state so no reload is needed here.
   useFocusEffect(
     useCallback(() => {
-      refreshPosts();
       refreshFolders();
-    }, [refreshPosts, refreshFolders]),
+    }, [refreshFolders]),
   );
 
   const handleAddPost = useCallback(
@@ -162,7 +156,9 @@ export default function HomeScreen() {
     setSidebarOpen(false);
   };
 
-  const renderPost = ({ item }: { item: Post }) => <PostCard post={item} />;
+  const renderPost = ({ item }: { item: PostListItem }) => (
+    <PostCard post={item} />
+  );
 
   useEffect(() => {
     async function handleIncoming() {
@@ -206,7 +202,7 @@ export default function HomeScreen() {
     return () => sub.remove();
   }, [router, handleAddPost]);
 
-  const isLoading = redditApiLoading || isAdding; // || postsLoading;
+  const isLoading = redditApiLoading || isAdding;
 
   // Add this callback to open a random post
   const handleOpenRandomPost = useCallback(() => {
@@ -338,7 +334,7 @@ export default function HomeScreen() {
                 // setSearch(""); // Done in SearchBar
                 setFavouritesFilter("all");
                 setReadFilter("all");
-                setOrderBy("addedAt");
+                setOrderBy(OrderByOption.AddedAt);
                 setOrderDirection("desc");
                 postsListRef.current?.scrollToOffset({
                   offset: LIST_HEADER_HEIGHT,

@@ -1,16 +1,20 @@
-import { Post } from "@/models/models";
+import { OrderByOption } from "@/constants/orderBy";
+import { Post, PostListItem } from "@/models/models";
 
 type TripleFilter = "all" | "yes" | "no";
 
-export function filterPosts(
-  posts: Post[],
+/** A post-like shape that both Post and PostListItem satisfy for filtering/sorting. */
+type PostLike = Post | PostListItem;
+
+export function filterPosts<T extends PostLike>(
+  posts: T[],
   options: {
     search: string;
     selectedFolders: number[];
     favouritesFilter: TripleFilter;
     readFilter: TripleFilter;
   }
-): Post[] {
+): T[] {
   const { search, selectedFolders, favouritesFilter, readFilter } = options;
   return posts
     .filter((post) => {
@@ -19,8 +23,8 @@ export function filterPosts(
       return (
         (post.title ?? "").toLowerCase().includes(q) ||
         (post.customTitle ?? "").toLowerCase().includes(q) ||
-        (post.bodyText ?? "").toLowerCase().includes(q) ||
-        (post.customBody ?? "").toLowerCase().includes(q) ||
+        ('bodyText' in post ? ((post as Post).bodyText ?? "").toLowerCase().includes(q) : false) ||
+        ('customBody' in post ? ((post as Post).customBody ?? "").toLowerCase().includes(q) : false) ||
         (post.notes ?? "").toLowerCase().includes(q) ||
         (post.author ?? "").toLowerCase().includes(q) ||
         (post.subreddit ?? "").toLowerCase().includes(q)
@@ -56,13 +60,13 @@ function seededRandom(seed: number) {
   };
 }
 
-export function sortPosts(
-  posts: Post[],
+export function sortPosts<T extends PostLike>(
+  posts: T[],
   orderBy: string,
   orderDirection: "asc" | "desc",
   randomSeed?: number
 ) {
-  if (orderBy === "random") {
+  if (orderBy === OrderByOption.Random) {
     const rand = seededRandom(randomSeed ?? 0);
     const result = [...posts];
     for (let i = result.length - 1; i > 0; i--) {
@@ -85,7 +89,7 @@ export function sortPosts(
   };
 
   return [...posts].sort((a, b) => {
-    if (orderBy === "updatedAt") {
+    if (orderBy === OrderByOption.UpdatedAt) {
       const aAdded = toTime(a.addedAt);
       const bAdded = toTime(b.addedAt);
       const aUpdated = toTime(a.updatedAt);
@@ -116,11 +120,11 @@ export function sortPosts(
     let aValue: any;
     let bValue: any;
     switch (orderBy) {
-      case "addedAt":
+      case OrderByOption.AddedAt:
         aValue = new Date(a.addedAt).getTime();
         bValue = new Date(b.addedAt).getTime();
         break;
-      case "readAt": {
+      case OrderByOption.ReadAt: {
         const aRead = toTime(a.readAt);
         const bRead = toTime(b.readAt);
         // Nulls sort last regardless of direction
@@ -129,17 +133,17 @@ export function sortPosts(
         if (bRead === null) return -1;
         return compare(aRead, bRead);
       }
-      case "rating":
+      case OrderByOption.Rating:
         aValue = (a as any).rating ?? 0;
         bValue = (b as any).rating ?? 0;
         break;
-      case "title":
+      case OrderByOption.Title:
         aValue = (a.title ?? "").toLowerCase();
         bValue = (b.title ?? "").toLowerCase();
         break;
-      case "length":
-        aValue = (a.customBody ?? a.bodyText ?? "").length;
-        bValue = (b.customBody ?? b.bodyText ?? "").length;
+      case OrderByOption.Length:
+        aValue = 'wordCount' in a ? a.wordCount : ((a as any).customBody ?? (a as any).bodyText ?? "").length;
+        bValue = 'wordCount' in b ? b.wordCount : ((b as any).customBody ?? (b as any).bodyText ?? "").length;
         break;
       default:
         aValue = new Date(a.addedAt).getTime();

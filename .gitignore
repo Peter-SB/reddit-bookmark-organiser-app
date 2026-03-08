@@ -41,6 +41,7 @@ app-example
 .vscode/
 
 *.env
+*.env*
 *.secrets.json
 *.db
 

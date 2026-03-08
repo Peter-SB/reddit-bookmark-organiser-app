@@ -1,3 +1,4 @@
+import { OrderByOption, ORDER_BY_LABELS } from "@/constants/orderBy";
 import React, { useEffect, useState } from "react";
 import {
   Alert,
@@ -43,9 +44,9 @@ export interface MenuSidebarProps {
   selectedFolders?: number[];
   onSelectedFoldersChange?: (ids: number[]) => void;
   onDeleteFolder?: (id: number) => void;
-  orderBy?: string;
+  orderBy?: OrderByOption;
   orderDirection?: "asc" | "desc";
-  onOrderByChange?: (val: string) => void;
+  onOrderByChange?: (val: OrderByOption) => void;
   onOrderDirectionChange?: (val: "asc" | "desc") => void;
   onRandomReseed?: () => void;
 }
@@ -62,7 +63,7 @@ export const MenuSidebar: React.FC<MenuSidebarProps> = ({
   selectedFolders = [],
   onSelectedFoldersChange,
   onDeleteFolder,
-  orderBy = "addedAt",
+  orderBy = OrderByOption.AddedAt,
   orderDirection = "desc",
   onOrderByChange,
   onOrderDirectionChange,
@@ -77,12 +78,12 @@ export const MenuSidebar: React.FC<MenuSidebarProps> = ({
   const [foldersOpen, setFoldersOpen] = useState(true);
 
   // Use controlled state if provided
-  const [localOrderBy, setLocalOrderBy] = useState<string>(orderBy);
+  const [localOrderBy, setLocalOrderBy] = useState<OrderByOption>(orderBy);
   const [localOrderDirection, setLocalOrderDirection] = useState<
     "asc" | "desc"
   >(orderDirection);
   useEffect(() => {
-    setLocalOrderBy(orderBy);
+    setLocalOrderBy(orderBy ?? OrderByOption.AddedAt);
   }, [orderBy]);
   useEffect(() => {
     setLocalOrderDirection(orderDirection);
@@ -90,13 +91,10 @@ export const MenuSidebar: React.FC<MenuSidebarProps> = ({
 
   // Order options
   const orderOptions = [
-    { key: "addedAt", label: "Added at" },
-    { key: "updatedAt", label: "Updated at" },
-    { key: "readAt", label: "Read at" },
-    { key: "rating", label: "Rating" },
-    { key: "title", label: "Title" },
-    { key: "length", label: "Length" },
-    { key: "random", label: "Random" },
+    ...Object.entries(ORDER_BY_LABELS).map(([key, label]) => ({
+      key: key as OrderByOption,
+      label: label as string,
+    })),
   ];
 
   // slide + fade animations

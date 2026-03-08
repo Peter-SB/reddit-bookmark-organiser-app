@@ -1,9 +1,9 @@
 // src/hooks/usePosts.ts
 import { Alert } from 'react-native';
-import { Post } from '@/models/models';
+import { Post, PostListItem } from '@/models/models';
 import { PostRepository } from '@/repository/PostRepository';
 import { MinHashService } from '@/services/MinHashService';
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 
 export type HandleAddPostOptions = {
   getPostData: (url: string) => Promise<Post>;
@@ -11,7 +11,7 @@ export type HandleAddPostOptions = {
   onBeforeAdd?: () => void;
   onSuccess?: (post: Post) => void | Promise<void>;
   onError?: (error: Error) => void;
-  onDuplicateFound?: (duplicates: Post[], proceed: () => void) => void;
+  onDuplicateFound?: (duplicates: PostListItem[], proceed: () => void) => void;
   onSimilarFound?: (similarPosts: Post[], proceed: () => void) => void;
   similarityThreshold?: number;
   skipDuplicateCheck?: boolean;
@@ -19,7 +19,7 @@ export type HandleAddPostOptions = {
 };
 
 export interface UsePostsResult {
-  posts: Post[];
+  posts: PostListItem[]; // Lightweight list items for rendering post cards.
   loading: boolean;
   refreshPosts: () => Promise<void>;
   addPost: (postData: Omit<Post, 'id'>) => Promise<Post>;
@@ -31,53 +31,117 @@ export interface UsePostsResult {
   checkForSimilarPosts: (bodyText: string, threshold?: number) => Promise<Post[]>;
   setFolders: (postId: number, newFolderIds: number[]) => Promise<void>;
   recomputeMissingMinHashes: () => Promise<number>;
+  getPostById: (id: number) => Promise<Post | null>;
+}
+
+// Module-level shared state so all usePosts() instances share one copy.
+// This prevents duplicate DB loads across screens.
+let sharedPosts: PostListItem[] = [];
+let sharedLoading = true;
+let sharedRepo: PostRepository | null = null;
+let sharedInitPromise: Promise<void> | null = null;
+const listeners = new Set<() => void>();
+
+function notifyListeners() {
+  for (const fn of listeners) fn();
+}
+
+export function resetSharedPostsState() {
+  sharedRepo = null;
+  sharedInitPromise = null;
+  sharedPosts = [];
+  sharedLoading = true;
+  notifyListeners();
+}
+
+async function initSharedRepo(): Promise<PostRepository> {
+  if (sharedRepo) return sharedRepo;
+  if (!sharedInitPromise) {
+    sharedInitPromise = (async () => {
+      sharedRepo = await PostRepository.create();
+    })();
+  }
+  await sharedInitPromise;
+  return sharedRepo!;
+}
+
+/**
+ * Subscribe to shared post-list change notifications (loads, mutations).
+ * Returns an unsubscribe function. Used by useFilteredPosts.
+ */
+export function subscribeToPostChanges(fn: () => void): () => void {
+  listeners.add(fn);
+  return () => listeners.delete(fn);
+}
+
+/** Exposed so sibling hooks can share the same DB connection. */
+export { initSharedRepo };
+
+async function sharedLoadPosts(r?: PostRepository): Promise<void> {
+  console.debug('Loading posts...');
+  sharedLoading = true;
+  notifyListeners();
+  const repository = r ?? sharedRepo;
+  if (!repository) return;
+  const all = await repository.getAllListItems();
+  sharedPosts = all;
+  sharedLoading = false;
+  notifyListeners();
 }
 
 export function usePosts(): UsePostsResult {
-  const [posts, setPosts] = useState<Post[]>([]);
-  const [loading, setLoading] = useState<boolean>(true);
-  const [repo, setRepo] = useState<PostRepository | null>(null);
+  const [, forceRender] = useState(0);
+  const mountedRef = useRef(true);
 
-  // initialize repository
+  // Subscribe to shared state changes
   useEffect(() => {
-    let mounted = true;
-    (async () => {
-      const r = await PostRepository.create();
-      if (mounted) {
-        setRepo(r);
-        await loadPosts(r);
+    mountedRef.current = true;
+    const listener = () => {
+      if (mountedRef.current) {
+        forceRender(c => c + 1);
       }
-    })();
-    return () => { mounted = false; };
+    };
+    listeners.add(listener);
+
+    // Initialize on first subscriber
+    if (!sharedRepo && !sharedInitPromise) {
+      (async () => {
+        const r = await initSharedRepo();
+        await sharedLoadPosts(r);
+      })();
+    }
+
+    return () => {
+      mountedRef.current = false;
+      listeners.delete(listener);
+    };
   }, []);
 
-  // helper to reload all posts
-  const loadPosts = useCallback(async (r?: PostRepository) => {
-    console.debug('Loading posts...');
-    setLoading(true);
-    const repository = r ?? repo;
-    if (!repository) return;
-    const all = await repository.getAll();
-    setPosts(all);
-    setLoading(false);
-  }, [repo]);
+  const refreshPosts = useCallback(async () => {
+    await initSharedRepo();
+    await sharedLoadPosts();
+  }, []);
 
-  const refreshPosts = useCallback(() => loadPosts(), [loadPosts]);
+  const getPostById = useCallback(async (id: number): Promise<Post | null> => {
+    const repo = await initSharedRepo();
+    return repo.getById(id);
+  }, []);
 
   const checkForSimilarPosts = useCallback(async (bodyText: string, threshold: number = 0.75): Promise<Post[]> => {
-    if (!repo) throw new Error('PostRepository not ready');
+    const repo = await initSharedRepo();
     console.debug('Checking for similar posts with threshold:', threshold);
     return await repo.findSimilarPosts(bodyText, threshold);
-  }, [repo]);
+  }, []);
 
   const addPost = useCallback(async (data: Omit<Post, 'id'>) => {
-    if (!repo) throw new Error('PostRepository not ready');   
+    const repo = await initSharedRepo();
     const id = await repo.create(data);
     const newPost = await repo.getById(id);
-    await loadPosts();
+    // Reload list to include the new post
+    await sharedLoadPosts();
     if (!newPost) throw new Error('Failed to load new post');
     return newPost;
-  }, [repo, loadPosts]);
+  }, []);
 
   const handleAddPost = useCallback(async (url: string, options: HandleAddPostOptions) => {
     const {
@@ -101,7 +165,7 @@ export function usePosts(): UsePostsResult {
       Alert.alert('Error', `Failed to add post: ${err.message}`);
     };
 
-    const defaultDuplicatePrompt = (duplicates: Post[], proceed: () => void) => {
+    const defaultDuplicatePrompt = (duplicates: PostListItem[], proceed: () => void) => {
       Alert.alert(
         'Duplicate Post',
         'This post appears to already exist. Add anyway?',
@@ -153,10 +217,8 @@ export function usePosts(): UsePostsResult {
 
       const exactDuplicates = skipDuplicateCheck
         ? []
-        : posts.filter((p) => p.redditId === postData.redditId);
-      const similarPosts = skipSimilarCheck
-        ? []
-        : await checkForSimilarPosts(postData.bodyText || '', similarityThreshold);
+        : sharedPosts.filter((p) => p.redditId === postData.redditId);
+
 
       if (!skipDuplicateCheck && exactDuplicates.length > 0) {
         (onDuplicateFound ?? defaultDuplicatePrompt)(
@@ -165,6 +227,10 @@ export function usePosts(): UsePostsResult {
         );
         return;
       }
+
+      const similarPosts = skipSimilarCheck
+        ? []
+        : await checkForSimilarPosts(postData.bodyText || '', similarityThreshold);
 
       if (!skipSimilarCheck && similarPosts.length > 0) {
         (onSimilarFound ?? defaultSimilarPrompt)(similarPosts, safeAddAndSync);
@@ -176,62 +242,90 @@ export function usePosts(): UsePostsResult {
       console.error('Failed to add post:', err);
       reportError(err as Error);
     }
-  }, [addPost, checkForSimilarPosts, posts]);
+  }, [addPost, checkForSimilarPosts]);
 
   const updatePost = useCallback(async (post: Post) => {
-    // console.debug('Updating post:', post);
-    if (!repo) throw new Error('PostRepository not ready');
+    const repo = await initSharedRepo();
     await repo.update(post);
     const updated = await repo.getById(post.id);
-    await loadPosts();
     if (!updated) throw new Error('Failed to load updated post');
+
+    // Optimistic: merge updated fields into the shared list
+    sharedPosts = sharedPosts.map(p =>
+      p.id === updated.id
+        ? {
+            ...p,
+            title: updated.title,
+            customTitle: updated.customTitle,
+            notes: updated.notes,
+            rating: updated.rating,
+            isRead: updated.isRead,
+            isFavorite: updated.isFavorite,
+            readAt: updated.readAt,
+            updatedAt: updated.updatedAt,
+            folderIds: updated.folderIds,
+          }
+        : p
+    );
+    notifyListeners();
     return updated;
-  }, [repo, loadPosts]);
+  }, []);
 
   const deletePost = useCallback(async (id: number) => {
-    if (!repo) throw new Error('PostRepository not ready');
+    const repo = await initSharedRepo();
     await repo.delete(id);
-    await loadPosts();
-  }, [repo, loadPosts]);
+
+    // Optimistic: remove from local list
+    sharedPosts = sharedPosts.filter(p => p.id !== id);
+    notifyListeners();
+  }, []);
 
   const toggleRead = useCallback(async (id: number) => {
     console.debug('Toggling read status for post:', id);
-    if (!repo) throw new Error('PostRepository not ready');
-    const p = await repo.getById(id);
-    if (!p) return;
-    const newIsRead = !p.isRead;
-    await repo.update({
-      ...p,
-      isRead: newIsRead,
-      readAt: newIsRead ? new Date() : p.readAt,
-    });
-    await loadPosts();
-  }, [repo, loadPosts]);
+    const repo = await initSharedRepo();
+    const newIsRead = await repo.toggleReadById(id);
+
+    // Optimistic: update local state without reloading
+    sharedPosts = sharedPosts.map(p =>
+      p.id === id
+        ? { ...p, isRead: newIsRead, readAt: newIsRead ? new Date() : p.readAt }
+        : p
+    );
+    notifyListeners();
+  }, []);
 
   const toggleFavorite = useCallback(async (id: number) => {
     console.debug('Toggling favorite status for post:', id);
-    if (!repo) throw new Error('PostRepository not ready');
-    const p = await repo.getById(id);
-    if (!p) return;
-    await repo.update({ ...p, isFavorite: !p.isFavorite });
-    await loadPosts();
-  }, [repo, loadPosts]);
+    const repo = await initSharedRepo();
+    const newIsFavorite = await repo.toggleFavoriteById(id);
+
+    // Optimistic: update local state without reloading
+    sharedPosts = sharedPosts.map(p =>
+      p.id === id ? { ...p, isFavorite: newIsFavorite } : p
+    );
+    notifyListeners();
+  }, []);
 
   const setFolders = useCallback(
     async (postId: number, newFolderIds: number[]) => {
       console.debug('Setting folders for post:', postId + " ids:" + newFolderIds);
-      if (!repo) throw new Error('Repo not ready');
+      const repo = await initSharedRepo();
       await repo.removeAllFoldersFromPost(postId);
       for (const fid of newFolderIds) {
         await repo.addPostToFolder(postId, fid);
       }
-      await loadPosts();
+
+      // Optimistic: update folder IDs locally
+      sharedPosts = sharedPosts.map(p =>
+        p.id === postId ? { ...p, folderIds: newFolderIds } : p
+      );
+      notifyListeners();
     },
-    [repo, loadPosts]
+    []
   );
 
   const recomputeMissingMinHashes = useCallback(async () => {
-    if (!repo) throw new Error('PostRepository not ready');
+    const repo = await initSharedRepo();
     const allPosts = await repo.getAll();
     let updatedCount = 0;
     for (const post of allPosts) {
@@ -243,13 +337,13 @@ export function usePosts(): UsePostsResult {
         updatedCount++;
       }
     }
-    await loadPosts();
+    await sharedLoadPosts();
     return updatedCount;
-  }, [repo, loadPosts]);
+  }, []);
 
   return {
-    posts,
-    loading,
+    posts: sharedPosts,
+    loading: sharedLoading,
     refreshPosts,
     addPost,
     handleAddPost,
@@ -260,5 +354,15 @@ export function usePosts(): UsePostsResult {
     checkForSimilarPosts,
     setFolders,
     recomputeMissingMinHashes,
+    getPostById,
   };
+}
+
+// Reset shared state - useful for testing.
+export function _resetPostsSharedState() {
+  sharedPosts = [];
+  sharedLoading = true;
+  sharedRepo = null;
+  sharedInitPromise = null;
+  listeners.clear();
 }
