@@ -550,10 +550,11 @@ export class PostRepository {
    * Returns the new isFavorite value.
    */
   public async toggleFavoriteById(id: number): Promise<boolean> {
-    await this.db.runAsync(
+    const result = await this.db.runAsync(
       `UPDATE posts SET isFavorite = CASE WHEN isFavorite = 1 THEN 0 ELSE 1 END, updatedAt = CURRENT_TIMESTAMP WHERE id = ?`,
       id
     );
+    if (result.changes === 0) return false;
     const row = await this.db.getFirstAsync<{ isFavorite: number }>(
       `SELECT isFavorite FROM posts WHERE id = ?`, id
     );
@@ -566,7 +567,7 @@ export class PostRepository {
    */
   public async toggleReadById(id: number): Promise<boolean> {
     // If transitioning to read, set readAt. If transitioning to unread, leave readAt.
-    await this.db.runAsync(
+    const result = await this.db.runAsync(
       `UPDATE posts SET
          isRead = CASE WHEN isRead = 1 THEN 0 ELSE 1 END,
          readAt = CASE WHEN isRead = 0 THEN CURRENT_TIMESTAMP ELSE readAt END,
@@ -574,6 +575,7 @@ export class PostRepository {
        WHERE id = ?`,
       id
     );
+    if (result.changes === 0) return false;
     const row = await this.db.getFirstAsync<{ isRead: number }>(
       `SELECT isRead FROM posts WHERE id = ?`, id
     );

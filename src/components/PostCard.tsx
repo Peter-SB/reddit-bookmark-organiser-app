@@ -69,7 +69,8 @@ export const PostCard: React.FC<PostCardProps> = ({ post, footer }) => {
               ? post.wordCount
               : (((post as Post).customBody ?? (post as Post).bodyText) || "")
                   .trim()
-                  .split(/\s+/).length}
+                  .split(/\s+/)
+                  .filter(Boolean).length}
           </Text>
         </View>
 
