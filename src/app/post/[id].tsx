@@ -227,7 +227,6 @@ export default function PostScreen() {
       setPost(found);
 
       // Only initialise edit fields the first time this post ID is loaded.
-      // Skipping on re-renders preserves any in-progress edits.
       if (initialisedPostIdRef.current !== numericId) {
         initialisedPostIdRef.current = numericId;
         setEditedTitle(found.customTitle ?? found.title);

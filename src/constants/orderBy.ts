@@ -9,9 +9,9 @@ export enum OrderByOption {
 }
 
 export const ORDER_BY_LABELS: Record<OrderByOption, string> = {
-  [OrderByOption.AddedAt]: "Date Added",
-  [OrderByOption.UpdatedAt]: "Last Updated",
-  [OrderByOption.ReadAt]: "Last Read",
+  [OrderByOption.AddedAt]: "Added At",
+  [OrderByOption.UpdatedAt]: "Updated At",
+  [OrderByOption.ReadAt]: "Read At",
   [OrderByOption.Rating]: "Rating",
   [OrderByOption.Title]: "Title",
   [OrderByOption.Length]: "Length",

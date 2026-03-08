@@ -107,6 +107,7 @@ export default function AuthorPostsScreen() {
         </Text>
       </View>
 
+      {/* Causing visual glitches. Todo: fix or remove */}
       {/* {(loading || refreshing) && (
         <View style={styles.loadingRow}>
           <ActivityIndicator size="small" color={palette.accent} />
