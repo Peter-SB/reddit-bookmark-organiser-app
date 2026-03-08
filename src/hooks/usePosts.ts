@@ -11,7 +11,7 @@ export type HandleAddPostOptions = {
   onBeforeAdd?: () => void;
   onSuccess?: (post: Post) => void | Promise<void>;
   onError?: (error: Error) => void;
-  onDuplicateFound?: (duplicates: Post[], proceed: () => void) => void;
+  onDuplicateFound?: (duplicates: PostListItem[], proceed: () => void) => void;
   onSimilarFound?: (similarPosts: Post[], proceed: () => void) => void;
   similarityThreshold?: number;
   skipDuplicateCheck?: boolean;
@@ -19,8 +19,7 @@ export type HandleAddPostOptions = {
 };
 
 export interface UsePostsResult {
-  /** Lightweight list items for rendering post cards. */
-  posts: PostListItem[];
+  posts: PostListItem[]; // Lightweight list items for rendering post cards.
   loading: boolean;
   refreshPosts: () => Promise<void>;
   addPost: (postData: Omit<Post, 'id'>) => Promise<Post>;
@@ -52,6 +51,7 @@ export function resetSharedPostsState() {
   sharedInitPromise = null;
   sharedPosts = [];
   sharedLoading = true;
+  notifyListeners();
 }
 
 async function initSharedRepo(): Promise<PostRepository> {
@@ -165,7 +165,7 @@ export function usePosts(): UsePostsResult {
       Alert.alert('Error', `Failed to add post: ${err.message}`);
     };
 
-    const defaultDuplicatePrompt = (duplicates: Post[], proceed: () => void) => {
+    const defaultDuplicatePrompt = (duplicates: PostListItem[], proceed: () => void) => {
       Alert.alert(
         'Duplicate Post',
         'This post appears to already exist. Add anyway?',
@@ -218,17 +218,19 @@ export function usePosts(): UsePostsResult {
       const exactDuplicates = skipDuplicateCheck
         ? []
         : sharedPosts.filter((p) => p.redditId === postData.redditId);
-      const similarPosts = skipSimilarCheck
-        ? []
-        : await checkForSimilarPosts(postData.bodyText || '', similarityThreshold);
+
 
       if (!skipDuplicateCheck && exactDuplicates.length > 0) {
         (onDuplicateFound ?? defaultDuplicatePrompt)(
-          exactDuplicates as any,
+          exactDuplicates,
           safeAddAndSync,
         );
         return;
       }
+
+      const similarPosts = skipSimilarCheck
+        ? []
+        : await checkForSimilarPosts(postData.bodyText || '', similarityThreshold);
 
       if (!skipSimilarCheck && similarPosts.length > 0) {
         (onSimilarFound ?? defaultSimilarPrompt)(similarPosts, safeAddAndSync);

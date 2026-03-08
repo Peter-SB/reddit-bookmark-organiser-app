@@ -39,9 +39,8 @@ export class OrderByRow extends React.Component<
       this.props.onOrderDirectionChange(newDir);
   };
 
-  handleOrderByChange = (key: string) => {
-    if (this.props.onOrderByChange)
-      this.props.onOrderByChange(key as OrderByOption);
+  handleOrderByChange = (key: OrderByOption) => {
+    if (this.props.onOrderByChange) this.props.onOrderByChange(key);
     this.setState({ dropdownOpen: false });
   };
 
