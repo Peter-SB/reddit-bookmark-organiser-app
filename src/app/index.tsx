@@ -142,6 +142,8 @@ export default function HomeScreen() {
       router.push("/semantic-search" as any);
     } else if (key === "highlights") {
       router.push("/highlights" as any);
+    } else if (key === "authors") {
+      router.push("/author/authors" as any);
     } else if (key === "settings") {
       router.push("/settings" as any);
     } else if (key === "search") {

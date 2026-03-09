@@ -1,5 +1,6 @@
 import { OrderByOption } from "@/constants/orderBy";
 // src/repositories/PostRepository.ts
+import { AuthorSummary } from '@/models/AuthorSummary';
 import { Post, PostListItem } from '@/models/models';
 import type { SQLiteDatabase } from 'expo-sqlite';
 import { DatabaseService } from '../services/DatabaseService';
@@ -19,6 +20,8 @@ export type PostFilterOptions = {
   /** Column to sort by. 'random' shuffles client-side using the provided randomSeed. */
   orderBy?: OrderByOption;
   orderDirection?: 'asc' | 'desc';
+  /** Filter to a specific author (case-insensitive exact match) */
+  authorFilter?: string;
 };
 
 type PostRow = {
@@ -219,10 +222,17 @@ export class PostRepository {
       archivedFilter = 'no',
       orderBy = OrderByOption.AddedAt,
       orderDirection = 'desc',
+      authorFilter,
     } = options;
 
     const conditions: string[] = ['isDeleted = 0'];
     const params: (string | number)[] = [];
+
+    // Author filter (case-insensitive exact match)
+    if (authorFilter) {
+      conditions.push('LOWER(author) = LOWER(?)');
+      params.push(authorFilter);
+    }
 
     // Full-text search across title, body, notes, author, subreddit
     const q = search?.trim();
@@ -262,6 +272,10 @@ export class PostRepository {
       case OrderByOption.Random:
         // Caller handles seeded shuffle; return in natural DB order
         orderClause = 'ORDER BY addedAt DESC';
+        break;
+      case OrderByOption.PostedAt:
+        // Sort by redditCreatedAt (posted date)
+        orderClause = `ORDER BY redditCreatedAt ${dir}`;
         break;
       case OrderByOption.UpdatedAt: {
         // Posts with a "real" update (updatedAt differs from addedAt by >1 s) sort first
@@ -338,6 +352,54 @@ export class PostRepository {
       readAt: r.readAt ? parseDbDate(r.readAt) : null,
       folderIds: folderMap.get(r.id) ?? [],
       wordCount: r.wordCount,
+    }));
+  }
+
+  /**
+   * Aggregate author statistics from the posts table.
+   * Returns one AuthorSummary per distinct author, excluding deleted posts
+   * and placeholder authors like '[deleted]'.
+   */
+  public async getAuthorSummaries(): Promise<AuthorSummary[]> {
+    type AuthorRow = {
+      author: string;
+      postCount: number;
+      readCount: number;
+      favouriteCount: number;
+      archivedCount: number;
+      avgRating: number | null;
+      totalRating: number;
+      lastAddedAt: string;
+    };
+
+    const rows = await this.db.getAllAsync<AuthorRow>(`
+      SELECT
+        author,
+        COUNT(*)              AS postCount,
+        SUM(isRead)           AS readCount,
+        SUM(isFavorite)       AS favouriteCount,
+        SUM(isArchived)       AS archivedCount,
+        AVG(NULLIF(rating,0)) AS avgRating,
+        SUM(COALESCE(rating,0)) AS totalRating,
+        MAX(addedAt)          AS lastAddedAt
+      FROM posts
+      WHERE isDeleted = 0
+        AND author != ''
+        AND author != '[deleted]'
+      GROUP BY author
+    `);
+
+    console.debug(`getAuthorSummaries: ${rows.length} authors`);
+
+    return rows.map(r => ({
+      author: r.author,
+      postCount: r.postCount,
+      readCount: r.readCount,
+      favouriteCount: r.favouriteCount,
+      archivedCount: r.archivedCount,
+      avgRating: r.avgRating,
+      totalRating: r.totalRating,
+      lastAddedAt: new Date(r.lastAddedAt),
     }));
   }
 

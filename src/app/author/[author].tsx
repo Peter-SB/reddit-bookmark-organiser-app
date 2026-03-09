@@ -1,13 +1,19 @@
+import { OrderByRow } from "@/components/OrderByRow";
 import { PostCard } from "@/components/PostCard";
 import { palette } from "@/constants/Colors";
+import {
+  OrderByOption,
+  ORDER_BY_LABELS,
+  AUTHOR_POST_ORDER_OPTIONS,
+} from "@/constants/orderBy";
 import { spacing } from "@/constants/spacing";
 import { fontSizes, fontWeights } from "@/constants/typography";
-import { usePosts } from "@/hooks/usePosts";
+import { useFilteredPosts } from "@/hooks/useFilteredPosts";
+import { PostListItem } from "@/models/models";
 import { openRedditUser } from "@/utils/redditLinks";
 import { useFocusEffect, useLocalSearchParams, useRouter } from "expo-router";
 import React, { useCallback, useEffect, useMemo, useState } from "react";
 import {
-  ActivityIndicator,
   BackHandler,
   FlatList,
   StyleSheet,
@@ -35,15 +41,16 @@ export default function AuthorPostsScreen() {
     }
   }, [authorParam]);
 
-  const { posts, refreshPosts, loading } = usePosts();
-  const [refreshing, setRefreshing] = useState(false);
+  const [orderBy, setOrderBy] = useState<OrderByOption>(OrderByOption.PostedAt);
+  const [orderDirection, setOrderDirection] = useState<"asc" | "desc">("desc");
   const [hasLoaded, setHasLoaded] = useState(false);
+  const [refreshing, setRefreshing] = useState(false);
 
-  useFocusEffect(
-    useCallback(() => {
-      refreshPosts();
-    }, [refreshPosts]),
-  );
+  const { posts: authorPosts, loading } = useFilteredPosts({
+    authorFilter: authorName || undefined,
+    orderBy,
+    orderDirection,
+  });
 
   useEffect(() => {
     if (!loading) {
@@ -62,20 +69,14 @@ export default function AuthorPostsScreen() {
     }, [router]),
   );
 
-  const authorPosts = useMemo(() => {
-    if (!authorName) return [];
-    const target = authorName.toLowerCase();
-    return posts.filter((p) => (p.author || "").toLowerCase() === target);
-  }, [posts, authorName]);
-
   const handleRefresh = useCallback(async () => {
     setRefreshing(true);
-    await refreshPosts();
-    setRefreshing(false);
-  }, [refreshPosts]);
+    // useFilteredPosts auto-refreshes via subscribeToPostChanges
+    setTimeout(() => setRefreshing(false), 300);
+  }, []);
 
   const renderItem = useCallback(
-    ({ item }: { item: (typeof posts)[number] }) => <PostCard post={item} />,
+    ({ item }: { item: PostListItem }) => <PostCard post={item} />,
     [],
   );
 
@@ -107,15 +108,16 @@ export default function AuthorPostsScreen() {
         </Text>
       </View>
 
-      {/* Causing visual glitches. Todo: fix or remove */}
-      {/* {(loading || refreshing) && (
-        <View style={styles.loadingRow}>
-          <ActivityIndicator size="small" color={palette.accent} />
-          <Text style={[styles.statusText, { marginLeft: spacing.s }]}>
-            Getting posts...
-          </Text>
-        </View>
-      )} */}
+      {/* Sort controls */}
+      <View style={styles.sortRow}>
+        <OrderByRow
+          orderOptions={AUTHOR_POST_ORDER_OPTIONS}
+          localOrderBy={orderBy}
+          localOrderDirection={orderDirection}
+          onOrderByChange={setOrderBy}
+          onOrderDirectionChange={setOrderDirection}
+        />
+      </View>
 
       {statusText ? <Text style={styles.errorText}>{statusText}</Text> : null}
 
@@ -191,8 +193,11 @@ const styles = StyleSheet.create({
   headerLink: {
     // textDecorationLine: "underline",
   },
-  headerIconButton: {
-    padding: spacing.xs,
+  sortRow: {
+    paddingHorizontal: spacing.s,
+    paddingVertical: spacing.xs,
+    borderBottomWidth: 1,
+    borderBottomColor: palette.border,
   },
   statusText: {
     fontSize: fontSizes.body,
@@ -200,12 +205,6 @@ const styles = StyleSheet.create({
   },
   errorText: {
     color: palette.favHeartRed,
-    paddingHorizontal: spacing.m,
-    paddingBottom: spacing.s,
-  },
-  loadingRow: {
-    flexDirection: "row",
-    alignItems: "center",
     paddingHorizontal: spacing.m,
     paddingBottom: spacing.s,
   },

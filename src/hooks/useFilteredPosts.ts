@@ -81,6 +81,7 @@ export function useFilteredPosts(options: UseFilteredPostsOptions): {
     options.orderBy,
     options.orderDirection,
     options.randomSeed,
+    options.authorFilter,
     runQuery,
   ]);
 

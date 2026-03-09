@@ -78,6 +78,7 @@ export default function RootLayout() {
         <Stack.Screen name="similar/[id]" options={{ headerShown: false }} />
         <Stack.Screen name="author/[author]" options={{ headerShown: false }} />
         <Stack.Screen name="author/import" options={{ headerShown: false }} />
+        <Stack.Screen name="author/authors" options={{ headerShown: false }} />
         <Stack.Screen name="+not-found" />
       </Stack>
       <StatusBar style="auto" />

@@ -1,4 +1,4 @@
-import { OrderByOption, ORDER_BY_LABELS } from "@/constants/orderBy";
+import { OrderByOption, POST_ORDER_BY_LABELS } from "@/constants/orderBy";
 import React, { useEffect, useState } from "react";
 import {
   Alert,
@@ -95,7 +95,7 @@ export const MenuSidebar: React.FC<MenuSidebarProps> = ({
 
   // Order options
   const orderOptions = [
-    ...Object.entries(ORDER_BY_LABELS).map(([key, label]) => ({
+    ...Object.entries(POST_ORDER_BY_LABELS).map(([key, label]) => ({
       key: key as OrderByOption,
       label: label as string,
     })),
@@ -363,6 +363,25 @@ export const MenuSidebar: React.FC<MenuSidebarProps> = ({
               />
             </View>
             <Text style={styles.label}>Highlights</Text>
+          </TouchableOpacity>
+
+          {/* Authors */}
+          <TouchableOpacity
+            style={styles.item}
+            onPress={() => {
+              onSelect("authors");
+              onClose();
+            }}
+          >
+            <View style={styles.iconContainer}>
+              <Icon
+                name="people"
+                size={24}
+                style={styles.icon}
+                color={palette.foreground}
+              />
+            </View>
+            <Text style={styles.label}>Authors</Text>
           </TouchableOpacity>
 
           {/* Archived toggle button */}
