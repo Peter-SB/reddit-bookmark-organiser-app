@@ -341,7 +341,10 @@ export default function PostScreen() {
     if (!post) return;
     await toggleRead(post.id);
     const newIsRead = !post.isRead;
-    setPost((prev) => (prev ? { ...prev, isRead: newIsRead } : prev));
+    const newReadAt = newIsRead ? new Date() : post.readAt;
+    setPost((prev) =>
+      prev ? { ...prev, isRead: newIsRead, readAt: newReadAt } : prev,
+    );
     setEditedIsRead(newIsRead);
     // syncSinglePost(post.id); Removed for now to avoid over syncing unnecessarily
   };
