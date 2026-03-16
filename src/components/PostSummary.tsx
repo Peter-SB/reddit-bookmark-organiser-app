@@ -24,6 +24,7 @@ import { spacing } from "@/constants/spacing";
 interface PostSummaryProps {
   post: Post;
   onSave: (summary: string) => void;
+  onAutoSave?: (summary: string) => void;
   currentFont: {
     fontSize: number;
     lineHeight: number;
@@ -33,7 +34,7 @@ interface PostSummaryProps {
 }
 
 const AI_ENDPOINT_URL = "AI_ENDPOINT_URL";
-const AI_API_KEY = "AI_API_KEY"
+const AI_API_KEY = "AI_API_KEY";
 const AI_MODEL_ID = "AI_MODEL_ID";
 const AI_SYSTEM_PROMPT = "AI_SYSTEM_PROMPT";
 const AI_ATTRIB_REFERER = "AI_ATTRIB_REFERER";
@@ -43,10 +44,12 @@ const AI_MAX_TOKENS = "AI_MAX_TOKENS";
 export default function PostSummary({
   post,
   onSave,
+  onAutoSave,
   currentFont,
   editedSummary,
   setEditedSummary,
 }: PostSummaryProps) {
+  const originalSummaryWasNull = React.useRef(!post.summary);
   const [status, setStatus] = useState(post.summary ? "success" : "idle");
   const [summary, setSummary] = useState(post.summary || "");
   const [error, setError] = useState<string | null>(null);
@@ -60,7 +63,7 @@ export default function PostSummary({
     () => () => {
       if (streamHandle) streamHandle.close();
     },
-    [streamHandle]
+    [streamHandle],
   );
 
   useEffect(() => {
@@ -93,7 +96,7 @@ export default function PostSummary({
       .split(";")
       .map((e) => e.trim())
       .filter(Boolean);
-    const apiKey = (settings[AI_API_KEY]?.trim() || "");
+    const apiKey = settings[AI_API_KEY]?.trim() || "";
     const referer = settings[AI_ATTRIB_REFERER]?.trim() || "";
     const appTitle = settings[AI_ATTRIB_TITLE]?.trim() || "Reddit-Bookmark-App";
     const maxTokens = (() => {
@@ -164,6 +167,9 @@ export default function PostSummary({
               setStatus("success");
               setStreamHandle(null);
               setEditedSummary(summaryRef.current);
+              if (originalSummaryWasNull.current && summaryRef.current) {
+                onAutoSave?.(summaryRef.current);
+              }
             });
           },
           onError: (err) => {
@@ -198,6 +204,9 @@ export default function PostSummary({
       setIsStreaming(false);
       setStatus("success");
       setStreamHandle(null);
+      if (originalSummaryWasNull.current && summaryRef.current) {
+        onAutoSave?.(summaryRef.current);
+      }
       setEditedSummary(summaryRef.current); // ensure parent gets the last buffered text
     }
   };

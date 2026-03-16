@@ -197,6 +197,21 @@ export default function PostScreen() {
     }
   }, [hasUnsavedChanges, animateAndGoBack, handleSave, post]);
 
+  // Saves only the summary field - used by PostSummary auto-save to avoid overwriting unsaved edits in other fields.
+  const handleAutoSaveSummary = useCallback(
+    async (summary: string) => {
+      if (!post) return;
+      const updated: Post = {
+        ...post,
+        summary,
+        updatedAt: new Date(),
+      };
+      const saved = await savePost(updated);
+      setPost(saved);
+    },
+    [post, savePost],
+  );
+
   // Keep a ref to the latest handleBack so the BackHandler never needs to
   // re-register when editing state changes (avoids the gap where Android's
   // system back is unhandled and causes a blank-screen navigation).
@@ -676,6 +691,7 @@ export default function PostScreen() {
                 <PostSummary
                   post={post}
                   onSave={setEditedSummary}
+                  onAutoSave={handleAutoSaveSummary}
                   currentFont={currentFont}
                   editedSummary={editedSummary}
                   setEditedSummary={setEditedSummary}
