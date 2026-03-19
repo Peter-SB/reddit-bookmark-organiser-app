@@ -72,7 +72,7 @@ export default function HomeScreen() {
     selectedFolders,
     favouritesFilter,
     readFilter,
-    archivedFilter: search.trim() ? 'all' : archivedFilter,
+    archivedFilter: search.trim() ? "all" : archivedFilter,
     orderBy,
     orderDirection,
     randomSeed,
