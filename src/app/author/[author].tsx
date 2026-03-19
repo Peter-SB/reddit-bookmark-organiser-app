@@ -50,6 +50,7 @@ export default function AuthorPostsScreen() {
     authorFilter: authorName || undefined,
     orderBy,
     orderDirection,
+    archivedFilter: 'all',
   });
 
   useEffect(() => {

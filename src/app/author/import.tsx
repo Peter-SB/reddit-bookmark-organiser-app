@@ -1,3 +1,4 @@
+import { SearchBar } from "@/components/SearchBar";
 import { palette } from "@/constants/Colors";
 import { spacing } from "@/constants/spacing";
 import { fontSizes, fontWeights } from "@/constants/typography";
@@ -57,6 +58,7 @@ export default function AuthorImportScreen() {
 
   const [addingPostIds, setAddingPostIds] = useState<Set<string>>(new Set());
   const [hideEmpty, setHideEmpty] = useState(true);
+  const [search, setSearch] = useState("");
 
   // Track which posts are already saved
   const savedRedditIds = useMemo(() => {
@@ -76,11 +78,20 @@ export default function AuthorImportScreen() {
   }, [savedPosts, authorName]);
 
   const filteredRedditPosts = useMemo(() => {
-    if (!hideEmpty) return redditPosts;
-    return redditPosts.filter(
-      (post) => (post.bodyText || "").trim().length > 0,
-    );
-  }, [redditPosts, hideEmpty]);
+    let posts = redditPosts;
+    if (hideEmpty) {
+      posts = posts.filter((post) => (post.bodyText || "").trim().length > 0);
+    }
+    if (search.trim()) {
+      const q = search.trim().toLowerCase();
+      posts = posts.filter(
+        (post) =>
+          (post.title || "").toLowerCase().includes(q) ||
+          (post.bodyText || "").toLowerCase().includes(q),
+      );
+    }
+    return posts;
+  }, [redditPosts, hideEmpty, search]);
 
   // Load initial posts when screen is focused
   useFocusEffect(
@@ -335,17 +346,26 @@ export default function AuthorImportScreen() {
         onEndReached={handleEndReached}
         onEndReachedThreshold={0.5}
         ListHeaderComponent={
-          <View style={styles.listHeader}>
-            <Text style={styles.listHeaderText}>Hide empty</Text>
-            <Switch
-              value={hideEmpty}
-              onValueChange={setHideEmpty}
-              thumbColor={
-                hideEmpty ? palette.foregroundMidLight : palette.border
-              }
-              trackColor={{ true: palette.border, false: palette.border }}
-            />
-          </View>
+          <>
+            <View style={styles.searchContainer}>
+              <SearchBar
+                value={search}
+                onChangeText={setSearch}
+                placeholder="Search loaded posts..."
+              />
+            </View>
+            <View style={styles.listHeader}>
+              <Text style={styles.listHeaderText}>Hide empty</Text>
+              <Switch
+                value={hideEmpty}
+                onValueChange={setHideEmpty}
+                thumbColor={
+                  hideEmpty ? palette.foregroundMidLight : palette.border
+                }
+                trackColor={{ true: palette.border, false: palette.border }}
+              />
+            </View>
+          </>
         }
         ListFooterComponent={renderFooter}
         ListFooterComponentStyle={styles.footerContainer}
@@ -495,13 +515,20 @@ const styles = StyleSheet.create({
     color: palette.muted,
     marginTop: spacing.m,
   },
+  searchContainer: {
+    paddingHorizontal: spacing.m,
+    paddingTop: spacing.s,
+    paddingBottom: spacing.xs,
+    borderBottomWidth: 0,
+    borderBottomColor: palette.border,
+  },
   listHeader: {
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "space-between",
     gap: spacing.s,
     paddingHorizontal: spacing.m,
-    paddingTop: spacing.s,
+    paddingTop: 0,
     paddingBottom: spacing.xs,
     backgroundColor: palette.background,
     borderBottomWidth: 1,
@@ -510,5 +537,6 @@ const styles = StyleSheet.create({
   listHeaderText: {
     fontSize: fontSizes.small,
     color: palette.muted,
+    paddingLeft: 4,
   },
 });

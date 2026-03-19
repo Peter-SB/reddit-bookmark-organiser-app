@@ -66,12 +66,13 @@ export default function HomeScreen() {
   const insets = useSafeAreaInsets();
 
   // Filter and sort posts in SQL so body text is searchable
+  // When a search query is active, include archived posts so they appear in results
   const { posts: filteredPosts } = useFilteredPosts({
     search,
     selectedFolders,
     favouritesFilter,
     readFilter,
-    archivedFilter,
+    archivedFilter: search.trim() ? 'all' : archivedFilter,
     orderBy,
     orderDirection,
     randomSeed,
