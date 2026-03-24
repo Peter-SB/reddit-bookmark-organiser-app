@@ -1,5 +1,6 @@
 // src/hooks/usePosts.ts
 import { Alert } from 'react-native';
+import { router } from 'expo-router';
 import { Post, PostListItem } from '@/models/models';
 import { PostRepository } from '@/repository/PostRepository';
 import { MinHashService } from '@/services/MinHashService';
@@ -166,21 +167,21 @@ export function usePosts(): UsePostsResult {
       Alert.alert('Error', `Failed to add post: ${err.message}`);
     };
 
-    const defaultDuplicatePrompt = (duplicates: PostListItem[], proceed: () => void) => {
+    const defaultDuplicatePrompt = (duplicates: PostListItem[], _proceed: () => void) => {
       Alert.alert(
         'Duplicate Post',
-        'This post appears to already exist. Add anyway?',
+        'This post has already been added.',
         [
           { text: 'Cancel', style: 'cancel' },
           {
-            text: 'Add Anyway',
-            onPress: proceed,
+            text: 'Go To Post',
+            onPress: () => router.push(`/post/${duplicates[0].id}` as any),
           },
         ],
       );
     };
 
-    const defaultSimilarPrompt = (similarPosts: Post[], proceed: () => void) => {
+    const defaultSimilarPrompt = (similarPosts: Post[], _proceed: () => void) => {
       const similarTitles = similarPosts
         .slice(0, 2)
         .map((p) => `"${p.title}"`)
@@ -189,12 +190,12 @@ export function usePosts(): UsePostsResult {
         'Similar Content Found',
         `Found ${similarPosts.length} post(s) with similar content:\n\n${similarTitles}${
           similarPosts.length > 3 ? '\n...and more' : ''
-        }\n\nAdd anyway?`,
+        }`,
         [
           { text: 'Cancel', style: 'cancel' },
           {
-            text: 'Add Anyway',
-            onPress: proceed,
+            text: 'Go To Post',
+            onPress: () => router.push(`/post/${similarPosts[0].id}` as any),
           },
         ],
       );
