@@ -135,6 +135,8 @@ export default function HomeScreen() {
       setReadFilter("all");
       setArchivedFilter("no");
       setSelectedFolders([]);
+      setOrderBy(OrderByOption.AddedAt);
+      setOrderDirection("desc");
       postsListRef.current?.scrollToOffset({
         offset: LIST_HEADER_HEIGHT,
         animated: true,

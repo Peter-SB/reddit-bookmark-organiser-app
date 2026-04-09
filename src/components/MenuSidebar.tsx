@@ -4,10 +4,9 @@ import {
   Alert,
   Animated,
   Dimensions,
-  FlatList,
   LayoutAnimation,
   Platform,
-  SafeAreaView,
+  ScrollView,
   StyleSheet,
   Text,
   TouchableOpacity,
@@ -205,7 +204,12 @@ export const MenuSidebar: React.FC<MenuSidebarProps> = ({
           },
         ]}
       >
-        <SafeAreaView style={styles.container}>
+        <View style={styles.container}>
+          <ScrollView
+            style={{ flex: 1 }}
+            contentContainerStyle={styles.scrollContent}
+            showsVerticalScrollIndicator={false}
+          >
           {/* Home */}
           <TouchableOpacity
             style={[styles.item, { paddingTop: 20 }]}
@@ -433,14 +437,11 @@ export const MenuSidebar: React.FC<MenuSidebarProps> = ({
               color={palette.foreground}
             />
           </TouchableOpacity>
-          {foldersOpen && (
-            <FlatList
-              data={folders}
-              keyExtractor={(f) => f.id.toString()}
-              renderItem={({ item }) => {
+          {foldersOpen && folders.map((item) => {
                 const isSelected = selectedFolders.includes(item.id);
                 return (
                   <TouchableOpacity
+                    key={item.id.toString()}
                     style={[
                       styles.folderItem,
                       isSelected && {
@@ -482,11 +483,8 @@ export const MenuSidebar: React.FC<MenuSidebarProps> = ({
                     </View>
                   </TouchableOpacity>
                 );
-              }}
-            />
-          )}
-          {/* Spacer to push settings to bottom, accounting for navigation bar */}
-          <View style={{ flex: 1 }} />
+              })}
+          </ScrollView>
           <View style={{ paddingBottom: insets.bottom }}>
             <TouchableOpacity
               style={[styles.item]}
@@ -506,7 +504,7 @@ export const MenuSidebar: React.FC<MenuSidebarProps> = ({
               <Text style={styles.label}>Settings</Text>
             </TouchableOpacity>
           </View>
-        </SafeAreaView>
+        </View>
       </Animated.View>
     </>
   );
@@ -535,6 +533,9 @@ const styles = StyleSheet.create({
     flex: 1,
     paddingHorizontal: spacing.m,
     paddingVertical: spacing.s,
+  },
+  scrollContent: {
+    paddingBottom: spacing.m,
   },
   item: {
     flexDirection: "row",

@@ -96,11 +96,11 @@ export default function AuthorImportScreen() {
   // Load initial posts when screen is focused
   useFocusEffect(
     useCallback(() => {
-      if (redditPosts.length === 0 && !loading) {
+      if (redditPosts.length === 0 && !loading && !error) {
         loadMore();
       }
       refreshPosts();
-    }, [loadMore, redditPosts.length, loading, refreshPosts]),
+    }, [loadMore, redditPosts.length, loading, error, refreshPosts]),
   );
 
   // Handle back button
