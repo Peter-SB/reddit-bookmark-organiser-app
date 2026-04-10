@@ -1,10 +1,11 @@
 import { useRouter } from "expo-router";
-import React from "react";
+import React, { useMemo } from "react";
 import { StyleSheet, Text, TouchableOpacity, View } from "react-native";
 import Ionicons from "react-native-vector-icons/Ionicons";
-import { palette } from "../constants/Colors";
+import { useTheme } from "@/contexts/ThemeContext";
+import type { ThemeContextValue } from "@/contexts/ThemeContext";
 import { spacing } from "../constants/spacing";
-import { fontSizes, fontWeights } from "../constants/typography";
+import { fontWeights } from "../constants/typography";
 import { AuthorSummary } from "../models/AuthorSummary";
 
 interface AuthorCardProps {
@@ -12,6 +13,11 @@ interface AuthorCardProps {
 }
 
 export const AuthorCard: React.FC<AuthorCardProps> = ({ author }) => {
+  const { palette, fontSizes } = useTheme();
+  const styles = useMemo(
+    () => makeStyles(palette, fontSizes),
+    [palette, fontSizes],
+  );
   const router = useRouter();
 
   const handlePress = () => {
@@ -104,56 +110,61 @@ export const AuthorCard: React.FC<AuthorCardProps> = ({ author }) => {
   );
 };
 
-const styles = StyleSheet.create({
-  container: {
-    backgroundColor: palette.background,
-    padding: spacing.m,
-    borderBottomWidth: 1,
-    borderColor: palette.border,
-  },
-  authorName: {
-    fontSize: fontSizes.title * 0.9,
-    fontWeight: fontWeights.semibold,
-    color: palette.foreground,
-    marginBottom: spacing.xs,
-  },
-  statsRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: spacing.m,
-    marginTop: spacing.xs,
-  },
-  statChip: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 3,
-  },
-  statText: {
-    fontSize: fontSizes.small * 0.9,
-    color: palette.muted,
-  },
-  bottomRow: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "center",
-    marginTop: spacing.s,
-  },
-  dateText: {
-    fontSize: fontSizes.small * 0.85,
-    color: palette.muted,
-  },
-  ratingSection: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 4,
-  },
-  ratingText: {
-    fontSize: fontSizes.small * 0.85,
-    color: palette.muted,
-  },
-  separator: {
-    fontSize: fontSizes.small,
-    color: palette.muted,
-    marginHorizontal: 2,
-  },
-});
+function makeStyles(
+  palette: ThemeContextValue["palette"],
+  fontSizes: ThemeContextValue["fontSizes"],
+) {
+  return StyleSheet.create({
+    container: {
+      backgroundColor: palette.background,
+      padding: spacing.m,
+      borderBottomWidth: 1,
+      borderColor: palette.border,
+    },
+    authorName: {
+      fontSize: fontSizes.title * 0.9,
+      fontWeight: fontWeights.semibold,
+      color: palette.foreground,
+      marginBottom: spacing.xs,
+    },
+    statsRow: {
+      flexDirection: "row",
+      alignItems: "center",
+      gap: spacing.m,
+      marginTop: spacing.xs,
+    },
+    statChip: {
+      flexDirection: "row",
+      alignItems: "center",
+      gap: 3,
+    },
+    statText: {
+      fontSize: fontSizes.small * 0.9,
+      color: palette.muted,
+    },
+    bottomRow: {
+      flexDirection: "row",
+      justifyContent: "space-between",
+      alignItems: "center",
+      marginTop: spacing.s,
+    },
+    dateText: {
+      fontSize: fontSizes.small * 0.85,
+      color: palette.muted,
+    },
+    ratingSection: {
+      flexDirection: "row",
+      alignItems: "center",
+      gap: 4,
+    },
+    ratingText: {
+      fontSize: fontSizes.small * 0.85,
+      color: palette.muted,
+    },
+    separator: {
+      fontSize: fontSizes.small,
+      color: palette.muted,
+      marginHorizontal: 2,
+    },
+  });
+}

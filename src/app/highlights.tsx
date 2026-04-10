@@ -1,12 +1,13 @@
-import { palette } from "@/constants/Colors";
 import { spacing } from "@/constants/spacing";
-import { fontSizes, fontWeights } from "@/constants/typography";
+import { fontWeights } from "@/constants/typography";
+import { useTheme } from "@/contexts/ThemeContext";
+import type { ThemeContextValue } from "@/contexts/ThemeContext";
 import { useHighlights } from "@/hooks/useHighlights";
 import { usePosts } from "@/hooks/usePosts";
 import { Highlight } from "@/models/models";
 import { Ionicons } from "@expo/vector-icons";
 import { useRouter, useFocusEffect } from "expo-router";
-import React, { useCallback } from "react";
+import React, { useCallback, useMemo } from "react";
 import {
   ActivityIndicator,
   FlatList,
@@ -21,6 +22,11 @@ import {
 } from "react-native-safe-area-context";
 
 export default function HighlightsScreen() {
+  const { palette, fontSizes } = useTheme();
+  const styles = useMemo(
+    () => makeStyles(palette, fontSizes),
+    [palette, fontSizes],
+  );
   const router = useRouter();
   const insets = useSafeAreaInsets();
   const { highlights, loading, refreshHighlights } = useHighlights();
@@ -120,78 +126,83 @@ export default function HighlightsScreen() {
   );
 }
 
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: palette.background,
-  },
-  header: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-between",
-    paddingHorizontal: spacing.m,
-    paddingVertical: spacing.m,
-    borderBottomWidth: 1,
-    borderBottomColor: palette.border,
-  },
-  backButton: {
-    padding: spacing.s,
-    width: 40,
-  },
-  headerTitle: {
-    fontSize: fontSizes.large,
-    fontWeight: fontWeights.bold,
-    color: palette.foreground,
-  },
-  centerContainer: {
-    flex: 1,
-    justifyContent: "center",
-    alignItems: "center",
-    padding: spacing.xl,
-  },
-  emptyText: {
-    fontSize: fontSizes.title,
-    fontWeight: fontWeights.semibold,
-    color: palette.muted,
-    marginTop: spacing.l,
-  },
-  emptySubtext: {
-    fontSize: fontSizes.body,
-    color: palette.muted,
-    marginTop: spacing.s,
-    textAlign: "center",
-  },
-  listContent: {
-    padding: spacing.m,
-  },
-  highlightCard: {
-    backgroundColor: palette.backgroundDarker,
-    borderRadius: 12,
-    padding: spacing.m,
-    marginBottom: spacing.m,
-    flexDirection: "row",
-    alignItems: "center",
-    borderWidth: 1,
-    borderColor: palette.border,
-  },
-  highlightContent: {
-    flex: 1,
-    gap: spacing.xs,
-  },
-  highlightText: {
-    fontSize: fontSizes.body,
-    color: palette.foreground,
-    fontStyle: "italic",
-    lineHeight: 20,
-  },
-  noteText: {
-    fontSize: fontSizes.small,
-    color: palette.muted,
-    marginTop: spacing.xs,
-  },
-  postTitle: {
-    fontSize: fontSizes.small,
-    color: palette.muted,
-    marginTop: spacing.xs,
-  },
-});
+function makeStyles(
+  palette: ThemeContextValue["palette"],
+  fontSizes: ThemeContextValue["fontSizes"],
+) {
+  return StyleSheet.create({
+    container: {
+      flex: 1,
+      backgroundColor: palette.background,
+    },
+    header: {
+      flexDirection: "row",
+      alignItems: "center",
+      justifyContent: "space-between",
+      paddingHorizontal: spacing.m,
+      paddingVertical: spacing.m,
+      borderBottomWidth: 1,
+      borderBottomColor: palette.border,
+    },
+    backButton: {
+      padding: spacing.s,
+      width: 40,
+    },
+    headerTitle: {
+      fontSize: fontSizes.large,
+      fontWeight: fontWeights.bold,
+      color: palette.foreground,
+    },
+    centerContainer: {
+      flex: 1,
+      justifyContent: "center",
+      alignItems: "center",
+      padding: spacing.xl,
+    },
+    emptyText: {
+      fontSize: fontSizes.title,
+      fontWeight: fontWeights.semibold,
+      color: palette.muted,
+      marginTop: spacing.l,
+    },
+    emptySubtext: {
+      fontSize: fontSizes.body,
+      color: palette.muted,
+      marginTop: spacing.s,
+      textAlign: "center",
+    },
+    listContent: {
+      padding: spacing.m,
+    },
+    highlightCard: {
+      backgroundColor: palette.backgroundDarker,
+      borderRadius: 12,
+      padding: spacing.m,
+      marginBottom: spacing.m,
+      flexDirection: "row",
+      alignItems: "center",
+      borderWidth: 1,
+      borderColor: palette.border,
+    },
+    highlightContent: {
+      flex: 1,
+      gap: spacing.xs,
+    },
+    highlightText: {
+      fontSize: fontSizes.body,
+      color: palette.foreground,
+      fontStyle: "italic",
+      lineHeight: 20,
+    },
+    noteText: {
+      fontSize: fontSizes.small,
+      color: palette.muted,
+      marginTop: spacing.xs,
+    },
+    postTitle: {
+      fontSize: fontSizes.small,
+      color: palette.muted,
+      marginTop: spacing.xs,
+    },
+  });
+}

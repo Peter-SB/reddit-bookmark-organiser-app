@@ -1,11 +1,9 @@
 import { PostCard } from "@/components/PostCard";
-import { palette } from "@/constants/Colors";
-import {
-  DEFAULT_SEARCH_INCLUDE_TEXT,
-  DEFAULT_SEARCH_RESULTS,
-} from "@/constants/search";
+import { DEFAULT_SEARCH_INCLUDE_TEXT } from "@/constants/search";
 import { spacing } from "@/constants/spacing";
-import { fontSizes, fontWeights } from "@/constants/typography";
+import { fontWeights } from "@/constants/typography";
+import { useTheme } from "@/contexts/ThemeContext";
+import type { ThemeContextValue } from "@/contexts/ThemeContext";
 import { usePosts } from "@/hooks/usePosts";
 import {
   SemanticSearchResult,
@@ -26,6 +24,11 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import Icon from "react-native-vector-icons/MaterialIcons";
 
 export default function SimilarPostsScreen() {
+  const { palette, fontSizes } = useTheme();
+  const styles = useMemo(
+    () => makeStyles(palette, fontSizes),
+    [palette, fontSizes],
+  );
   const router = useRouter();
   const { id } = useLocalSearchParams<{ id?: string }>();
   const postId = useMemo(() => parseInt(String(id ?? ""), 10), [id]);
@@ -39,7 +42,7 @@ export default function SimilarPostsScreen() {
   useFocusEffect(
     useCallback(() => {
       refreshPosts();
-    }, [refreshPosts])
+    }, [refreshPosts]),
   );
 
   const postsMap = useMemo(() => {
@@ -85,7 +88,7 @@ export default function SimilarPostsScreen() {
       };
       const sub = BackHandler.addEventListener("hardwareBackPress", onBack);
       return () => sub.remove();
-    }, [router])
+    }, [router]),
   );
 
   const renderResult = useCallback(
@@ -127,7 +130,7 @@ export default function SimilarPostsScreen() {
         </View>
       );
     },
-    [postsMap]
+    [postsMap, styles, palette],
   );
 
   return (
@@ -172,107 +175,112 @@ export default function SimilarPostsScreen() {
   );
 }
 
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: palette.background,
-  },
-  header: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-between",
-    paddingHorizontal: spacing.m,
-    paddingVertical: spacing.s,
-    borderBottomWidth: 1,
-    borderBottomColor: palette.border,
-    backgroundColor: palette.background,
-  },
-  headerTitle: {
-    fontSize: fontSizes.large,
-    fontWeight: fontWeights.semibold,
-    color: palette.foreground,
-    flex: 1,
-    marginHorizontal: spacing.m,
-  },
-  headerIconButton: {
-    padding: spacing.xs,
-  },
-  statusRow: {
-    paddingHorizontal: spacing.m,
-    paddingVertical: spacing.s,
-  },
-  statusText: {
-    fontSize: fontSizes.body,
-    color: palette.muted,
-  },
-  errorText: {
-    color: palette.favHeartRed,
-    paddingHorizontal: spacing.m,
-    paddingBottom: spacing.s,
-  },
-  loadingRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    paddingHorizontal: spacing.m,
-    paddingBottom: spacing.s,
-  },
-  resultText: {
-    fontSize: fontSizes.small,
-    color: palette.foreground,
-    lineHeight: 18,
-  },
-  fallbackCard: {
-    padding: spacing.m,
-    borderBottomWidth: 1,
-    borderColor: palette.border,
-    backgroundColor: palette.background,
-  },
-  fallbackHeader: {
-    flexDirection: "row",
-    alignItems: "flex-start",
-    justifyContent: "space-between",
-    marginBottom: spacing.xs,
-  },
-  fallbackTitle: {
-    fontSize: fontSizes.title * 0.9,
-    fontWeight: fontWeights.semibold,
-    color: palette.foreground,
-    flex: 1,
-    marginRight: spacing.s,
-  },
-  fallbackBadge: {
-    paddingHorizontal: spacing.xs,
-    paddingVertical: 2,
-    borderRadius: 6,
-    backgroundColor: palette.backgroundMidLight,
-  },
-  fallbackBadgeText: {
-    fontSize: fontSizes.small,
-    color: palette.muted,
-  },
-  fallbackMeta: {
-    fontSize: fontSizes.small,
-    color: palette.muted,
-  },
-  emptyListContainer: {
-    flexGrow: 1,
-  },
-  emptyState: {
-    flex: 1,
-    alignItems: "center",
-    justifyContent: "center",
-    paddingHorizontal: spacing.l,
-  },
-  emptyTitle: {
-    fontSize: fontSizes.title,
-    fontWeight: fontWeights.semibold,
-    color: palette.foreground,
-    marginBottom: spacing.s,
-  },
-  emptySubtitle: {
-    fontSize: fontSizes.body,
-    color: palette.muted,
-    textAlign: "center",
-    lineHeight: 20,
-  },
-});
+function makeStyles(
+  palette: ThemeContextValue["palette"],
+  fontSizes: ThemeContextValue["fontSizes"],
+) {
+  return StyleSheet.create({
+    container: {
+      flex: 1,
+      backgroundColor: palette.background,
+    },
+    header: {
+      flexDirection: "row",
+      alignItems: "center",
+      justifyContent: "space-between",
+      paddingHorizontal: spacing.m,
+      paddingVertical: spacing.s,
+      borderBottomWidth: 1,
+      borderBottomColor: palette.border,
+      backgroundColor: palette.background,
+    },
+    headerTitle: {
+      fontSize: fontSizes.large,
+      fontWeight: fontWeights.semibold,
+      color: palette.foreground,
+      flex: 1,
+      marginHorizontal: spacing.m,
+    },
+    headerIconButton: {
+      padding: spacing.xs,
+    },
+    statusRow: {
+      paddingHorizontal: spacing.m,
+      paddingVertical: spacing.s,
+    },
+    statusText: {
+      fontSize: fontSizes.body,
+      color: palette.muted,
+    },
+    errorText: {
+      color: palette.favHeartRed,
+      paddingHorizontal: spacing.m,
+      paddingBottom: spacing.s,
+    },
+    loadingRow: {
+      flexDirection: "row",
+      alignItems: "center",
+      paddingHorizontal: spacing.m,
+      paddingBottom: spacing.s,
+    },
+    resultText: {
+      fontSize: fontSizes.small,
+      color: palette.foreground,
+      lineHeight: 18,
+    },
+    fallbackCard: {
+      padding: spacing.m,
+      borderBottomWidth: 1,
+      borderColor: palette.border,
+      backgroundColor: palette.background,
+    },
+    fallbackHeader: {
+      flexDirection: "row",
+      alignItems: "flex-start",
+      justifyContent: "space-between",
+      marginBottom: spacing.xs,
+    },
+    fallbackTitle: {
+      fontSize: fontSizes.title * 0.9,
+      fontWeight: fontWeights.semibold,
+      color: palette.foreground,
+      flex: 1,
+      marginRight: spacing.s,
+    },
+    fallbackBadge: {
+      paddingHorizontal: spacing.xs,
+      paddingVertical: 2,
+      borderRadius: 6,
+      backgroundColor: palette.backgroundMidLight,
+    },
+    fallbackBadgeText: {
+      fontSize: fontSizes.small,
+      color: palette.muted,
+    },
+    fallbackMeta: {
+      fontSize: fontSizes.small,
+      color: palette.muted,
+    },
+    emptyListContainer: {
+      flexGrow: 1,
+    },
+    emptyState: {
+      flex: 1,
+      alignItems: "center",
+      justifyContent: "center",
+      paddingHorizontal: spacing.l,
+    },
+    emptyTitle: {
+      fontSize: fontSizes.title,
+      fontWeight: fontWeights.semibold,
+      color: palette.foreground,
+      marginBottom: spacing.s,
+    },
+    emptySubtitle: {
+      fontSize: fontSizes.body,
+      color: palette.muted,
+      textAlign: "center",
+      lineHeight: 20,
+    },
+  });
+}

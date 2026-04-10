@@ -1,9 +1,8 @@
-import { palette } from "@/constants/Colors";
 import { spacing } from "@/constants/spacing";
-import { fontSizes, fontWeights } from "@/constants/typography";
+import { fontWeights } from "@/constants/typography";
 import { STORAGE_KEYS } from "@/hooks/useRedditApi";
 import * as SecureStore from "expo-secure-store";
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import {
   ActivityIndicator,
   Alert,
@@ -13,10 +12,17 @@ import {
   TouchableOpacity,
   View,
 } from "react-native";
+import { useTheme } from "@/contexts/ThemeContext";
+import type { ThemeContextValue } from "@/contexts/ThemeContext";
 
 // SecureStore keys for API credentials
 
 export default function SettingsCredentialsManager() {
+  const { palette, fontSizes } = useTheme();
+  const styles = useMemo(
+    () => makeStyles(palette, fontSizes),
+    [palette, fontSizes],
+  );
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
   const [clientId, setClientId] = useState("");
@@ -136,46 +142,51 @@ export default function SettingsCredentialsManager() {
   );
 }
 
-const styles = StyleSheet.create({
-  container: {
-    padding: spacing.m,
-    backgroundColor: palette.background,
-  },
-  label: {
-    fontSize: fontSizes.body,
-    fontWeight: fontWeights.medium,
-    color: palette.foreground,
-    marginTop: spacing.s,
-    marginBottom: spacing.xs,
-  },
-  input: {
-    borderWidth: 1,
-    borderColor: palette.border,
-    borderRadius: 6,
-    padding: spacing.s,
-    backgroundColor: palette.backgroundMidLight,
-    fontSize: fontSizes.body,
-    color: palette.foreground,
-  },
-  buttonRow: {
-    flexDirection: "row",
-    marginTop: spacing.m,
-    gap: spacing.s,
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  button: {
-    flex: 1,
-    padding: spacing.s,
-    backgroundColor: palette.background,
-    borderRadius: 6,
-    borderColor: palette.border,
-    borderWidth: 1,
-    alignItems: "center",
-  },
-  buttonText: {
-    color: palette.foreground,
-    fontSize: fontSizes.body,
-    fontWeight: fontWeights.medium,
-  },
-});
+function makeStyles(
+  palette: ThemeContextValue["palette"],
+  fontSizes: ThemeContextValue["fontSizes"],
+) {
+  return StyleSheet.create({
+    container: {
+      padding: spacing.m,
+      backgroundColor: palette.background,
+    },
+    label: {
+      fontSize: fontSizes.body,
+      fontWeight: fontWeights.medium,
+      color: palette.foreground,
+      marginTop: spacing.s,
+      marginBottom: spacing.xs,
+    },
+    input: {
+      borderWidth: 1,
+      borderColor: palette.border,
+      borderRadius: 6,
+      padding: spacing.s,
+      backgroundColor: palette.backgroundMidLight,
+      fontSize: fontSizes.body,
+      color: palette.foreground,
+    },
+    buttonRow: {
+      flexDirection: "row",
+      marginTop: spacing.m,
+      gap: spacing.s,
+      alignItems: "center",
+      justifyContent: "center",
+    },
+    button: {
+      flex: 1,
+      padding: spacing.s,
+      backgroundColor: palette.background,
+      borderRadius: 6,
+      borderColor: palette.border,
+      borderWidth: 1,
+      alignItems: "center",
+    },
+    buttonText: {
+      color: palette.foreground,
+      fontSize: fontSizes.body,
+      fontWeight: fontWeights.medium,
+    },
+  });
+}

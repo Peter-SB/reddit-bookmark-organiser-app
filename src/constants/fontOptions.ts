@@ -6,6 +6,4 @@ export const fontOptions = [
   { fontSize: fontSizes.small, lineHeight: 16 },
   { fontSize: fontSizes.body, lineHeight: 20 },
   { fontSize: fontSizes.large, lineHeight: 26 },
-  { fontSize: fontSizes.xlarge, lineHeight: 32 },
-  { fontSize: fontSizes.xxlarge, lineHeight: 40 },
 ];

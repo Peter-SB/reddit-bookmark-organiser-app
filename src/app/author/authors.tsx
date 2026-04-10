@@ -1,14 +1,15 @@
 import { AuthorCard } from "@/components/AuthorCard";
 import { OrderByRow } from "@/components/OrderByRow";
 import { SearchBar } from "@/components/SearchBar";
-import { palette } from "@/constants/Colors";
 import { AUTHOR_ORDER_OPTIONS, OrderByOption } from "@/constants/orderBy";
 import { spacing } from "@/constants/spacing";
-import { fontSizes, fontWeights } from "@/constants/typography";
+import { fontWeights } from "@/constants/typography";
+import { useTheme } from "@/contexts/ThemeContext";
+import type { ThemeContextValue } from "@/contexts/ThemeContext";
 import { useAuthors } from "@/hooks/useAuthors";
 import { AuthorSummary } from "@/models/AuthorSummary";
 import { useFocusEffect, useRouter } from "expo-router";
-import React, { useCallback, useEffect, useState } from "react";
+import React, { useCallback, useEffect, useState, useMemo } from "react";
 import {
   BackHandler,
   FlatList,
@@ -21,6 +22,11 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import Icon from "react-native-vector-icons/MaterialIcons";
 
 export default function AuthorsScreen() {
+  const { palette, fontSizes } = useTheme();
+  const styles = useMemo(
+    () => makeStyles(palette, fontSizes),
+    [palette, fontSizes],
+  );
   const router = useRouter();
   const [orderBy, setOrderBy] = useState<OrderByOption>(OrderByOption.AddedAt);
   const [orderDirection, setOrderDirection] = useState<"asc" | "desc">("desc");
@@ -133,64 +139,69 @@ export default function AuthorsScreen() {
   );
 }
 
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: palette.background,
-  },
-  header: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-between",
-    paddingHorizontal: spacing.m,
-    paddingVertical: spacing.s,
-    borderBottomWidth: 1,
-    borderBottomColor: palette.border,
-    backgroundColor: palette.background,
-  },
-  headerTitle: {
-    fontSize: fontSizes.xlarge,
-    fontWeight: fontWeights.semibold,
-    color: palette.foreground,
-    flex: 1,
-    marginHorizontal: spacing.m,
-  },
-  headerCount: {
-    fontSize: fontSizes.body,
-    fontWeight: fontWeights.normal,
-    color: palette.muted,
-  },
-  sortRow: {
-    paddingHorizontal: spacing.s,
-    paddingVertical: spacing.xs,
-    borderBottomWidth: 1,
-    borderBottomColor: palette.border,
-  },
-  searchContainer: {
-    paddingHorizontal: spacing.m,
-    paddingVertical: spacing.s,
-    borderBottomWidth: 1,
-    borderBottomColor: palette.border,
-  },
-  emptyListContainer: {
-    flexGrow: 1,
-  },
-  emptyState: {
-    flex: 1,
-    alignItems: "center",
-    justifyContent: "center",
-    paddingHorizontal: spacing.l,
-  },
-  emptyTitle: {
-    fontSize: fontSizes.title,
-    fontWeight: fontWeights.semibold,
-    color: palette.foreground,
-    marginBottom: spacing.s,
-  },
-  emptySubtitle: {
-    fontSize: fontSizes.body,
-    color: palette.muted,
-    textAlign: "center",
-    lineHeight: 20,
-  },
-});
+function makeStyles(
+  palette: ThemeContextValue["palette"],
+  fontSizes: ThemeContextValue["fontSizes"],
+) {
+  return StyleSheet.create({
+    container: {
+      flex: 1,
+      backgroundColor: palette.background,
+    },
+    header: {
+      flexDirection: "row",
+      alignItems: "center",
+      justifyContent: "space-between",
+      paddingHorizontal: spacing.m,
+      paddingVertical: spacing.s,
+      borderBottomWidth: 1,
+      borderBottomColor: palette.border,
+      backgroundColor: palette.background,
+    },
+    headerTitle: {
+      fontSize: fontSizes.xlarge,
+      fontWeight: fontWeights.semibold,
+      color: palette.foreground,
+      flex: 1,
+      marginHorizontal: spacing.m,
+    },
+    headerCount: {
+      fontSize: fontSizes.body,
+      fontWeight: fontWeights.normal,
+      color: palette.muted,
+    },
+    sortRow: {
+      paddingHorizontal: spacing.s,
+      paddingVertical: spacing.xs,
+      borderBottomWidth: 1,
+      borderBottomColor: palette.border,
+    },
+    searchContainer: {
+      paddingHorizontal: spacing.m,
+      paddingVertical: spacing.s,
+      borderBottomWidth: 1,
+      borderBottomColor: palette.border,
+    },
+    emptyListContainer: {
+      flexGrow: 1,
+    },
+    emptyState: {
+      flex: 1,
+      alignItems: "center",
+      justifyContent: "center",
+      paddingHorizontal: spacing.l,
+    },
+    emptyTitle: {
+      fontSize: fontSizes.title,
+      fontWeight: fontWeights.semibold,
+      color: palette.foreground,
+      marginBottom: spacing.s,
+    },
+    emptySubtitle: {
+      fontSize: fontSizes.body,
+      color: palette.muted,
+      textAlign: "center",
+      lineHeight: 20,
+    },
+  });
+}

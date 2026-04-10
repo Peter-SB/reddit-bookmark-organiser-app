@@ -1,7 +1,6 @@
-import { palette } from "@/constants/Colors";
-import { spacing } from "@/constants/spacing";
-import { fontSizes, fontWeights } from "@/constants/typography";
-import React, { useEffect, useState } from "react";
+﻿import { spacing } from "@/constants/spacing";
+import { fontWeights } from "@/constants/typography";
+import React, { useEffect, useMemo, useState } from "react";
 import {
   ActivityIndicator,
   Alert,
@@ -13,6 +12,8 @@ import {
 } from "react-native";
 import { Picker } from "@react-native-picker/picker";
 import { SettingsRepository } from "@/repository/SettingsRepository";
+import { useTheme } from "@/contexts/ThemeContext";
+import type { ThemeContextValue } from "@/contexts/ThemeContext";
 
 const AI_ENDPOINT_URL = "AI_ENDPOINT_URL";
 const AI_MODEL_ID = "AI_MODEL_ID";
@@ -35,6 +36,11 @@ const sortModels = (list: string[]): string[] =>
     .sort((a, b) => a.localeCompare(b, undefined, { sensitivity: "base" }));
 
 export default function SettingsAiConfiguration() {
+  const { palette, fontSizes } = useTheme();
+  const styles = useMemo(
+    () => makeStyles(palette, fontSizes),
+    [palette, fontSizes],
+  );
   const [endpoint, setEndpoint] = useState("");
   const [modelId, setModelId] = useState("");
   const [systemPrompt, setSystemPrompt] = useState("");
@@ -70,7 +76,8 @@ export default function SettingsAiConfiguration() {
         if (settings[SHOW_AI_SUMMARY] !== undefined)
           setShowAiSummary(settings[SHOW_AI_SUMMARY] === "true");
         if (settings[AI_API_KEY]) setApiKey(settings[AI_API_KEY]);
-        if (settings[AI_ATTRIB_REFERER]) setReferer(settings[AI_ATTRIB_REFERER]);
+        if (settings[AI_ATTRIB_REFERER])
+          setReferer(settings[AI_ATTRIB_REFERER]);
         if (settings[AI_ATTRIB_TITLE]) setAppTitle(settings[AI_ATTRIB_TITLE]);
         if (settings[AI_MAX_TOKENS]) setMaxTokens(settings[AI_MAX_TOKENS]);
       } catch (err) {
@@ -96,12 +103,15 @@ export default function SettingsAiConfiguration() {
         SettingsRepository.setSetting(AI_SYSTEM_PROMPT, systemPrompt.trim()),
         SettingsRepository.setSetting(
           SHOW_AI_SUMMARY,
-          showAiSummary ? "true" : "false"
+          showAiSummary ? "true" : "false",
         ),
         SettingsRepository.setSetting(AI_API_KEY, apiKey.trim()),
         SettingsRepository.setSetting(AI_ATTRIB_REFERER, referer.trim()),
         SettingsRepository.setSetting(AI_ATTRIB_TITLE, "Reddit-Bookmark-App"),
-        SettingsRepository.setSetting(AI_MAX_TOKENS, String(parseInt(maxTokens || "1024", 10) || 1024)),
+        SettingsRepository.setSetting(
+          AI_MAX_TOKENS,
+          String(parseInt(maxTokens || "1024", 10) || 1024),
+        ),
       ]);
       Alert.alert("Success", "AI configuration saved.");
     } catch (err) {
@@ -333,60 +343,65 @@ export default function SettingsAiConfiguration() {
   );
 }
 
-const styles = StyleSheet.create({
-  container: {
-    padding: spacing.m,
-    backgroundColor: palette.background,
-  },
-  label: {
-    fontSize: fontSizes.body,
-    fontWeight: fontWeights.medium,
-    color: palette.foreground,
-    marginTop: spacing.s,
-    marginBottom: spacing.xs,
-  },
-  input: {
-    borderWidth: 1,
-    borderColor: palette.border,
-    borderRadius: 6,
-    padding: spacing.s,
-    backgroundColor: palette.backgroundMidLight,
-    fontSize: fontSizes.body,
-    color: palette.foreground,
-  },
-  buttonRow: {
-    flexDirection: "row",
-    marginTop: spacing.m,
-    gap: spacing.s,
-  },
-  button: {
-    flex: 1,
-    marginTop: spacing.m,
-    padding: spacing.s,
-    backgroundColor: palette.background,
-    borderRadius: 6,
-    borderColor: palette.border,
-    borderWidth: 1,
-    alignItems: "center",
-  },
-  buttonText: {
-    color: palette.foreground,
-    fontSize: fontSizes.body,
-    fontWeight: fontWeights.medium,
-  },
-  testResult: {
-    marginTop: spacing.s,
-    fontSize: fontSizes.small,
-    fontWeight: fontWeights.medium,
-    padding: spacing.s,
-    borderRadius: 6,
-  },
-  success: {
-    color: palette.saveGreen,
-    backgroundColor: "#e6ffe6",
-  },
-  error: {
-    color: "#dc3545",
-    backgroundColor: "#ffe6e6",
-  },
-});
+function makeStyles(
+  palette: ThemeContextValue["palette"],
+  fontSizes: ThemeContextValue["fontSizes"],
+) {
+  return StyleSheet.create({
+    container: {
+      padding: spacing.m,
+      backgroundColor: palette.background,
+    },
+    label: {
+      fontSize: fontSizes.body,
+      fontWeight: fontWeights.medium,
+      color: palette.foreground,
+      marginTop: spacing.s,
+      marginBottom: spacing.xs,
+    },
+    input: {
+      borderWidth: 1,
+      borderColor: palette.border,
+      borderRadius: 6,
+      padding: spacing.s,
+      backgroundColor: palette.backgroundMidLight,
+      fontSize: fontSizes.body,
+      color: palette.foreground,
+    },
+    buttonRow: {
+      flexDirection: "row",
+      marginTop: spacing.m,
+      gap: spacing.s,
+    },
+    button: {
+      flex: 1,
+      marginTop: spacing.m,
+      padding: spacing.s,
+      backgroundColor: palette.background,
+      borderRadius: 6,
+      borderColor: palette.border,
+      borderWidth: 1,
+      alignItems: "center",
+    },
+    buttonText: {
+      color: palette.foreground,
+      fontSize: fontSizes.body,
+      fontWeight: fontWeights.medium,
+    },
+    testResult: {
+      marginTop: spacing.s,
+      fontSize: fontSizes.small,
+      fontWeight: fontWeights.medium,
+      padding: spacing.s,
+      borderRadius: 6,
+    },
+    success: {
+      color: palette.saveGreen,
+      backgroundColor: "#e6ffe6",
+    },
+    error: {
+      color: "#dc3545",
+      backgroundColor: "#ffe6e6",
+    },
+  });
+}

@@ -1,11 +1,12 @@
 import { useRouter } from "expo-router";
-import React from "react";
+import React, { useMemo } from "react";
 import { StyleSheet, Text, TouchableOpacity, View } from "react-native";
 import Ionicons from "react-native-vector-icons/Ionicons";
-import { palette } from "../constants/Colors";
 import { spacing } from "../constants/spacing";
-import { fontSizes, fontWeights } from "../constants/typography";
+import { fontWeights } from "../constants/typography";
+import type { ThemeContextValue } from "@/contexts/ThemeContext";
 import { Post, PostListItem } from "../models/models";
+import { useTheme } from "@/contexts/ThemeContext";
 
 interface PostCardProps {
   post: Post | PostListItem;
@@ -14,6 +15,11 @@ interface PostCardProps {
 
 export const PostCard: React.FC<PostCardProps> = ({ post, footer }) => {
   const router = useRouter();
+  const { palette, fontSizes } = useTheme();
+  const styles = useMemo(
+    () => makeStyles(palette, fontSizes),
+    [palette, fontSizes],
+  );
 
   const handlePress = () => {
     router.push(`/post/${post.id}` as any);
@@ -110,80 +116,85 @@ export const PostCard: React.FC<PostCardProps> = ({ post, footer }) => {
   );
 };
 
-const styles = StyleSheet.create({
-  container: {
-    backgroundColor: palette.background,
-    borderRadius: 0,
-    padding: spacing.m,
-    marginHorizontal: 0, //spacing.s,
-    marginVertical: 0,
-    shadowColor: palette.cardShadow,
-    shadowOffset: {
-      width: 0,
-      height: 2,
+function makeStyles(
+  palette: ThemeContextValue["palette"],
+  fontSizes: ThemeContextValue["fontSizes"],
+) {
+  return StyleSheet.create({
+    container: {
+      backgroundColor: palette.background,
+      borderRadius: 0,
+      padding: spacing.m,
+      marginHorizontal: 0, //spacing.s,
+      marginVertical: 0,
+      shadowColor: palette.cardShadow,
+      shadowOffset: {
+        width: 0,
+        height: 2,
+      },
+      borderWidth: 0,
+      borderBottomWidth: 1,
+      borderColor: palette.border,
     },
-    borderWidth: 0,
-    borderBottomWidth: 1,
-    borderColor: palette.border,
-  },
-  title: {
-    fontSize: fontSizes.title * 0.9,
-    fontWeight: fontWeights.semibold,
-    color: palette.foreground,
-    marginBottom: spacing.xs,
-    lineHeight: 24 * 0.9,
-  },
-  readTitle: {
-    opacity: 0.6,
-  },
-  date: {
-    fontSize: fontSizes.small,
-    color: palette.muted,
-  },
-  rowMetaActions: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "center",
-    marginTop: spacing.s,
-  },
-  rightMeta: {
-    flexDirection: "row",
-    alignItems: "flex-end",
-  },
-  ratingContainer: {
-    flexDirection: "row",
-    alignItems: "flex-end",
-  },
-  ratingText: {
-    fontSize: fontSizes.small,
-    color: palette.muted,
-    marginLeft: 2,
-    marginRight: 3,
-  },
-  leftMeta: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "flex-start",
-  },
-  metadata: {
-    flexDirection: "row",
-    alignItems: "flex-end",
-    justifyContent: "space-between",
-    // marginBottom: spacing.xs,
-  },
-  metadataText: {
-    fontSize: fontSizes.small * 0.8,
-    color: palette.muted,
-  },
-  separator: {
-    fontSize: fontSizes.body,
-    color: palette.muted,
-    marginHorizontal: spacing.xs,
-  },
-  footer: {
-    marginTop: spacing.s,
-  },
-  // userLink: {
-  //   color: palette.accent,
-  // },
-});
+    title: {
+      fontSize: fontSizes.title * 0.9,
+      fontWeight: fontWeights.semibold,
+      color: palette.foreground,
+      marginBottom: spacing.xs,
+      lineHeight: 24 * 0.9,
+    },
+    readTitle: {
+      opacity: 0.6,
+    },
+    date: {
+      fontSize: fontSizes.small,
+      color: palette.muted,
+    },
+    rowMetaActions: {
+      flexDirection: "row",
+      justifyContent: "space-between",
+      alignItems: "center",
+      marginTop: spacing.s,
+    },
+    rightMeta: {
+      flexDirection: "row",
+      alignItems: "flex-end",
+    },
+    ratingContainer: {
+      flexDirection: "row",
+      alignItems: "flex-end",
+    },
+    ratingText: {
+      fontSize: fontSizes.small,
+      color: palette.muted,
+      marginLeft: 2,
+      marginRight: 3,
+    },
+    leftMeta: {
+      flexDirection: "row",
+      alignItems: "center",
+      justifyContent: "flex-start",
+    },
+    metadata: {
+      flexDirection: "row",
+      alignItems: "flex-end",
+      justifyContent: "space-between",
+      // marginBottom: spacing.xs,
+    },
+    metadataText: {
+      fontSize: fontSizes.small * 0.8,
+      color: palette.muted,
+    },
+    separator: {
+      fontSize: fontSizes.body,
+      color: palette.muted,
+      marginHorizontal: spacing.xs,
+    },
+    footer: {
+      marginTop: spacing.s,
+    },
+    // userLink: {
+    //   color: palette.accent,
+    // },
+  });
+}

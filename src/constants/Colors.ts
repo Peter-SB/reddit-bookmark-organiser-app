@@ -33,7 +33,7 @@ export const palette = {
   foreground: '#111',
   foregroundLight: '#323232',
   foregroundMidLight: '#5a5a5aff',
-  accent: '#007AFF',  // iOS blue
+  accent: '#007AFF',
   accentOrange: "#FF5700",
   muted: '#888',
   cardShadow: '#00000010',
@@ -45,3 +45,25 @@ export const palette = {
   saveGreen: '#008000',
   archiveOrange: '#FFA500',
 };
+
+export const darkPalette = {
+  background: '#111111',
+  backgroundMidLight: '#1a1a1a',
+  backgroundDarker: '#242424',
+  foreground: '#aeaeae',
+  foregroundLight: '#D0D0D0',
+  foregroundMidLight: '#A0A0A0',
+  accent: '#3e9bff',
+  accentOrange: "#FF5700",
+  muted: '#a1a1a1',
+  cardShadow: '#00000040',
+  border: '#4a4a4a',
+
+  favHeartRed: '#d73900',
+  starYellow: '#FFB700',
+
+  saveGreen: '#00A000',
+  archiveOrange: '#FFA500',
+};
+
+export type Palette = typeof palette;

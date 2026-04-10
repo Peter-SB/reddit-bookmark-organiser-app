@@ -3,19 +3,26 @@ import PostSummary from "@/components/PostSummary";
 import { ShareBookmarkButton } from "@/components/ShareBookmarkButton";
 import { StarRating } from "@/components/StarRating";
 import { HighlightActionModal } from "@/components/HighlightActionModal";
-import { palette } from "@/constants/Colors";
 import { spacing } from "@/constants/spacing";
-import { fontSizes, fontWeights } from "@/constants/typography";
+import { fontWeights } from "@/constants/typography";
+import { useTheme } from "@/contexts/ThemeContext";
+import type { ThemeContextValue } from "@/contexts/ThemeContext";
 import { fontOptions } from "@/constants/fontOptions";
 import { usePosts } from "@/hooks/usePosts";
 import { usePostSync } from "@/hooks/usePostSync";
 import { useHighlights } from "@/hooks/useHighlights";
 import { Post, Highlight } from "@/models/models";
 import { SettingsRepository } from "@/repository/SettingsRepository";
-import { Ionicons, MaterialCommunityIcons } from "@expo/vector-icons";
+import { Ionicons } from "@expo/vector-icons";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { useLocalSearchParams, useRouter } from "expo-router";
-import React, { useCallback, useEffect, useState, useRef } from "react";
+import React, {
+  useCallback,
+  useEffect,
+  useState,
+  useRef,
+  useMemo,
+} from "react";
 import {
   ActivityIndicator,
   Alert,
@@ -37,12 +44,18 @@ import {
   SafeAreaView,
   useSafeAreaInsets,
 } from "react-native-safe-area-context";
+import { Palette } from "@/constants/Colors";
 
 const FONT_INDEX_KEY = "preferredFontOptionIdx";
 
 const { width: screenWidth } = Dimensions.get("window");
 
 export default function PostScreen() {
+  const { palette, fontSizes } = useTheme();
+  const styles = useMemo(
+    () => makeStyles(palette, fontSizes),
+    [palette, fontSizes],
+  );
   const insets = useSafeAreaInsets();
   const { id } = useLocalSearchParams<{ id: string }>();
   const router = useRouter();
@@ -584,17 +597,6 @@ export default function PostScreen() {
               />
             </TouchableOpacity>
             <TouchableOpacity
-              onPress={toggleFontOption}
-              style={styles.actionButton}
-              hitSlop={1}
-            >
-              <MaterialCommunityIcons
-                name="format-size"
-                size={22}
-                color={palette.foreground}
-              />
-            </TouchableOpacity>
-            <TouchableOpacity
               onPress={toggleSidebar}
               style={styles.actionButton}
             >
@@ -755,7 +757,7 @@ export default function PostScreen() {
                     <Ionicons
                       name="trash"
                       size={24}
-                      color="#FF3B30"
+                      color={palette.favHeartRed}
                       style={{ marginRight: spacing.xs }}
                     />
                     <Text style={styles.deleteButtonText}></Text>
@@ -808,6 +810,7 @@ export default function PostScreen() {
         setFolders={setFolders}
         highlights={highlights}
         onHighlightPress={handleHighlightPress}
+        toggleFontOption={toggleFontOption}
       />
       <HighlightActionModal
         visible={highlightModalVisible}
@@ -876,196 +879,201 @@ export default function PostScreen() {
   );
 }
 
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: palette.background,
-  },
-  mainContent: {
-    flex: 1,
-    zIndex: 1,
-  },
-  header: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "center",
-    paddingHorizontal: spacing.m,
-    paddingVertical: spacing.s,
-    borderBottomWidth: 1,
-    borderBottomColor: palette.border,
-  },
-  backButton: {
-    padding: spacing.s,
-    marginRight: spacing.s,
-  },
-  headerActions: {
-    flexDirection: "row",
-  },
-  actionButton: {
-    padding: spacing.xs,
-  },
-  content: {
-    flex: 1,
-  },
-  contentWrapper: {
-    flex: 1,
-  },
-  titleSection: {
-    padding: spacing.m,
-    borderBottomWidth: 1,
-    borderBottomColor: palette.border,
-  },
-  summarySection: {
-    padding: spacing.s,
-    borderBottomWidth: 1,
-    borderBottomColor: palette.border,
-  },
-  title: {
-    fontSize: fontSizes.xlarge,
-    fontWeight: fontWeights.bold,
-    color: palette.foreground,
-    marginBottom: spacing.s,
-    padding: 0,
-  },
-  metadata: {
-    flexDirection: "row",
-    alignItems: "center",
-    marginBottom: spacing.m,
-  },
-  metadataText: {
-    fontSize: fontSizes.body * 0.9,
-    color: palette.muted,
-  },
-  separator: {
-    fontSize: fontSizes.body,
-    color: palette.muted,
-    marginHorizontal: spacing.xs,
-  },
-  ratingSection: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-between",
-  },
-  readToggle: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: spacing.xs,
-  },
-  readText: {
-    fontSize: fontSizes.body,
-    color: palette.muted,
-  },
-  bodySection: {
-    padding: spacing.m - 4,
-    paddingBottom: spacing.xxl,
-  },
-  body: {
-    fontSize: fontSizes.small,
-    lineHeight: 16,
-    color: palette.foreground,
-    padding: 0,
-  },
-  notesSection: {
-    padding: spacing.m,
-    borderTopWidth: 1,
-    borderTopColor: palette.border,
-  },
-  sectionTitle: {
-    fontSize: fontSizes.large,
-    fontWeight: fontWeights.semibold,
-    color: palette.foreground,
-    marginBottom: spacing.s,
-  },
-  notesInput: {
-    fontSize: fontSizes.body,
-    color: palette.foreground,
-    backgroundColor: palette.background,
-    minHeight: 50,
-    padding: 0,
-  },
-  actionSection: {
-    padding: spacing.m,
-    gap: spacing.m,
-  },
-  saveButton: {
-    backgroundColor: "transparent",
-    paddingVertical: spacing.m,
-    paddingHorizontal: spacing.l,
-    // borderWidth: 1,
-    alignItems: "center",
-  },
-  saveButtonText: {
-    color: palette.accent,
-    fontSize: fontSizes.body,
-    fontWeight: fontWeights.semibold,
-  },
-  deleteButton: {
-    backgroundColor: "transparent",
-    paddingVertical: spacing.m,
-    paddingHorizontal: spacing.l,
-    alignItems: "center",
-    // borderWidth: 1,
-    borderColor: "#FF3B30",
-  },
-  deleteButtonText: {
-    color: "#FF3B30",
-    fontSize: fontSizes.body,
-    fontWeight: fontWeights.semibold,
-  },
-  errorText: {
-    fontSize: fontSizes.body,
-    color: palette.muted,
-    textAlign: "center",
-    marginTop: spacing.xl,
-  },
-  modalOverlay: {
-    flex: 1,
-    backgroundColor: "rgba(0,0,0,0.3)",
-    justifyContent: "center",
-    alignItems: "center",
-  },
-  modalContent: {
-    width: "80%",
-    backgroundColor: palette.background,
-    padding: spacing.m,
-    borderRadius: 8,
-    elevation: 5,
-  },
-  modalTitle: {
-    fontSize: fontSizes.large,
-    fontWeight: fontWeights.semibold,
-    marginBottom: spacing.s,
-    color: palette.foreground,
-  },
-  modalInput: {
-    borderWidth: 1,
-    borderColor: palette.border,
-    borderRadius: 6,
-    padding: spacing.s,
-    fontSize: fontSizes.body,
-    marginBottom: spacing.m,
-    color: palette.foreground,
-  },
-  modalButtons: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-  },
-  modalButton: {
-    padding: spacing.s,
-  },
-  border: {
-    borderTopWidth: 1,
-    borderTopColor: palette.border,
-  },
-  archiveButton: {
-    backgroundColor: "transparent",
-    paddingVertical: spacing.m,
-    paddingHorizontal: spacing.l,
-    alignItems: "center",
-  },
-  archiveButtonText: {
-    color: palette.archiveOrange,
-    fontSize: fontSizes.body,
-    fontWeight: fontWeights.semibold,
-  },
-});
+function makeStyles(
+  palette: ThemeContextValue["palette"],
+  fontSizes: ThemeContextValue["fontSizes"],
+) {
+  return StyleSheet.create({
+    container: {
+      flex: 1,
+      backgroundColor: palette.background,
+    },
+    mainContent: {
+      flex: 1,
+      zIndex: 1,
+    },
+    header: {
+      flexDirection: "row",
+      justifyContent: "space-between",
+      alignItems: "center",
+      paddingHorizontal: spacing.m,
+      paddingVertical: spacing.s,
+      borderBottomWidth: 1,
+      borderBottomColor: palette.border,
+    },
+    backButton: {
+      padding: spacing.s,
+      marginRight: spacing.s,
+    },
+    headerActions: {
+      flexDirection: "row",
+    },
+    actionButton: {
+      padding: spacing.xs,
+    },
+    content: {
+      flex: 1,
+    },
+    contentWrapper: {
+      flex: 1,
+    },
+    titleSection: {
+      padding: spacing.m,
+      borderBottomWidth: 1,
+      borderBottomColor: palette.border,
+    },
+    summarySection: {
+      padding: spacing.s,
+      borderBottomWidth: 1,
+      borderBottomColor: palette.border,
+    },
+    title: {
+      fontSize: fontSizes.xlarge,
+      fontWeight: fontWeights.bold,
+      color: palette.foreground,
+      marginBottom: spacing.s,
+      padding: 0,
+    },
+    metadata: {
+      flexDirection: "row",
+      alignItems: "center",
+      marginBottom: spacing.m,
+    },
+    metadataText: {
+      fontSize: fontSizes.body * 0.9,
+      color: palette.muted,
+    },
+    separator: {
+      fontSize: fontSizes.body,
+      color: palette.muted,
+      marginHorizontal: spacing.xs,
+    },
+    ratingSection: {
+      flexDirection: "row",
+      alignItems: "center",
+      justifyContent: "space-between",
+    },
+    readToggle: {
+      flexDirection: "row",
+      alignItems: "center",
+      gap: spacing.xs,
+    },
+    readText: {
+      fontSize: fontSizes.body,
+      color: palette.muted,
+    },
+    bodySection: {
+      padding: spacing.m - 4,
+      paddingBottom: spacing.xxl,
+    },
+    body: {
+      fontSize: fontSizes.small,
+      lineHeight: 16,
+      color: palette.foreground,
+      padding: 0,
+    },
+    notesSection: {
+      padding: spacing.m,
+      borderTopWidth: 1,
+      borderTopColor: palette.border,
+    },
+    sectionTitle: {
+      fontSize: fontSizes.large,
+      fontWeight: fontWeights.semibold,
+      color: palette.foreground,
+      marginBottom: spacing.s,
+    },
+    notesInput: {
+      fontSize: fontSizes.body,
+      color: palette.foreground,
+      backgroundColor: palette.background,
+      minHeight: 50,
+      padding: 0,
+    },
+    actionSection: {
+      padding: spacing.m,
+      gap: spacing.m,
+    },
+    saveButton: {
+      backgroundColor: "transparent",
+      paddingVertical: spacing.m,
+      paddingHorizontal: spacing.l,
+      // borderWidth: 1,
+      alignItems: "center",
+    },
+    saveButtonText: {
+      color: palette.accent,
+      fontSize: fontSizes.body,
+      fontWeight: fontWeights.semibold,
+    },
+    deleteButton: {
+      backgroundColor: "transparent",
+      paddingVertical: spacing.m,
+      paddingHorizontal: spacing.l,
+      alignItems: "center",
+      // borderWidth: 1,
+      borderColor: palette.favHeartRed,
+    },
+    deleteButtonText: {
+      color: palette.favHeartRed,
+      fontSize: fontSizes.body,
+      fontWeight: fontWeights.semibold,
+    },
+    errorText: {
+      fontSize: fontSizes.body,
+      color: palette.muted,
+      textAlign: "center",
+      marginTop: spacing.xl,
+    },
+    modalOverlay: {
+      flex: 1,
+      backgroundColor: "rgba(0,0,0,0.3)",
+      justifyContent: "center",
+      alignItems: "center",
+    },
+    modalContent: {
+      width: "80%",
+      backgroundColor: palette.background,
+      padding: spacing.m,
+      borderRadius: 8,
+      elevation: 5,
+    },
+    modalTitle: {
+      fontSize: fontSizes.large,
+      fontWeight: fontWeights.semibold,
+      marginBottom: spacing.s,
+      color: palette.foreground,
+    },
+    modalInput: {
+      borderWidth: 1,
+      borderColor: palette.border,
+      borderRadius: 6,
+      padding: spacing.s,
+      fontSize: fontSizes.body,
+      marginBottom: spacing.m,
+      color: palette.foreground,
+    },
+    modalButtons: {
+      flexDirection: "row",
+      justifyContent: "space-between",
+    },
+    modalButton: {
+      padding: spacing.s,
+    },
+    border: {
+      borderTopWidth: 1,
+      borderTopColor: palette.border,
+    },
+    archiveButton: {
+      backgroundColor: "transparent",
+      paddingVertical: spacing.m,
+      paddingHorizontal: spacing.l,
+      alignItems: "center",
+    },
+    archiveButtonText: {
+      color: palette.archiveOrange,
+      fontSize: fontSizes.body,
+      fontWeight: fontWeights.semibold,
+    },
+  });
+}

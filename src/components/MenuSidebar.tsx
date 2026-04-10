@@ -1,5 +1,5 @@
-import { OrderByOption, POST_ORDER_BY_LABELS } from "@/constants/orderBy";
-import React, { useEffect, useState } from "react";
+﻿import { OrderByOption, POST_ORDER_BY_LABELS } from "@/constants/orderBy";
+import React, { useEffect, useMemo, useState } from "react";
 import {
   Alert,
   Animated,
@@ -17,11 +17,13 @@ import {
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import Icon from "react-native-vector-icons/MaterialIcons";
 
-import { palette } from "@/constants/Colors";
 import { spacing } from "@/constants/spacing";
-import { fontSizes, fontWeights } from "@/constants/typography";
+import { fontWeights } from "@/constants/typography";
+import type { ThemeContextValue } from "@/contexts/ThemeContext";
 import { Folder } from "@/models/models";
 import { OrderByRow } from "./OrderByRow";
+import { useTheme } from "@/contexts/ThemeContext";
+import { Ionicons } from "@expo/vector-icons";
 
 // enable LayoutAnimation on Android
 if (
@@ -72,6 +74,7 @@ export const MenuSidebar: React.FC<MenuSidebarProps> = ({
   onOrderDirectionChange,
   onRandomReseed,
 }) => {
+  const { palette, fontSizes, isDarkMode, toggleDarkMode } = useTheme();
   const insets = useSafeAreaInsets();
   const screenWidth = Dimensions.get("window").width;
   const sidebarWidth = screenWidth * 0.8;
@@ -117,7 +120,6 @@ export const MenuSidebar: React.FC<MenuSidebarProps> = ({
   }, [isOpen, translateX, backdropOpacity, sidebarWidth]);
 
   const toggleFolders = () => {
-    // animate expand/collapse
     LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
     setFoldersOpen((o) => !o);
   };
@@ -144,6 +146,11 @@ export const MenuSidebar: React.FC<MenuSidebarProps> = ({
       { cancelable: true },
     );
   };
+
+  const styles = useMemo(
+    () => makeStyles(palette, fontSizes),
+    [palette, fontSizes],
+  );
 
   if (!isOpen) return null;
 
@@ -201,6 +208,7 @@ export const MenuSidebar: React.FC<MenuSidebarProps> = ({
             width: sidebarWidth,
             transform: [{ translateX }],
             paddingTop: insets.top,
+            backgroundColor: palette.background,
           },
         ]}
       >
@@ -210,234 +218,214 @@ export const MenuSidebar: React.FC<MenuSidebarProps> = ({
             contentContainerStyle={styles.scrollContent}
             showsVerticalScrollIndicator={false}
           >
-          {/* Home */}
-          <TouchableOpacity
-            style={[styles.item, { paddingTop: 20 }]}
-            onPress={() => {
-              onSelect("home");
-              onClose();
-            }}
-          >
-            <View style={styles.iconContainer}>
-              <Icon
-                name="home"
-                size={24}
-                style={styles.icon}
-                color={palette.foreground}
-              />
-            </View>
-            <Text style={[styles.label, { fontSize: fontSizes.body * 1.15 }]}>
-              Home
-            </Text>
-          </TouchableOpacity>
-
-          <TouchableOpacity
-            style={styles.item}
-            onPress={() => {
-              onSelect("semantic-search");
-              onClose();
-            }}
-          >
-            <View style={styles.iconContainer}>
-              <Icon
-                name="manage-search"
-                size={24}
-                style={styles.icon}
-                color={palette.foreground}
-              />
-            </View>
-            <Text style={styles.label}>Semantic Search</Text>
-          </TouchableOpacity>
-
-          <View style={styles.dividerContainer}>
-            <View style={styles.dividerLine} />
-          </View>
-
-          {/* Search */}
-          <TouchableOpacity
-            style={styles.item}
-            onPress={() => {
-              onSelect("search");
-              onClose();
-            }}
-          >
-            <View style={styles.iconContainer}>
-              <Icon
-                name="search"
-                size={24}
-                style={styles.icon}
-                color={palette.foreground}
-              />
-            </View>
-            <Text style={styles.label}>Search</Text>
-          </TouchableOpacity>
-
-          {/* Favorites segmented control */}
-          <View style={styles.filterRow}>
-            <View style={{ flexDirection: "row" }}>
+            {/* Home */}
+            <TouchableOpacity
+              style={[styles.item, { paddingTop: 20 }]}
+              onPress={() => {
+                onSelect("home");
+                onClose();
+              }}
+            >
               <View style={styles.iconContainer}>
                 <Icon
-                  name="favorite"
-                  size={20}
-                  color={palette.foreground}
+                  name="home"
+                  size={24}
                   style={styles.icon}
+                  color={palette.foreground}
                 />
               </View>
-              <Text style={styles.filterLabel}>Favorites:</Text>
-            </View>
-            <SegmentedControl
-              value={favouritesFilter}
-              onChange={onFavouritesFilterChange}
-            />
-          </View>
+              <Text style={[styles.label, { fontSize: fontSizes.body * 1.15 }]}>
+                Home
+              </Text>
+            </TouchableOpacity>
 
-          {/* Read segmented control */}
-          <View style={styles.filterRow}>
-            <View style={{ flexDirection: "row" }}>
+            <TouchableOpacity
+              style={styles.item}
+              onPress={() => {
+                onSelect("semantic-search");
+                onClose();
+              }}
+            >
               <View style={styles.iconContainer}>
                 <Icon
-                  name="markunread"
-                  size={20}
-                  color={palette.foreground}
+                  name="manage-search"
+                  size={24}
                   style={styles.icon}
+                  color={palette.foreground}
                 />
               </View>
-              <Text style={styles.filterLabel}>Read:</Text>
-            </View>
-            <SegmentedControl
-              value={readFilter}
-              onChange={onReadFilterChange}
-            />
-          </View>
+              <Text style={styles.label}>Semantic Search</Text>
+            </TouchableOpacity>
 
-          {/* Archived segmented control */}
-          {/* Todo: Still deciding on UI. May readd or remove later  */}
-          {/* <View style={styles.filterRow}>
-            <View style={{ flexDirection: "row" }}>
+            <View style={styles.dividerContainer}>
+              <View style={styles.dividerLine} />
+            </View>
+
+            {/* Search */}
+            <TouchableOpacity
+              style={styles.item}
+              onPress={() => {
+                onSelect("search");
+                onClose();
+              }}
+            >
+              <View style={styles.iconContainer}>
+                <Icon
+                  name="search"
+                  size={24}
+                  style={styles.icon}
+                  color={palette.foreground}
+                />
+              </View>
+              <Text style={styles.label}>Search</Text>
+            </TouchableOpacity>
+
+            {/* Favorites segmented control */}
+            <View style={styles.filterRow}>
+              <View style={{ flexDirection: "row" }}>
+                <View style={styles.iconContainer}>
+                  <Icon
+                    name="favorite"
+                    size={20}
+                    color={palette.foreground}
+                    style={styles.icon}
+                  />
+                </View>
+                <Text style={styles.filterLabel}>Favorites:</Text>
+              </View>
+              <SegmentedControl
+                value={favouritesFilter}
+                onChange={onFavouritesFilterChange}
+              />
+            </View>
+
+            {/* Read segmented control */}
+            <View style={styles.filterRow}>
+              <View style={{ flexDirection: "row" }}>
+                <View style={styles.iconContainer}>
+                  <Icon
+                    name="markunread"
+                    size={20}
+                    color={palette.foreground}
+                    style={styles.icon}
+                  />
+                </View>
+                <Text style={styles.filterLabel}>Read:</Text>
+              </View>
+              <SegmentedControl
+                value={readFilter}
+                onChange={onReadFilterChange}
+              />
+            </View>
+
+            {/* Order By row */}
+            <OrderByRow
+              orderOptions={orderOptions}
+              localOrderBy={localOrderBy}
+              localOrderDirection={localOrderDirection}
+              onOrderByChange={(val) => {
+                setLocalOrderBy(val);
+                if (onOrderByChange) onOrderByChange(val);
+              }}
+              onOrderDirectionChange={(val) => {
+                setLocalOrderDirection(val);
+                if (onOrderDirectionChange) onOrderDirectionChange(val);
+              }}
+              onRandomReseed={onRandomReseed}
+            />
+            <View style={styles.dividerContainer}>
+              <View style={styles.dividerLine} />
+            </View>
+
+            {/* Highlights */}
+            <TouchableOpacity
+              style={styles.item}
+              onPress={() => {
+                onSelect("highlights");
+                onClose();
+              }}
+            >
+              <View style={styles.iconContainer}>
+                <Icon
+                  name="highlight"
+                  size={24}
+                  style={styles.icon}
+                  color={palette.foreground}
+                />
+              </View>
+              <Text style={styles.label}>Highlights</Text>
+            </TouchableOpacity>
+
+            {/* Authors */}
+            <TouchableOpacity
+              style={styles.item}
+              onPress={() => {
+                onSelect("authors");
+                onClose();
+              }}
+            >
+              <View style={styles.iconContainer}>
+                <Icon
+                  name="people"
+                  size={24}
+                  style={styles.icon}
+                  color={palette.foreground}
+                />
+              </View>
+              <Text style={styles.label}>Authors</Text>
+            </TouchableOpacity>
+
+            {/* Archived toggle button */}
+            <TouchableOpacity
+              style={styles.item}
+              onPress={() => {
+                let next: "all" | "yes" | "no";
+                if (archivedFilter === "yes") next = "all";
+                else if (archivedFilter === "all") next = "no";
+                else next = "yes";
+                onArchivedFilterChange(next);
+                onSelect("archived");
+                onClose();
+              }}
+            >
               <View style={styles.iconContainer}>
                 <Icon
                   name="archive"
-                  size={20}
-                  color={palette.foreground}
+                  size={24}
                   style={styles.icon}
+                  color={palette.foreground}
                 />
               </View>
-              <Text style={styles.filterLabel}>Archived:</Text>
-            </View>
-            <SegmentedControl
-              value={archivedFilter}
-              onChange={onArchivedFilterChange}
-              order={["no", "yes", "all"]}
-            />
-          </View> */}
+              <Text style={styles.label}>
+                Archived{" "}
+                {archivedFilter === "yes"
+                  ? "(Yes)"
+                  : archivedFilter === "all"
+                    ? "(All)"
+                    : ""}
+              </Text>
+            </TouchableOpacity>
 
-          {/* Order By row */}
-          <OrderByRow
-            orderOptions={orderOptions}
-            localOrderBy={localOrderBy}
-            localOrderDirection={localOrderDirection}
-            onOrderByChange={(val) => {
-              setLocalOrderBy(val);
-              if (onOrderByChange) onOrderByChange(val);
-            }}
-            onOrderDirectionChange={(val) => {
-              setLocalOrderDirection(val);
-              if (onOrderDirectionChange) onOrderDirectionChange(val);
-            }}
-            onRandomReseed={onRandomReseed}
-          />
-          <View style={styles.dividerContainer}>
-            <View style={styles.dividerLine} />
-          </View>
-
-          {/* Highlights */}
-          <TouchableOpacity
-            style={styles.item}
-            onPress={() => {
-              onSelect("highlights");
-              onClose();
-            }}
-          >
-            <View style={styles.iconContainer}>
+            {/* Folders expandable */}
+            <TouchableOpacity style={styles.item} onPress={toggleFolders}>
+              <View style={styles.iconContainer}>
+                <Icon
+                  name="folder"
+                  size={24}
+                  style={styles.icon}
+                  color={palette.foreground}
+                />
+              </View>
+              <Text style={styles.label}>Folders</Text>
               <Icon
-                name="highlight"
+                name={foldersOpen ? "expand-less" : "expand-more"}
                 size={24}
-                style={styles.icon}
+                style={styles.expandIcon}
                 color={palette.foreground}
               />
-            </View>
-            <Text style={styles.label}>Highlights</Text>
-          </TouchableOpacity>
-
-          {/* Authors */}
-          <TouchableOpacity
-            style={styles.item}
-            onPress={() => {
-              onSelect("authors");
-              onClose();
-            }}
-          >
-            <View style={styles.iconContainer}>
-              <Icon
-                name="people"
-                size={24}
-                style={styles.icon}
-                color={palette.foreground}
-              />
-            </View>
-            <Text style={styles.label}>Authors</Text>
-          </TouchableOpacity>
-
-          {/* Archived toggle button */}
-          <TouchableOpacity
-            style={styles.item}
-            onPress={() => {
-              let next: "all" | "yes" | "no";
-              if (archivedFilter === "yes") next = "all";
-              else if (archivedFilter === "all") next = "no";
-              else next = "yes";
-              onArchivedFilterChange(next);
-              onSelect("archived");
-              onClose();
-            }}
-          >
-            <View style={styles.iconContainer}>
-              <Icon
-                name="archive"
-                size={24}
-                style={styles.icon}
-                color={palette.foreground}
-              />
-            </View>
-            <Text style={styles.label}>
-              Archived{" "}
-              {archivedFilter === "yes"
-                ? "(Yes)"
-                : archivedFilter === "all"
-                  ? "(All)"
-                  : ""}
-            </Text>
-          </TouchableOpacity>
-
-          {/* Folders expandable */}
-          <TouchableOpacity style={styles.item} onPress={toggleFolders}>
-            <View style={styles.iconContainer}>
-              <Icon
-                name="folder"
-                size={24}
-                style={styles.icon}
-                color={palette.foreground}
-              />
-            </View>
-            <Text style={styles.label}>Folders</Text>
-            <Icon
-              name={foldersOpen ? "expand-less" : "expand-more"}
-              size={24}
-              style={styles.expandIcon}
-              color={palette.foreground}
-            />
-          </TouchableOpacity>
-          {foldersOpen && folders.map((item) => {
+            </TouchableOpacity>
+            {foldersOpen &&
+              folders.map((item) => {
                 const isSelected = selectedFolders.includes(item.id);
                 return (
                   <TouchableOpacity
@@ -484,25 +472,44 @@ export const MenuSidebar: React.FC<MenuSidebarProps> = ({
                   </TouchableOpacity>
                 );
               })}
+            {/* Big bottom padding to give scroll breathing room */}
+            <View style={{ height: spacing.xl * 2 }} />
           </ScrollView>
-          <View style={{ paddingBottom: insets.bottom }}>
+
+          {/* Fixed bottom bar: Settings | Dark mode | Text size */}
+          <View
+            style={[
+              styles.bottomBar,
+              {
+                borderTopColor: palette.border,
+                paddingBottom: insets.bottom || spacing.s,
+              },
+            ]}
+          >
             <TouchableOpacity
-              style={[styles.item]}
+              style={styles.bottomItem}
               onPress={() => {
                 onSelect("settings");
                 onClose();
               }}
             >
-              <View style={styles.iconContainer}>
-                <Icon
-                  name="settings"
-                  size={24}
-                  style={styles.icon}
+              <Icon name="settings" size={24} color={palette.foreground} />
+              <Text style={styles.bottomLabel}>Settings</Text>
+            </TouchableOpacity>
+
+            <View style={styles.bottomRight}>
+              <TouchableOpacity
+                style={styles.bottomIconBtn}
+                onPress={toggleDarkMode}
+                accessibilityLabel="Toggle dark mode"
+              >
+                <Ionicons
+                  name={isDarkMode ? "sunny" : "moon"}
+                  size={isDarkMode ? 22 : 18}
                   color={palette.foreground}
                 />
-              </View>
-              <Text style={styles.label}>Settings</Text>
-            </TouchableOpacity>
+              </TouchableOpacity>
+            </View>
           </View>
         </View>
       </Animated.View>
@@ -510,120 +517,151 @@ export const MenuSidebar: React.FC<MenuSidebarProps> = ({
   );
 };
 
-const styles = StyleSheet.create({
-  backdrop: {
-    ...StyleSheet.absoluteFillObject,
-    backgroundColor: "#000",
-    zIndex: 100,
-  },
-  sidebar: {
-    position: "absolute",
-    left: 0,
-    top: 0,
-    bottom: 0,
-    backgroundColor: palette.background,
-    zIndex: 101,
-    shadowColor: "#000",
-    shadowOpacity: 0.3,
-    shadowOffset: { width: 3, height: 0 },
-    shadowRadius: 5,
-    elevation: 10,
-  },
-  container: {
-    flex: 1,
-    paddingHorizontal: spacing.m,
-    paddingVertical: spacing.s,
-  },
-  scrollContent: {
-    paddingBottom: spacing.m,
-  },
-  item: {
-    flexDirection: "row",
-    alignItems: "center",
-    paddingVertical: spacing.s,
-  },
-  icon: {
-    marginRight: spacing.s,
-  },
-  iconContainer: {
-    width: 36,
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  label: {
-    fontSize: fontSizes.body,
-    fontWeight: fontWeights.medium,
-    color: palette.foreground,
-  },
-  expandIcon: {
-    marginLeft: "auto",
-    opacity: 0.2,
-  },
-  folderItem: {
-    paddingVertical: spacing.s / 2,
-    paddingLeft: spacing.l,
-  },
-  folderContent: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "center",
-  },
-  folderLabel: {
-    fontSize: fontSizes.body,
-    color: palette.foreground,
-    flex: 1,
-  },
-  folderCount: {
-    width: 16,
-    fontSize: fontSizes.body,
-    color: palette.foregroundMidLight,
-    marginLeft: spacing.s,
-  },
-  filterRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    marginVertical: 4,
-    justifyContent: "space-between", // align icon+label left, segment right
-  },
-  filterLabel: {
-    fontSize: fontSizes.body,
-    color: palette.foreground,
-    marginRight: 8,
-    fontWeight: fontWeights.medium,
-  },
-  dividerContainer: {
-    marginVertical: spacing.m,
-    justifyContent: "center",
-    alignItems: "center",
-  },
-  dividerLine: {
-    height: 1,
-    width: "100%",
-    backgroundColor: palette.border,
-  },
-  segmentedContainer: {
-    flexDirection: "row",
-    backgroundColor: palette.backgroundMidLight,
-    borderRadius: 8,
-    overflow: "hidden",
-    marginLeft: 8,
-    // remove marginLeft if not needed
-  },
-  segment: {
-    paddingVertical: 3,
-    paddingHorizontal: 12,
-    backgroundColor: palette.backgroundMidLight,
-    minWidth: 48, // Ensure consistent width for each segment
-    alignItems: "center",
-  },
-  segmentActive: {
-    backgroundColor: palette.border,
-  },
-  segmentLabel: {
-    fontSize: fontSizes.body,
-    color: palette.foreground,
-  },
-  segmentLabelActive: {
-    fontWeight: fontWeights.bold,
-  },
-});
+function makeStyles(
+  palette: ThemeContextValue["palette"],
+  fontSizes: ThemeContextValue["fontSizes"],
+) {
+  return StyleSheet.create({
+    backdrop: {
+      ...StyleSheet.absoluteFillObject,
+      backgroundColor: "#000",
+      zIndex: 100,
+    },
+    sidebar: {
+      position: "absolute",
+      left: 0,
+      top: 0,
+      bottom: 0,
+      zIndex: 101,
+      shadowColor: "#000",
+      shadowOpacity: 0.3,
+      shadowOffset: { width: 3, height: 0 },
+      shadowRadius: 5,
+      elevation: 10,
+    },
+    container: {
+      flex: 1,
+      paddingHorizontal: spacing.m,
+      paddingVertical: spacing.s,
+    },
+    scrollContent: {
+      paddingBottom: spacing.m,
+    },
+    item: {
+      flexDirection: "row",
+      alignItems: "center",
+      paddingVertical: spacing.s,
+    },
+    icon: {
+      marginRight: spacing.s,
+    },
+    iconContainer: {
+      width: 36,
+      alignItems: "center",
+      justifyContent: "center",
+    },
+    label: {
+      fontSize: fontSizes.body,
+      fontWeight: fontWeights.medium,
+      color: palette.foreground,
+    },
+    expandIcon: {
+      marginLeft: "auto",
+      opacity: 0.2,
+    },
+    folderItem: {
+      paddingVertical: spacing.s / 2,
+      paddingLeft: spacing.l,
+    },
+    folderContent: {
+      flexDirection: "row",
+      justifyContent: "space-between",
+      alignItems: "center",
+    },
+    folderLabel: {
+      fontSize: fontSizes.body,
+      color: palette.foreground,
+      flex: 1,
+    },
+    folderCount: {
+      width: 16,
+      fontSize: fontSizes.body,
+      color: palette.foregroundMidLight,
+      marginLeft: spacing.s,
+    },
+    filterRow: {
+      flexDirection: "row",
+      alignItems: "center",
+      marginVertical: 4,
+      justifyContent: "space-between",
+    },
+    filterLabel: {
+      fontSize: fontSizes.body,
+      color: palette.foreground,
+      marginRight: 8,
+      fontWeight: fontWeights.medium,
+    },
+    dividerContainer: {
+      marginVertical: spacing.m,
+      justifyContent: "center",
+      alignItems: "center",
+    },
+    dividerLine: {
+      height: 1,
+      width: "100%",
+      backgroundColor: palette.border,
+    },
+    segmentedContainer: {
+      flexDirection: "row",
+      backgroundColor: palette.backgroundMidLight,
+      borderRadius: 8,
+      overflow: "hidden",
+      marginLeft: 8,
+    },
+    segment: {
+      paddingVertical: 3,
+      paddingHorizontal: 12,
+      backgroundColor: palette.backgroundMidLight,
+      minWidth: 48,
+      alignItems: "center",
+    },
+    segmentActive: {
+      backgroundColor: palette.border,
+    },
+    segmentLabel: {
+      fontSize: fontSizes.body,
+      color: palette.foreground,
+    },
+    segmentLabelActive: {
+      fontWeight: fontWeights.bold,
+    },
+    bottomBar: {
+      flexDirection: "row",
+      alignItems: "center",
+      justifyContent: "space-between",
+      borderTopWidth: 1,
+      paddingTop: spacing.s,
+      marginHorizontal: -spacing.m,
+      paddingHorizontal: spacing.m,
+    },
+    bottomItem: {
+      flexDirection: "row",
+      alignItems: "center",
+      paddingVertical: spacing.s,
+    },
+    bottomLabel: {
+      fontSize: fontSizes.body,
+      fontWeight: fontWeights.medium,
+      color: palette.foreground,
+      marginLeft: spacing.s,
+    },
+    bottomRight: {
+      flexDirection: "row",
+      alignItems: "center",
+    },
+    bottomIconBtn: {
+      padding: spacing.s,
+      marginLeft: spacing.xs,
+    },
+  });
+}

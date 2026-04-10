@@ -1,4 +1,4 @@
-import React, { useEffect, useRef, useState } from "react";
+import React, { useEffect, useRef, useState, useMemo } from "react";
 import {
   Animated,
   Dimensions,
@@ -13,9 +13,9 @@ import {
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import Icon from "react-native-vector-icons/MaterialIcons";
-import { palette } from "../constants/Colors";
 import { spacing } from "../constants/spacing";
-import { fontSizes } from "../constants/typography";
+import { useTheme } from "@/contexts/ThemeContext";
+import type { ThemeContextValue } from "@/contexts/ThemeContext";
 
 const SCALE_FACTOR = 0.8; // scale factor for the icon circle
 
@@ -34,6 +34,11 @@ export const InputBar: React.FC<InputBarProps> = ({
   onSubmit,
   placeholder = "Paste Reddit URL…",
 }) => {
+  const { palette, fontSizes } = useTheme();
+  const styles = useMemo(
+    () => makeStyles(palette, fontSizes),
+    [palette, fontSizes],
+  );
   const [url, setUrl] = useState("");
   const [keyboardHeight, setKeyboardHeight] = useState(0);
   const anim = useRef(new Animated.Value(0)).current;
@@ -58,13 +63,13 @@ export const InputBar: React.FC<InputBarProps> = ({
       {
         ios: "keyboardWillShow",
         android: "keyboardDidShow",
-      }
+      },
     ) as import("react-native").KeyboardEventName;
     const hideEvent: import("react-native").KeyboardEventName = Platform.select(
       {
         ios: "keyboardWillHide",
         android: "keyboardDidHide",
-      }
+      },
     ) as import("react-native").KeyboardEventName;
 
     const showSub = Keyboard.addListener(showEvent, (e) => {
@@ -158,48 +163,53 @@ export const InputBar: React.FC<InputBarProps> = ({
   );
 };
 
-const styles = StyleSheet.create({
-  overlay: {
-    ...StyleSheet.absoluteFillObject,
-    backgroundColor: "transparent",
-  },
-  bar: {
-    position: "absolute",
-    height: 56 * SCALE_FACTOR,
-    flexDirection: "row",
-    alignItems: "center",
-    backgroundColor: palette.background,
-    borderWidth: 1,
-    borderColor: palette.border,
-    paddingHorizontal: spacing.s,
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.95,
-    shadowRadius: 12,
-    elevation: 4,
-    zIndex: 1,
-  },
-  input: {
-    flex: 1,
-    marginRight: spacing.s,
-    fontSize: fontSizes.body,
-    color: palette.foreground,
-  },
-  iconWrapper: {
-    position: "absolute",
-    width: 56 * SCALE_FACTOR,
-    height: 56 * SCALE_FACTOR,
-    borderRadius: 90,
-    backgroundColor: palette.background,
-    borderWidth: 1,
-    borderColor: palette.border,
-    justifyContent: "center",
-    alignItems: "center",
-    shadowColor: palette.cardShadow,
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
-    elevation: 4,
-    zIndex: 2,
-  },
-});
+function makeStyles(
+  palette: ThemeContextValue["palette"],
+  fontSizes: ThemeContextValue["fontSizes"],
+) {
+  return StyleSheet.create({
+    overlay: {
+      ...StyleSheet.absoluteFillObject,
+      backgroundColor: "transparent",
+    },
+    bar: {
+      position: "absolute",
+      height: 56 * SCALE_FACTOR,
+      flexDirection: "row",
+      alignItems: "center",
+      backgroundColor: palette.background,
+      borderWidth: 1,
+      borderColor: palette.border,
+      paddingHorizontal: spacing.s,
+      shadowColor: "#000",
+      shadowOffset: { width: 0, height: 2 },
+      shadowOpacity: 0.95,
+      shadowRadius: 12,
+      elevation: 4,
+      zIndex: 1,
+    },
+    input: {
+      flex: 1,
+      marginRight: spacing.s,
+      fontSize: fontSizes.body,
+      color: palette.foreground,
+    },
+    iconWrapper: {
+      position: "absolute",
+      width: 56 * SCALE_FACTOR,
+      height: 56 * SCALE_FACTOR,
+      borderRadius: 90,
+      backgroundColor: palette.background,
+      borderWidth: 1,
+      borderColor: palette.border,
+      justifyContent: "center",
+      alignItems: "center",
+      shadowColor: palette.cardShadow,
+      shadowOffset: { width: 0, height: 1 },
+      shadowOpacity: 0.1,
+      shadowRadius: 4,
+      elevation: 4,
+      zIndex: 2,
+    },
+  });
+}

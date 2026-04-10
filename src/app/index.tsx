@@ -1,7 +1,13 @@
 import { LinearGradient } from "expo-linear-gradient";
 import * as Linking from "expo-linking";
 import { useFocusEffect, useRouter } from "expo-router";
-import React, { useCallback, useEffect, useRef, useState } from "react";
+import React, {
+  useCallback,
+  useEffect,
+  useRef,
+  useState,
+  useMemo,
+} from "react";
 import { OrderByOption } from "@/constants/orderBy";
 import {
   ActivityIndicator,
@@ -23,9 +29,10 @@ import Icon from "react-native-vector-icons/MaterialIcons";
 
 import { InputBar } from "@/components/InputBar";
 import { PostCard } from "@/components/PostCard";
-import { palette } from "@/constants/Colors";
 import { spacing } from "@/constants/spacing";
-import { fontSizes, fontWeights } from "@/constants/typography";
+import { fontWeights } from "@/constants/typography";
+import { useTheme } from "@/contexts/ThemeContext";
+import type { ThemeContextValue } from "@/contexts/ThemeContext";
 import { PostListItem } from "@/models/models";
 
 import { MenuSidebar } from "@/components/MenuSidebar";
@@ -41,6 +48,11 @@ type TripleFilter = "all" | "yes" | "no";
 const LIST_HEADER_HEIGHT = 44 + 2 * spacing.m; //
 
 export default function HomeScreen() {
+  const { palette, fontSizes, isDarkMode } = useTheme();
+  const styles = useMemo(
+    () => makeStyles(palette, fontSizes),
+    [palette, fontSizes],
+  );
   const router = useRouter();
   const { handleAddPost: addPostFromUrl } = usePosts();
   const { folders, deleteFolder, refreshFolders } = useFolders();
@@ -271,7 +283,12 @@ export default function HomeScreen() {
             </View>
             <Image
               source={require("@/assets/images/custom-splash-icon.png")}
-              style={{ width: 46, height: 46, marginLeft: 4 }}
+              style={{
+                width: 46,
+                height: 46,
+                marginLeft: 4,
+                ...(isDarkMode ? { tintColor: palette.foreground } : {}),
+              }}
               resizeMode="contain"
             />
           </View>
@@ -372,94 +389,99 @@ export default function HomeScreen() {
   );
 }
 
-const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: palette.background },
-  header: {
-    padding: spacing.m,
-    borderBottomWidth: 1.5,
-    borderColor: palette.border,
-    backgroundColor: palette.background,
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.8,
-    shadowRadius: 6,
-    elevation: 3,
-    zIndex: 20,
-  },
-  headerText: { marginLeft: spacing.s },
-  title: {
-    fontSize: fontSizes.xlarge,
-    fontWeight: fontWeights.bold,
-    color: palette.foreground,
-  },
-  subtitle: {
-    fontSize: fontSizes.body,
-    color: palette.muted,
-  },
-  list: { flex: 1 },
-  listContent: { paddingBottom: spacing.l },
-  listContentCentered: {
-    // flexGrow: 1,
-    justifyContent: "flex-start", // align top
-    paddingBottom: spacing.l,
-  },
-  emptyState: { alignItems: "center", paddingHorizontal: spacing.l },
-  emptyTitle: {
-    fontSize: fontSizes.title,
-    fontWeight: fontWeights.semibold,
-    color: palette.foreground,
-    marginBottom: spacing.s,
-  },
-  emptySubtitle: {
-    fontSize: fontSizes.body,
-    color: palette.muted,
-    textAlign: "center",
-    lineHeight: 20,
-  },
-  loadingContainer: {
-    flexDirection: "row",
-    justifyContent: "center",
-    alignItems: "center",
-    marginTop: spacing.l,
-    height: 30,
-  },
-  loadingText: {
-    fontSize: fontSizes.body,
-    color: palette.muted,
-    marginLeft: spacing.s,
-  },
-  listHeader: {
-    height: LIST_HEADER_HEIGHT,
-    padding: spacing.m,
-    backgroundColor: palette.backgroundMidLight,
-    borderBottomWidth: 1,
-    borderColor: palette.border,
-    marginBottom: spacing.m,
-    justifyContent: "center",
-    overflow: "hidden", // add this to clip the shadow
-  },
-  headerInnerShadow: {
-    position: "absolute",
-    left: 0,
-    right: 0,
-    bottom: 0,
-    height: 4, // increase for a stronger shadow
-    zIndex: 2,
-    // no border needed for inner shadow
-  },
-  headerOuterShadow: {
-    position: "absolute",
-    left: 0,
-    right: 0,
-    bottom: undefined,
-    height: 4,
-    zIndex: 50,
-  },
-  topBarMask: {
-    position: "absolute",
-    top: 0,
-    zIndex: 50,
-    backgroundColor: palette.background,
-    width: "100%",
-  },
-});
+function makeStyles(
+  palette: ThemeContextValue["palette"],
+  fontSizes: ThemeContextValue["fontSizes"],
+) {
+  return StyleSheet.create({
+    container: { flex: 1, backgroundColor: palette.background },
+    header: {
+      padding: spacing.m,
+      borderBottomWidth: 1.5,
+      borderColor: palette.border,
+      backgroundColor: palette.background,
+      shadowColor: "#000",
+      shadowOffset: { width: 0, height: 2 },
+      shadowOpacity: 0.8,
+      shadowRadius: 6,
+      elevation: 3,
+      zIndex: 20,
+    },
+    headerText: { marginLeft: spacing.s },
+    title: {
+      fontSize: fontSizes.xlarge,
+      fontWeight: fontWeights.bold,
+      color: palette.foreground,
+    },
+    subtitle: {
+      fontSize: fontSizes.body,
+      color: palette.muted,
+    },
+    list: { flex: 1 },
+    listContent: { paddingBottom: spacing.l },
+    listContentCentered: {
+      // flexGrow: 1,
+      justifyContent: "flex-start", // align top
+      paddingBottom: spacing.l,
+    },
+    emptyState: { alignItems: "center", paddingHorizontal: spacing.l },
+    emptyTitle: {
+      fontSize: fontSizes.title,
+      fontWeight: fontWeights.semibold,
+      color: palette.foreground,
+      marginBottom: spacing.s,
+    },
+    emptySubtitle: {
+      fontSize: fontSizes.body,
+      color: palette.muted,
+      textAlign: "center",
+      lineHeight: 20,
+    },
+    loadingContainer: {
+      flexDirection: "row",
+      justifyContent: "center",
+      alignItems: "center",
+      marginTop: spacing.l,
+      height: 30,
+    },
+    loadingText: {
+      fontSize: fontSizes.body,
+      color: palette.muted,
+      marginLeft: spacing.s,
+    },
+    listHeader: {
+      height: LIST_HEADER_HEIGHT,
+      padding: spacing.m,
+      backgroundColor: palette.backgroundMidLight,
+      borderBottomWidth: 1,
+      borderColor: palette.border,
+      marginBottom: spacing.m,
+      justifyContent: "center",
+      overflow: "hidden", // add this to clip the shadow
+    },
+    headerInnerShadow: {
+      position: "absolute",
+      left: 0,
+      right: 0,
+      bottom: 0,
+      height: 4, // increase for a stronger shadow
+      zIndex: 2,
+      // no border needed for inner shadow
+    },
+    headerOuterShadow: {
+      position: "absolute",
+      left: 0,
+      right: 0,
+      bottom: undefined,
+      height: 4,
+      zIndex: 50,
+    },
+    topBarMask: {
+      position: "absolute",
+      top: 0,
+      zIndex: 50,
+      backgroundColor: palette.background,
+      width: "100%",
+    },
+  });
+}

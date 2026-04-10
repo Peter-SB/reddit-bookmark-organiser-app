@@ -1,9 +1,8 @@
-import { palette } from "@/constants/Colors";
 import { spacing } from "@/constants/spacing";
-import { fontSizes, fontWeights } from "@/constants/typography";
+import { fontWeights } from "@/constants/typography";
 import { Highlight } from "@/models/models";
 import { Ionicons } from "@expo/vector-icons";
-import React, { useState } from "react";
+import React, { useMemo, useState } from "react";
 import {
   Alert,
   Modal,
@@ -15,8 +14,9 @@ import {
   View,
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
-
 import { fontOptions } from "@/constants/fontOptions";
+import { useTheme } from "@/contexts/ThemeContext";
+import type { ThemeContextValue } from "@/contexts/ThemeContext";
 
 interface HighlightActionModalProps {
   visible: boolean;
@@ -39,6 +39,11 @@ export const HighlightActionModal: React.FC<HighlightActionModalProps> = ({
   fontOptionIdx,
 }) => {
   const insets = useSafeAreaInsets();
+  const { palette, fontSizes } = useTheme();
+  const styles = useMemo(
+    () => makeStyles(palette, fontSizes),
+    [palette, fontSizes],
+  );
   const [editedText, setEditedText] = useState("");
   const [editedNote, setEditedNote] = useState("");
   const scrollViewRef = React.useRef<ScrollView>(null);
@@ -170,79 +175,84 @@ export const HighlightActionModal: React.FC<HighlightActionModalProps> = ({
   );
 };
 
-const styles = StyleSheet.create({
-  backdrop: {
-    flex: 1,
-    backgroundColor: "rgba(0, 0, 0, 0.5)",
-    justifyContent: "flex-end",
-  },
-  modalContent: {
-    backgroundColor: palette.background,
-    borderTopLeftRadius: 20,
-    borderTopRightRadius: 20,
-    padding: spacing.m,
-    maxHeight: "90%",
-  },
-  modalHeader: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "center",
-    marginBottom: spacing.m,
-  },
-  modalTitle: {
-    fontSize: fontSizes.title,
-    fontWeight: fontWeights.bold,
-    color: palette.foreground,
-  },
-  editContainer: {
-    gap: spacing.m,
-  },
-  label: {
-    fontSize: fontSizes.body,
-    fontWeight: fontWeights.semibold,
-    color: palette.foreground,
-    marginBottom: spacing.xs,
-  },
-  textInput: {
-    backgroundColor: palette.backgroundDarker,
-    borderRadius: 12,
-    padding: spacing.m,
-    fontSize: fontSizes.body,
-    color: palette.foreground,
-    minHeight: 80,
-    borderWidth: 1,
-    borderColor: palette.border,
-  },
-  buttonRow: {
-    flexDirection: "row",
-    gap: spacing.m,
-    marginTop: spacing.m,
-  },
-  button: {
-    flex: 1,
-    flexDirection: "row",
-    padding: spacing.m,
-    borderRadius: 12,
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  deleteButton: {
-    backgroundColor: palette.backgroundDarker,
-    borderWidth: 1,
-    borderColor: palette.border,
-  },
-  saveButton: {
-    backgroundColor: palette.accent,
-  },
-  buttonText: {
-    fontSize: fontSizes.body,
-    fontWeight: fontWeights.semibold,
-    color: palette.foreground,
-  },
-  deleteText: {
-    color: palette.favHeartRed,
-  },
-  saveButtonText: {
-    color: "#fff",
-  },
-});
+function makeStyles(
+  palette: ThemeContextValue["palette"],
+  fontSizes: ThemeContextValue["fontSizes"],
+) {
+  return StyleSheet.create({
+    backdrop: {
+      flex: 1,
+      backgroundColor: "rgba(0, 0, 0, 0.5)",
+      justifyContent: "flex-end",
+    },
+    modalContent: {
+      backgroundColor: palette.background,
+      borderTopLeftRadius: 20,
+      borderTopRightRadius: 20,
+      padding: spacing.m,
+      maxHeight: "90%",
+    },
+    modalHeader: {
+      flexDirection: "row",
+      justifyContent: "space-between",
+      alignItems: "center",
+      marginBottom: spacing.m,
+    },
+    modalTitle: {
+      fontSize: fontSizes.title,
+      fontWeight: fontWeights.bold,
+      color: palette.foreground,
+    },
+    editContainer: {
+      gap: spacing.m,
+    },
+    label: {
+      fontSize: fontSizes.body,
+      fontWeight: fontWeights.semibold,
+      color: palette.foreground,
+      marginBottom: spacing.xs,
+    },
+    textInput: {
+      backgroundColor: palette.backgroundDarker,
+      borderRadius: 12,
+      padding: spacing.m,
+      fontSize: fontSizes.body,
+      color: palette.foreground,
+      minHeight: 80,
+      borderWidth: 1,
+      borderColor: palette.border,
+    },
+    buttonRow: {
+      flexDirection: "row",
+      gap: spacing.m,
+      marginTop: spacing.m,
+    },
+    button: {
+      flex: 1,
+      flexDirection: "row",
+      padding: spacing.m,
+      borderRadius: 12,
+      alignItems: "center",
+      justifyContent: "center",
+    },
+    deleteButton: {
+      backgroundColor: palette.backgroundDarker,
+      borderWidth: 1,
+      borderColor: palette.border,
+    },
+    saveButton: {
+      backgroundColor: palette.accent,
+    },
+    buttonText: {
+      fontSize: fontSizes.body,
+      fontWeight: fontWeights.semibold,
+      color: palette.foreground,
+    },
+    deleteText: {
+      color: palette.favHeartRed,
+    },
+    saveButtonText: {
+      color: "#fff",
+    },
+  });
+}

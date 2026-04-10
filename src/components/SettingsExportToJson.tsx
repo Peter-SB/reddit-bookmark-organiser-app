@@ -1,12 +1,11 @@
-import { palette } from "@/constants/Colors";
 import { spacing } from "@/constants/spacing";
-import { fontSizes, fontWeights } from "@/constants/typography";
+import { fontWeights } from "@/constants/typography";
 import { FolderRepository } from "@/repository/FolderRepository";
 import { PostRepository } from "@/repository/PostRepository";
 import * as DocumentPicker from "expo-document-picker";
 import * as FileSystem from "expo-file-system";
 import * as Sharing from "expo-sharing";
-import React, { useState } from "react";
+import React, { useMemo, useState } from "react";
 import {
   ActivityIndicator,
   Alert,
@@ -16,8 +15,15 @@ import {
   TouchableOpacity,
   View,
 } from "react-native";
+import { useTheme } from "@/contexts/ThemeContext";
+import type { ThemeContextValue } from "@/contexts/ThemeContext";
 
 export default function SettingsExportToJson() {
+  const { palette, fontSizes } = useTheme();
+  const styles = useMemo(
+    () => makeStyles(palette, fontSizes),
+    [palette, fontSizes],
+  );
   const [loading, setLoading] = useState(false);
 
   const getExportData = async () => {
@@ -76,12 +82,12 @@ export default function SettingsExportToJson() {
         const fileUri = await FileSystem.StorageAccessFramework.createFileAsync(
           perm.directoryUri,
           filename,
-          "application/json"
+          "application/json",
         );
         await FileSystem.StorageAccessFramework.writeAsStringAsync(
           fileUri,
           json,
-          { encoding: FileSystem.EncodingType.UTF8 }
+          { encoding: FileSystem.EncodingType.UTF8 },
         );
         Alert.alert("Success", `Saved to ${fileUri}`);
       } else {
@@ -118,7 +124,7 @@ export default function SettingsExportToJson() {
       // TODO: handle importing data
       Alert.alert(
         "To do - Import Success",
-        "Data imported successfully!\n" + JSON.stringify(Object.keys(data))
+        "Data imported successfully!\n" + JSON.stringify(Object.keys(data)),
       );
     } catch (err) {
       console.error("Import failed:", err);
@@ -161,34 +167,39 @@ export default function SettingsExportToJson() {
   );
 }
 
-const styles = StyleSheet.create({
-  container: {
-    padding: spacing.m,
-    backgroundColor: palette.background,
-  },
-  description: {
-    fontSize: fontSizes.body,
-    color: palette.foregroundMidLight,
-    marginBottom: spacing.m,
-  },
-  button: {
-    marginTop: spacing.m,
-    padding: spacing.s,
-    backgroundColor: palette.background,
-    borderRadius: 6,
-    borderColor: palette.border,
-    borderWidth: 1,
-    alignItems: "center",
-    flex: 1,
-  },
-  buttonText: {
-    color: palette.foreground,
-    fontSize: fontSizes.body,
-    fontWeight: fontWeights.medium,
-  },
-  buttonRow: {
-    flexDirection: "row",
-    gap: spacing.s,
-    marginBottom: spacing.m,
-  },
-});
+function makeStyles(
+  palette: ThemeContextValue["palette"],
+  fontSizes: ThemeContextValue["fontSizes"],
+) {
+  return StyleSheet.create({
+    container: {
+      padding: spacing.m,
+      backgroundColor: palette.background,
+    },
+    description: {
+      fontSize: fontSizes.body,
+      color: palette.foregroundMidLight,
+      marginBottom: spacing.m,
+    },
+    button: {
+      marginTop: spacing.m,
+      padding: spacing.s,
+      backgroundColor: palette.background,
+      borderRadius: 6,
+      borderColor: palette.border,
+      borderWidth: 1,
+      alignItems: "center",
+      flex: 1,
+    },
+    buttonText: {
+      color: palette.foreground,
+      fontSize: fontSizes.body,
+      fontWeight: fontWeights.medium,
+    },
+    buttonRow: {
+      flexDirection: "row",
+      gap: spacing.s,
+      marginBottom: spacing.m,
+    },
+  });
+}

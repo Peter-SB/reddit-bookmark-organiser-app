@@ -7,6 +7,7 @@ import { useFonts } from "expo-font";
 import * as Linking from "expo-linking";
 import { Stack, useRouter } from "expo-router";
 import { StatusBar } from "expo-status-bar";
+import * as SystemUI from "expo-system-ui";
 import { useEffect } from "react";
 import "react-native-reanimated";
 
@@ -14,14 +15,21 @@ import { useColorScheme } from "@/hooks/useColorScheme";
 import { usePostSync } from "@/hooks/usePostSync";
 import { DatabaseService } from "../services/DatabaseService";
 import { AppState } from "react-native";
+import {
+  ThemeProvider as AppThemeProvider,
+  useTheme,
+} from "@/contexts/ThemeContext";
 
-export default function RootLayout() {
+function AppContent() {
   const colorScheme = useColorScheme();
-  const [loaded] = useFonts({
-    SpaceMono: require("../assets/fonts/SpaceMono-Regular.ttf"),
-  });
+  const { isDarkMode, palette } = useTheme();
   const router = useRouter();
   usePostSync(); // start periodic syncing of posts when started
+
+  // Keep system nav bar and background colour in sync with theme
+  useEffect(() => {
+    SystemUI.setBackgroundColorAsync(palette.background);
+  }, [palette.background]);
 
   useEffect(() => {
     DatabaseService.getInstance().catch((err) => {
@@ -62,13 +70,26 @@ export default function RootLayout() {
     return () => sub.remove();
   }, [router]);
 
-  if (!loaded) {
-    // Async font loading only occurs in development.
-    return null;
-  }
+  const navTheme = isDarkMode
+    ? {
+        ...DarkTheme,
+        colors: {
+          ...DarkTheme.colors,
+          background: palette.background,
+          card: palette.background,
+        },
+      }
+    : {
+        ...DefaultTheme,
+        colors: {
+          ...DefaultTheme.colors,
+          background: palette.background,
+          card: palette.background,
+        },
+      };
 
   return (
-    <ThemeProvider value={colorScheme === "dark" ? DarkTheme : DefaultTheme}>
+    <ThemeProvider value={navTheme}>
       <Stack>
         <Stack.Screen name="index" options={{ headerShown: false }} />
         <Stack.Screen name="post/[id]" options={{ headerShown: false }} />
@@ -81,7 +102,24 @@ export default function RootLayout() {
         <Stack.Screen name="author/authors" options={{ headerShown: false }} />
         <Stack.Screen name="+not-found" />
       </Stack>
-      <StatusBar style="auto" />
+      <StatusBar style={isDarkMode ? "light" : "dark"} />
     </ThemeProvider>
+  );
+}
+
+export default function RootLayout() {
+  const [loaded] = useFonts({
+    SpaceMono: require("../assets/fonts/SpaceMono-Regular.ttf"),
+  });
+
+  if (!loaded) {
+    // Async font loading only occurs in development.
+    return null;
+  }
+
+  return (
+    <AppThemeProvider>
+      <AppContent />
+    </AppThemeProvider>
   );
 }

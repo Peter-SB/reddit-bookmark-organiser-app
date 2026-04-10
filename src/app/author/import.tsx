@@ -1,7 +1,8 @@
 import { SearchBar } from "@/components/SearchBar";
-import { palette } from "@/constants/Colors";
 import { spacing } from "@/constants/spacing";
-import { fontSizes, fontWeights } from "@/constants/typography";
+import { fontWeights } from "@/constants/typography";
+import { useTheme } from "@/contexts/ThemeContext";
+import type { ThemeContextValue } from "@/contexts/ThemeContext";
 import { useAuthorImport, RedditPostPreview } from "@/hooks/useAuthorImport";
 import { usePosts } from "@/hooks/usePosts";
 import { usePostSync } from "@/hooks/usePostSync";
@@ -25,6 +26,11 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import Icon from "react-native-vector-icons/MaterialIcons";
 
 export default function AuthorImportScreen() {
+  const { palette, fontSizes } = useTheme();
+  const styles = useMemo(
+    () => makeStyles(palette, fontSizes),
+    [palette, fontSizes],
+  );
   const router = useRouter();
   const { author } = useLocalSearchParams<{ author?: string | string[] }>();
   const authorParam = useMemo(() => {
@@ -253,6 +259,8 @@ export default function AuthorImportScreen() {
       savedTitlesForAuthor,
       router,
       handleAddPost,
+      styles,
+      palette,
     ],
   );
 
@@ -279,7 +287,7 @@ export default function AuthorImportScreen() {
         )}
       </View>
     );
-  }, [loading, hasMore]);
+  }, [loading, hasMore, styles, palette]);
 
   const renderEmpty = useCallback(() => {
     if (loading) {
@@ -308,7 +316,7 @@ export default function AuthorImportScreen() {
         </View>
       </View>
     );
-  }, [authorName, error, hasMore, loading]);
+  }, [authorName, error, hasMore, loading, styles, palette]);
 
   return (
     <SafeAreaView style={styles.container}>
@@ -380,163 +388,168 @@ export default function AuthorImportScreen() {
   );
 }
 
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: palette.background,
-  },
-  header: {
-    flexDirection: "row",
-    alignItems: "center",
-    paddingHorizontal: spacing.m,
-    paddingVertical: spacing.s,
-    borderBottomWidth: 1,
-    borderBottomColor: palette.border,
-    backgroundColor: palette.background,
-  },
-  headerTitle: {
-    fontSize: fontSizes.large,
-    fontWeight: fontWeights.semibold,
-    color: palette.foreground,
-    flex: 1,
-    marginHorizontal: spacing.m,
-  },
-  headerLink: {
-    // textDecorationLine: "underline",
-  },
-  errorContainer: {
-    backgroundColor: palette.favHeartRed,
-    padding: spacing.m,
-    borderBottomWidth: 1,
-    borderBottomColor: palette.border,
-  },
-  errorText: {
-    color: palette.background,
-    fontSize: fontSizes.body,
-  },
-  postItem: {
-    backgroundColor: palette.background,
-    borderRadius: 0,
-    padding: spacing.m,
-    marginHorizontal: 0,
-    marginVertical: 0,
-    shadowColor: palette.cardShadow,
-    shadowOffset: {
-      width: 0,
-      height: 2,
+function makeStyles(
+  palette: ThemeContextValue["palette"],
+  fontSizes: ThemeContextValue["fontSizes"],
+) {
+  return StyleSheet.create({
+    container: {
+      flex: 1,
+      backgroundColor: palette.background,
     },
-    borderWidth: 0,
-    borderBottomWidth: 1,
-    borderColor: palette.border,
-  },
-  postTitle: {
-    fontSize: fontSizes.title * 0.9,
-    fontWeight: fontWeights.semibold,
-    color: palette.foreground,
-    marginBottom: spacing.xs,
-    lineHeight: 24 * 0.9,
-  },
-  mutedTitle: {
-    color: palette.muted,
-  },
-  rowMetaActions: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "center",
-    marginTop: spacing.s,
-  },
-  leftMeta: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "flex-start",
-  },
-  metadataText: {
-    fontSize: fontSizes.small * 0.8,
-    color: palette.muted,
-  },
-  separator: {
-    fontSize: fontSizes.body,
-    color: palette.muted,
-    marginHorizontal: spacing.xs,
-  },
-  postAction: {
-    width: 24,
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  addButton: {
-    padding: spacing.xs / 2,
-  },
-  footer: {
-    flexDirection: "row",
-    justifyContent: "center",
-    alignItems: "center",
-    padding: spacing.m,
-  },
-  footerContainer: {
-    paddingBottom: spacing.l,
-  },
-  footerText: {
-    fontSize: fontSizes.body,
-    color: palette.muted,
-    marginLeft: spacing.s,
-  },
-  footerHint: {
-    fontSize: fontSizes.small,
-    color: palette.muted,
-  },
-  emptyFooter: {
-    marginTop: spacing.l,
-  },
-  emptyListContainer: {
-    flexGrow: 1,
-  },
-  emptyState: {
-    flex: 1,
-    alignItems: "center",
-    justifyContent: "center",
-    paddingHorizontal: spacing.l,
-    paddingVertical: spacing.xl,
-  },
-  emptyTitle: {
-    fontSize: fontSizes.title,
-    fontWeight: fontWeights.semibold,
-    color: palette.foreground,
-    marginBottom: spacing.s,
-  },
-  emptySubtitle: {
-    fontSize: fontSizes.body,
-    color: palette.muted,
-    textAlign: "center",
-    lineHeight: 20,
-  },
-  loadingText: {
-    fontSize: fontSizes.body,
-    color: palette.muted,
-    marginTop: spacing.m,
-  },
-  searchContainer: {
-    paddingHorizontal: spacing.m,
-    paddingTop: spacing.s,
-    paddingBottom: spacing.xs,
-    borderBottomWidth: 0,
-    borderBottomColor: palette.border,
-  },
-  listHeader: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-between",
-    gap: spacing.s,
-    paddingHorizontal: spacing.m,
-    paddingTop: 0,
-    paddingBottom: spacing.xs,
-    backgroundColor: palette.background,
-    borderBottomWidth: 1,
-    borderBottomColor: palette.border,
-  },
-  listHeaderText: {
-    fontSize: fontSizes.small,
-    color: palette.muted,
-    paddingLeft: 4,
-  },
-});
+    header: {
+      flexDirection: "row",
+      alignItems: "center",
+      paddingHorizontal: spacing.m,
+      paddingVertical: spacing.s,
+      borderBottomWidth: 1,
+      borderBottomColor: palette.border,
+      backgroundColor: palette.background,
+    },
+    headerTitle: {
+      fontSize: fontSizes.large,
+      fontWeight: fontWeights.semibold,
+      color: palette.foreground,
+      flex: 1,
+      marginHorizontal: spacing.m,
+    },
+    headerLink: {
+      // textDecorationLine: "underline",
+    },
+    errorContainer: {
+      backgroundColor: palette.favHeartRed,
+      padding: spacing.m,
+      borderBottomWidth: 1,
+      borderBottomColor: palette.border,
+    },
+    errorText: {
+      color: palette.background,
+      fontSize: fontSizes.body,
+    },
+    postItem: {
+      backgroundColor: palette.background,
+      borderRadius: 0,
+      padding: spacing.m,
+      marginHorizontal: 0,
+      marginVertical: 0,
+      shadowColor: palette.cardShadow,
+      shadowOffset: {
+        width: 0,
+        height: 2,
+      },
+      borderWidth: 0,
+      borderBottomWidth: 1,
+      borderColor: palette.border,
+    },
+    postTitle: {
+      fontSize: fontSizes.title * 0.9,
+      fontWeight: fontWeights.semibold,
+      color: palette.foreground,
+      marginBottom: spacing.xs,
+      lineHeight: 24 * 0.9,
+    },
+    mutedTitle: {
+      color: palette.muted,
+    },
+    rowMetaActions: {
+      flexDirection: "row",
+      justifyContent: "space-between",
+      alignItems: "center",
+      marginTop: spacing.s,
+    },
+    leftMeta: {
+      flexDirection: "row",
+      alignItems: "center",
+      justifyContent: "flex-start",
+    },
+    metadataText: {
+      fontSize: fontSizes.small * 0.8,
+      color: palette.muted,
+    },
+    separator: {
+      fontSize: fontSizes.body,
+      color: palette.muted,
+      marginHorizontal: spacing.xs,
+    },
+    postAction: {
+      width: 24,
+      alignItems: "center",
+      justifyContent: "center",
+    },
+    addButton: {
+      padding: spacing.xs / 2,
+    },
+    footer: {
+      flexDirection: "row",
+      justifyContent: "center",
+      alignItems: "center",
+      padding: spacing.m,
+    },
+    footerContainer: {
+      paddingBottom: spacing.l,
+    },
+    footerText: {
+      fontSize: fontSizes.body,
+      color: palette.muted,
+      marginLeft: spacing.s,
+    },
+    footerHint: {
+      fontSize: fontSizes.small,
+      color: palette.muted,
+    },
+    emptyFooter: {
+      marginTop: spacing.l,
+    },
+    emptyListContainer: {
+      flexGrow: 1,
+    },
+    emptyState: {
+      flex: 1,
+      alignItems: "center",
+      justifyContent: "center",
+      paddingHorizontal: spacing.l,
+      paddingVertical: spacing.xl,
+    },
+    emptyTitle: {
+      fontSize: fontSizes.title,
+      fontWeight: fontWeights.semibold,
+      color: palette.foreground,
+      marginBottom: spacing.s,
+    },
+    emptySubtitle: {
+      fontSize: fontSizes.body,
+      color: palette.muted,
+      textAlign: "center",
+      lineHeight: 20,
+    },
+    loadingText: {
+      fontSize: fontSizes.body,
+      color: palette.muted,
+      marginTop: spacing.m,
+    },
+    searchContainer: {
+      paddingHorizontal: spacing.m,
+      paddingTop: spacing.s,
+      paddingBottom: spacing.xs,
+      borderBottomWidth: 0,
+      borderBottomColor: palette.border,
+    },
+    listHeader: {
+      flexDirection: "row",
+      alignItems: "center",
+      justifyContent: "space-between",
+      gap: spacing.s,
+      paddingHorizontal: spacing.m,
+      paddingTop: 0,
+      paddingBottom: spacing.xs,
+      backgroundColor: palette.background,
+      borderBottomWidth: 1,
+      borderBottomColor: palette.border,
+    },
+    listHeaderText: {
+      fontSize: fontSizes.small,
+      color: palette.muted,
+      paddingLeft: 4,
+    },
+  });
+}

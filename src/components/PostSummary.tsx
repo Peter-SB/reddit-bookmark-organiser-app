@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useMemo } from "react";
 import {
   View,
   Text,
@@ -8,14 +8,14 @@ import {
   StyleSheet,
 } from "react-native";
 import type { Post } from "@/models/models";
-import { fontSizes } from "@/constants/typography";
-import { palette } from "@/constants/Colors";
 import { SettingsRepository } from "@/repository/SettingsRepository";
 import { Ionicons } from "@expo/vector-icons";
 import Entypo from "@expo/vector-icons/Entypo";
 import EventSource from "react-native-sse";
 import { startSSEChat } from "@/services/SSEChatService";
 import { spacing } from "@/constants/spacing";
+import { useTheme } from "@/contexts/ThemeContext";
+import type { ThemeContextValue } from "@/contexts/ThemeContext";
 
 // This is a post summary section. This goes just below the title section and above the main text in the post #[id].tsx.
 
@@ -49,6 +49,11 @@ export default function PostSummary({
   editedSummary,
   setEditedSummary,
 }: PostSummaryProps) {
+  const { palette, fontSizes } = useTheme();
+  const styles = useMemo(
+    () => makeStyles(palette, fontSizes),
+    [palette, fontSizes],
+  );
   const originalSummaryWasNull = React.useRef(!post.summary);
   const [status, setStatus] = useState(post.summary ? "success" : "idle");
   const [summary, setSummary] = useState(post.summary || "");
@@ -311,92 +316,97 @@ export default function PostSummary({
   );
 }
 
-const styles = StyleSheet.create({
-  container: {},
-  centered: {
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  infoText: {
-    fontSize: 16,
-    // marginBottom: 8,
-    color: "#555",
-  },
-  errorText: {
-    color: palette.favHeartRed,
-    flexShrink: 1,
-    marginRight: 8,
-  },
-  label: {
-    fontWeight: "bold",
-    marginBottom: 4,
-    fontSize: 16,
-    marginRight: 8,
-  },
-  input: {
-    borderWidth: 1,
-    borderColor: "#ccc",
-    borderRadius: 6,
-    padding: 8,
-    minHeight: 60,
-    backgroundColor: "#fff",
-    marginBottom: 8,
-  },
-  row: {
-    flexDirection: "row",
-    justifyContent: "flex-end",
-  },
-  button: {
-    backgroundColor: "#007AFF",
-    paddingVertical: 8,
-    paddingHorizontal: 16,
-    borderRadius: 6,
-    marginLeft: 8,
-  },
-  buttonDisabled: {
-    opacity: 0.5,
-  },
-  buttonText: {
-    color: "#fff",
-    fontWeight: "bold",
-  },
-  body: {
-    fontSize: fontSizes.small,
-    lineHeight: 16,
-    color: palette.foreground,
-    padding: spacing.xs,
-  },
-  idleRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "center",
-    maxWidth: "100%",
-    width: "100%",
-  },
-  summariseButton: {
-    paddingVertical: 4,
-    paddingHorizontal: 0,
-    marginLeft: 12,
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  summaryRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-between",
-    paddingHorizontal: 8,
-    width: "100%",
-  },
-  stopButton: {
-    flexDirection: "row",
-    alignItems: "center",
-    paddingTop: 1,
-  },
-  stopButtonText: {
-    color: "#fff",
-    fontWeight: "bold",
-  },
-  stopButtonIcon: {
-    marginLeft: 6,
-  },
-});
+function makeStyles(
+  palette: ThemeContextValue["palette"],
+  fontSizes: ThemeContextValue["fontSizes"],
+) {
+  return StyleSheet.create({
+    container: {},
+    centered: {
+      alignItems: "center",
+      justifyContent: "center",
+    },
+    infoText: {
+      fontSize: 16,
+      // marginBottom: 8,
+      color: "#555",
+    },
+    errorText: {
+      color: palette.favHeartRed,
+      flexShrink: 1,
+      marginRight: 8,
+    },
+    label: {
+      fontWeight: "bold",
+      marginBottom: 4,
+      fontSize: 16,
+      marginRight: 8,
+    },
+    input: {
+      borderWidth: 1,
+      borderColor: "#ccc",
+      borderRadius: 6,
+      padding: 8,
+      minHeight: 60,
+      backgroundColor: "#fff",
+      marginBottom: 8,
+    },
+    row: {
+      flexDirection: "row",
+      justifyContent: "flex-end",
+    },
+    button: {
+      backgroundColor: "#007AFF",
+      paddingVertical: 8,
+      paddingHorizontal: 16,
+      borderRadius: 6,
+      marginLeft: 8,
+    },
+    buttonDisabled: {
+      opacity: 0.5,
+    },
+    buttonText: {
+      color: "#fff",
+      fontWeight: "bold",
+    },
+    body: {
+      fontSize: fontSizes.small,
+      lineHeight: 16,
+      color: palette.foreground,
+      padding: spacing.xs,
+    },
+    idleRow: {
+      flexDirection: "row",
+      alignItems: "center",
+      justifyContent: "center",
+      maxWidth: "100%",
+      width: "100%",
+    },
+    summariseButton: {
+      paddingVertical: 4,
+      paddingHorizontal: 0,
+      marginLeft: 12,
+      alignItems: "center",
+      justifyContent: "center",
+    },
+    summaryRow: {
+      flexDirection: "row",
+      alignItems: "center",
+      justifyContent: "space-between",
+      paddingHorizontal: 8,
+      width: "100%",
+    },
+    stopButton: {
+      flexDirection: "row",
+      alignItems: "center",
+      paddingTop: 1,
+    },
+    stopButtonText: {
+      color: "#fff",
+      fontWeight: "bold",
+    },
+    stopButtonIcon: {
+      marginLeft: 6,
+    },
+  });
+}

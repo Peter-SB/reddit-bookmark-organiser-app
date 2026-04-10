@@ -1,10 +1,9 @@
-import { palette } from "@/constants/Colors";
 import { spacing } from "@/constants/spacing";
-import { fontSizes, fontWeights } from "@/constants/typography";
+import { fontWeights } from "@/constants/typography";
 import { Ionicons } from "@expo/vector-icons";
 import * as FileSystem from "expo-file-system";
 import * as Sharing from "expo-sharing";
-import React, { useState } from "react";
+import React, { useMemo, useState } from "react";
 import {
   ActivityIndicator,
   Alert,
@@ -14,6 +13,8 @@ import {
   TouchableOpacity,
   View,
 } from "react-native";
+import { useTheme } from "@/contexts/ThemeContext";
+import type { ThemeContextValue } from "@/contexts/ThemeContext";
 
 type ShareBookmarkButtonProps = {
   title: string;
@@ -34,6 +35,11 @@ export const ShareBookmarkButton: React.FC<ShareBookmarkButtonProps> = ({
   title,
   body,
 }) => {
+  const { palette, fontSizes } = useTheme();
+  const styles = useMemo(
+    () => makeStyles(palette, fontSizes),
+    [palette, fontSizes],
+  );
   const [loading, setLoading] = useState(false);
 
   const handleExport = async () => {
@@ -52,12 +58,12 @@ export const ShareBookmarkButton: React.FC<ShareBookmarkButtonProps> = ({
         const fileUri = await FileSystem.StorageAccessFramework.createFileAsync(
           permission.directoryUri,
           filename,
-          "text/plain"
+          "text/plain",
         );
         await FileSystem.StorageAccessFramework.writeAsStringAsync(
           fileUri,
           content,
-          { encoding: FileSystem.EncodingType.UTF8 }
+          { encoding: FileSystem.EncodingType.UTF8 },
         );
         Alert.alert("Success", `Saved to ${fileUri}`);
       } else {
@@ -103,22 +109,27 @@ export const ShareBookmarkButton: React.FC<ShareBookmarkButtonProps> = ({
   );
 };
 
-const styles = StyleSheet.create({
-  button: {
-    backgroundColor: "transparent",
-    paddingVertical: spacing.m,
-    paddingHorizontal: spacing.l,
-    alignItems: "center",
-    flex: 1,
-  },
-  buttonContent: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  buttonText: {
-    color: palette.accent,
-    fontSize: fontSizes.body,
-    fontWeight: fontWeights.semibold,
-  },
-});
+function makeStyles(
+  palette: ThemeContextValue["palette"],
+  fontSizes: ThemeContextValue["fontSizes"],
+) {
+  return StyleSheet.create({
+    button: {
+      backgroundColor: "transparent",
+      paddingVertical: spacing.m,
+      paddingHorizontal: spacing.l,
+      alignItems: "center",
+      flex: 1,
+    },
+    buttonContent: {
+      flexDirection: "row",
+      alignItems: "center",
+      justifyContent: "center",
+    },
+    buttonText: {
+      color: palette.accent,
+      fontSize: fontSizes.body,
+      fontWeight: fontWeights.semibold,
+    },
+  });
+}

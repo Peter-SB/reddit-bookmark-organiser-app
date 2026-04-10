@@ -1,6 +1,5 @@
-import { palette } from "@/constants/Colors";
 import { spacing } from "@/constants/spacing";
-import { fontSizes, fontWeights } from "@/constants/typography";
+import { fontWeights } from "@/constants/typography";
 import { Post, Highlight } from "@/models/models";
 import {
   openRedditPost,
@@ -8,8 +7,8 @@ import {
   openRedditUser,
 } from "@/utils/redditLinks";
 import { useRouter } from "expo-router";
-import { Ionicons } from "@expo/vector-icons";
-import React, { useEffect, useState } from "react";
+import { Ionicons, MaterialCommunityIcons } from "@expo/vector-icons";
+import React, { useEffect, useMemo, useState } from "react";
 import {
   Animated,
   ScrollView,
@@ -20,6 +19,9 @@ import {
   View,
 } from "react-native";
 import { FolderSelector } from "./FolderSelector";
+import { useTheme } from "@/contexts/ThemeContext";
+import type { ThemeContextValue } from "@/contexts/ThemeContext";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 interface SidebarProps {
   sidebarAnim: Animated.Value;
@@ -36,6 +38,7 @@ interface SidebarProps {
   setFolders: (postId: number, folderIds: number[]) => Promise<void>;
   highlights?: Highlight[];
   onHighlightPress?: (highlight: Highlight) => void;
+  toggleFontOption?: () => void;
 }
 
 export const PostSidebar: React.FC<SidebarProps> = ({
@@ -53,8 +56,15 @@ export const PostSidebar: React.FC<SidebarProps> = ({
   setFolders,
   highlights = [],
   onHighlightPress,
+  toggleFontOption,
 }) => {
   const router = useRouter();
+  const safeInsets = useSafeAreaInsets();
+  const { palette, fontSizes, isDarkMode, toggleDarkMode } = useTheme();
+  const styles = useMemo(
+    () => makeStyles(palette, fontSizes),
+    [palette, fontSizes],
+  );
   const [postFolderIds, setPostFolderIds] = useState<number[]>([]);
 
   const handleFolderChange = async (folderIds: number[]) => {
@@ -114,9 +124,43 @@ export const PostSidebar: React.FC<SidebarProps> = ({
       >
         <View style={styles.sidebarHeaderNoBorder}>
           <Text style={styles.sidebarTitle}>Details</Text>
-          <TouchableOpacity onPress={toggleSidebar}>
-            <Ionicons name="close" size={24} color={palette.foreground} />
-          </TouchableOpacity>
+
+          <View
+            style={{
+              flexDirection: "row",
+              alignItems: "center",
+            }}
+          >
+            <TouchableOpacity
+              style={styles.bottomIconBtn}
+              onPress={toggleDarkMode}
+              accessibilityLabel="Toggle dark mode"
+            >
+              <Ionicons
+                name={isDarkMode ? "sunny" : "moon"}
+                size={isDarkMode ? 22 : 18}
+                color={palette.foreground}
+              />
+            </TouchableOpacity>
+            <TouchableOpacity
+              onPress={toggleFontOption}
+              style={{
+                padding: spacing.xs,
+                paddingRight: spacing.m,
+              }}
+              hitSlop={1}
+            >
+              <MaterialCommunityIcons
+                name="format-size"
+                size={22}
+                color={palette.foreground}
+              />
+            </TouchableOpacity>
+
+            <TouchableOpacity onPress={toggleSidebar}>
+              <Ionicons name="close" size={24} color={palette.foreground} />
+            </TouchableOpacity>
+          </View>
         </View>
         <ScrollView style={styles.sidebarContent}>
           {/* Notes */}
@@ -128,6 +172,7 @@ export const PostSidebar: React.FC<SidebarProps> = ({
               onChangeText={setEditedNotes}
               multiline
               placeholder="Add your notes..."
+              placeholderTextColor={palette.muted}
               textAlignVertical="top"
             />
           </View>
@@ -277,109 +322,130 @@ export const PostSidebar: React.FC<SidebarProps> = ({
               ))
             )}
           </View>
-          <View style={{ height: 200 }} />
+          <View style={{ height: 300 }} />
         </ScrollView>
       </Animated.View>
     </>
   );
 };
 
-const styles = StyleSheet.create({
-  sidebar: {
-    position: "absolute",
-    top: 0,
-    right: 0,
-    bottom: 0,
-    backgroundColor: palette.background,
-    borderLeftWidth: 1,
-    borderLeftColor: palette.border,
-    zIndex: 2,
-  },
-  overlay: {
-    position: "absolute",
-    top: 0,
-    left: 0,
-    bottom: 0,
-    width: "100%",
-    backgroundColor: "rgba(0,0,0,0.2)",
-    zIndex: 1,
-  },
-  sidebarHeaderNoBorder: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "center",
-    padding: spacing.m,
-  },
-  sidebarTitle: {
-    fontSize: fontSizes.title,
-    fontWeight: fontWeights.semibold,
-    color: palette.foreground,
-  },
-  sidebarContent: {
-    flex: 1,
-    padding: spacing.m,
-  },
-  sidebarSection: {
-    marginBottom: spacing.l,
-  },
-  sidebarSectionTitle: {
-    fontSize: fontSizes.body,
-    fontWeight: fontWeights.semibold,
-    color: palette.foreground,
-    marginBottom: spacing.s,
-  },
-  sidebarText: {
-    fontSize: fontSizes.body,
-    color: palette.muted,
-    lineHeight: 20,
-    padding: 0,
-    paddingTop: spacing.xs,
-  },
-  errorText: {
-    color: palette.favHeartRed,
-  },
-  similarButton: {
-    flexDirection: "row",
-    alignItems: "center",
-    // borderWidth: 1,
-    // borderColor: palette.border,
-    // borderRadius: 8,
-    paddingVertical: spacing.s,
-    // paddingHorizontal: spacing.m,
-    // backgroundColor: palette.backgroundDarker,
-  },
-  similarButtonText: {
-    color: palette.foreground,
-    fontSize: fontSizes.body,
-    fontWeight: fontWeights.normal,
-  },
-  emptyText: {
-    fontSize: fontSizes.small,
-    color: palette.muted,
-    fontStyle: "italic",
-  },
-  highlightItem: {
-    flexDirection: "row",
-    alignItems: "center",
-    backgroundColor: palette.backgroundDarker,
-    borderRadius: 8,
-    padding: spacing.s,
-    marginBottom: spacing.s,
-    borderWidth: 1,
-    borderColor: palette.border,
-  },
-  highlightContent: {
-    flex: 1,
-    gap: spacing.xs,
-  },
-  highlightText: {
-    fontSize: fontSizes.small,
-    color: palette.foreground,
-    lineHeight: 18,
-  },
-  highlightNote: {
-    fontSize: fontSizes.small,
-    color: palette.muted,
-    fontStyle: "italic",
-  },
-});
+function makeStyles(
+  palette: ThemeContextValue["palette"],
+  fontSizes: ThemeContextValue["fontSizes"],
+) {
+  return StyleSheet.create({
+    sidebar: {
+      position: "absolute",
+      top: 0,
+      right: 0,
+      bottom: 0,
+      backgroundColor: palette.background,
+      borderLeftWidth: 1,
+      borderLeftColor: palette.border,
+      zIndex: 2,
+    },
+    overlay: {
+      position: "absolute",
+      top: 0,
+      left: 0,
+      bottom: 0,
+      width: "100%",
+      backgroundColor: "rgba(0,0,0,0.2)",
+      zIndex: 1,
+    },
+    sidebarHeaderNoBorder: {
+      flexDirection: "row",
+      justifyContent: "space-between",
+      alignItems: "center",
+      paddingHorizontal: spacing.m,
+      borderBottomWidth: 1,
+      borderBottomColor: palette.border,
+      height: 58,
+    },
+    sidebarTitle: {
+      fontSize: fontSizes.title,
+      fontWeight: fontWeights.semibold,
+      color: palette.foreground,
+    },
+    sidebarContent: {
+      flex: 1,
+      padding: spacing.m,
+    },
+    sidebarSection: {
+      marginBottom: spacing.l,
+    },
+    sidebarSectionTitle: {
+      fontSize: fontSizes.body,
+      fontWeight: fontWeights.semibold,
+      color: palette.foreground,
+      marginBottom: spacing.s,
+    },
+    sidebarText: {
+      fontSize: fontSizes.body,
+      color: palette.muted,
+      lineHeight: 20,
+      padding: 0,
+      paddingTop: spacing.xs,
+    },
+    errorText: {
+      color: palette.favHeartRed,
+    },
+    similarButton: {
+      flexDirection: "row",
+      alignItems: "center",
+      // borderWidth: 1,
+      // borderColor: palette.border,
+      // borderRadius: 8,
+      paddingVertical: spacing.s,
+      // paddingHorizontal: spacing.m,
+      // backgroundColor: palette.backgroundDarker,
+    },
+    similarButtonText: {
+      color: palette.foreground,
+      fontSize: fontSizes.body,
+      fontWeight: fontWeights.normal,
+    },
+    emptyText: {
+      fontSize: fontSizes.small,
+      color: palette.muted,
+      fontStyle: "italic",
+    },
+    highlightItem: {
+      flexDirection: "row",
+      alignItems: "center",
+      backgroundColor: palette.backgroundDarker,
+      borderRadius: 8,
+      padding: spacing.s,
+      marginBottom: spacing.s,
+      borderWidth: 1,
+      borderColor: palette.border,
+    },
+    highlightContent: {
+      flex: 1,
+      gap: spacing.xs,
+    },
+    highlightText: {
+      fontSize: fontSizes.small,
+      color: palette.foreground,
+      lineHeight: 18,
+    },
+    highlightNote: {
+      fontSize: fontSizes.small,
+      color: palette.muted,
+      fontStyle: "italic",
+    },
+    bottomBar: {
+      flexDirection: "row",
+      alignItems: "center",
+      justifyContent: "space-around",
+      borderTopWidth: 1,
+      paddingVertical: spacing.s,
+      paddingHorizontal: spacing.m,
+    },
+    bottomIconBtn: {
+      padding: spacing.s,
+      alignItems: "center",
+      justifyContent: "center",
+    },
+  });
+}

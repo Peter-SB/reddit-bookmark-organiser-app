@@ -1,12 +1,11 @@
-import { palette } from "@/constants/Colors";
 import { spacing } from "@/constants/spacing";
-import { fontColours, fontSizes, fontWeights } from "@/constants/typography";
+import { fontWeights } from "@/constants/typography";
 import { Picker } from "@react-native-picker/picker";
 import * as DocumentPicker from "expo-document-picker";
 import * as FileSystem from "expo-file-system";
 import { useRouter } from "expo-router";
 import * as Sharing from "expo-sharing";
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import {
   ActivityIndicator,
   Alert,
@@ -21,8 +20,15 @@ import {
 } from "react-native";
 import { DatabaseService, DEFAULT_DB } from "../services/DatabaseService";
 import { resetSharedPostsState } from "@/hooks/usePosts";
+import { useTheme } from "@/contexts/ThemeContext";
+import type { ThemeContextValue } from "@/contexts/ThemeContext";
 
 export default function SettingsDatabaseManager() {
+  const { palette, fontSizes } = useTheme();
+  const styles = useMemo(
+    () => makeStyles(palette, fontSizes),
+    [palette, fontSizes],
+  );
   const [files, setFiles] = useState<string[]>([]);
   const [selected, setSelected] = useState<string>(DEFAULT_DB);
   const [loading, setLoading] = useState<boolean>(true);
@@ -322,85 +328,90 @@ export default function SettingsDatabaseManager() {
   );
 }
 
-const styles = StyleSheet.create({
-  container: {
-    padding: spacing.m,
-    backgroundColor: palette.background,
-  },
-  pickerWrapper: {
-    marginBottom: spacing.s,
-    borderWidth: 1,
-    borderColor: palette.border,
-    borderRadius: 6,
-    backgroundColor: palette.backgroundMidLight,
-    overflow: "hidden",
-  },
-  picker: {
-    height: 50,
-    width: "100%",
-    color: palette.foreground,
-  },
-  buttonRow: {
-    flexDirection: "row",
-    gap: spacing.s,
-    marginBottom: spacing.s,
-  },
-  button: {
-    flex: 1,
-    paddingVertical: spacing.s,
-    backgroundColor: palette.background,
-    borderRadius: 6,
-    alignItems: "center",
-    borderWidth: 1,
-    borderColor: palette.border,
-  },
-  smallButton: {
-    flex: 1,
-    paddingVertical: spacing.s,
-    backgroundColor: palette.backgroundMidLight,
-    borderRadius: 6,
-    alignItems: "center",
-    borderWidth: 1,
-    borderColor: palette.border,
-  },
-  buttonText: {
-    color: fontColours.foreground,
-    fontSize: fontSizes.body,
-    fontWeight: fontWeights.medium,
-  },
-  modalOverlay: {
-    flex: 1,
-    backgroundColor: "rgba(0,0,0,0.5)",
-    justifyContent: "center",
-    alignItems: "center",
-  },
-  modalContent: {
-    width: "80%",
-    backgroundColor: palette.background,
-    borderRadius: 8,
-    padding: spacing.m,
-    borderWidth: 1,
-    borderColor: palette.border,
-  },
-  modalTitle: {
-    fontSize: fontSizes.title,
-    fontWeight: fontWeights.semibold,
-    color: palette.foreground,
-    marginBottom: spacing.s,
-  },
-  input: {
-    borderWidth: 1,
-    borderColor: palette.border,
-    borderRadius: 6,
-    padding: spacing.s,
-    marginBottom: spacing.m,
-    backgroundColor: palette.backgroundMidLight,
-    fontSize: fontSizes.body,
-    color: palette.foreground,
-  },
-  modalButtons: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    gap: spacing.s,
-  },
-});
+function makeStyles(
+  palette: ThemeContextValue["palette"],
+  fontSizes: ThemeContextValue["fontSizes"],
+) {
+  return StyleSheet.create({
+    container: {
+      padding: spacing.m,
+      backgroundColor: palette.background,
+    },
+    pickerWrapper: {
+      marginBottom: spacing.s,
+      borderWidth: 1,
+      borderColor: palette.border,
+      borderRadius: 6,
+      backgroundColor: palette.backgroundMidLight,
+      overflow: "hidden",
+    },
+    picker: {
+      height: 50,
+      width: "100%",
+      color: palette.foreground,
+    },
+    buttonRow: {
+      flexDirection: "row",
+      gap: spacing.s,
+      marginBottom: spacing.s,
+    },
+    button: {
+      flex: 1,
+      paddingVertical: spacing.s,
+      backgroundColor: palette.background,
+      borderRadius: 6,
+      alignItems: "center",
+      borderWidth: 1,
+      borderColor: palette.border,
+    },
+    smallButton: {
+      flex: 1,
+      paddingVertical: spacing.s,
+      backgroundColor: palette.backgroundMidLight,
+      borderRadius: 6,
+      alignItems: "center",
+      borderWidth: 1,
+      borderColor: palette.border,
+    },
+    buttonText: {
+      color: palette.foreground,
+      fontSize: fontSizes.body,
+      fontWeight: fontWeights.medium,
+    },
+    modalOverlay: {
+      flex: 1,
+      backgroundColor: "rgba(0,0,0,0.5)",
+      justifyContent: "center",
+      alignItems: "center",
+    },
+    modalContent: {
+      width: "80%",
+      backgroundColor: palette.background,
+      borderRadius: 8,
+      padding: spacing.m,
+      borderWidth: 1,
+      borderColor: palette.border,
+    },
+    modalTitle: {
+      fontSize: fontSizes.title,
+      fontWeight: fontWeights.semibold,
+      color: palette.foreground,
+      marginBottom: spacing.s,
+    },
+    input: {
+      borderWidth: 1,
+      borderColor: palette.border,
+      borderRadius: 6,
+      padding: spacing.s,
+      marginBottom: spacing.m,
+      backgroundColor: palette.backgroundMidLight,
+      fontSize: fontSizes.body,
+      color: palette.foreground,
+    },
+    modalButtons: {
+      flexDirection: "row",
+      justifyContent: "space-between",
+      gap: spacing.s,
+    },
+  });
+}

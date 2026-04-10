@@ -1,7 +1,8 @@
 import { Ionicons } from "@expo/vector-icons";
-import React from "react";
+import React, { useMemo } from "react";
 import { StyleSheet, Text, TouchableOpacity, View } from "react-native";
-import { palette } from "../constants/Colors";
+import { useTheme } from "@/contexts/ThemeContext";
+import type { ThemeContextValue } from "@/contexts/ThemeContext";
 import { spacing } from "../constants/spacing";
 
 interface StarRatingProps {
@@ -17,6 +18,8 @@ export const StarRating: React.FC<StarRatingProps> = ({
   size = 20,
   readonly = false,
 }) => {
+  const { palette } = useTheme();
+  const styles = useMemo(() => makeStyles(palette), [palette]);
   const renderStar = (index: number) => {
     const filled = rating >= index + 1;
     const halfFilled = rating >= index + 0.5 && rating < index + 1;
@@ -58,18 +61,20 @@ export const StarRating: React.FC<StarRatingProps> = ({
   );
 };
 
-const styles = StyleSheet.create({
-  container: {
-    flexDirection: "row",
-    alignItems: "center",
-  },
-  starContainer: {
-    marginRight: spacing.xs,
-  },
-  ratingText: {
-    fontSize: 14,
-    color: palette.muted,
-    marginLeft: 2,
-    marginRight: 3,
-  },
-});
+function makeStyles(palette: ThemeContextValue["palette"]) {
+  return StyleSheet.create({
+    container: {
+      flexDirection: "row",
+      alignItems: "center",
+    },
+    starContainer: {
+      marginRight: spacing.xs,
+    },
+    ratingText: {
+      fontSize: 14,
+      color: palette.muted,
+      marginLeft: 2,
+      marginRight: 3,
+    },
+  });
+}

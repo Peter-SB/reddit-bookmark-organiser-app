@@ -1,8 +1,6 @@
-import { palette } from "@/constants/Colors";
 import { spacing } from "@/constants/spacing";
-import { fontSizes } from "@/constants/typography";
 import { useFolders } from "@/hooks/useFolders";
-import React, { useState } from "react";
+import React, { useMemo, useState } from "react";
 import {
   Alert,
   StyleSheet,
@@ -12,6 +10,8 @@ import {
   View,
 } from "react-native";
 import Icon from "react-native-vector-icons/MaterialIcons";
+import { useTheme } from "@/contexts/ThemeContext";
+import type { ThemeContextValue } from "@/contexts/ThemeContext";
 
 interface FolderSelectorProps {
   postId: number;
@@ -24,16 +24,21 @@ export function FolderSelector({
   selectedFolderIds,
   onFoldersChange,
 }: FolderSelectorProps) {
+  const { palette, fontSizes } = useTheme();
+  const styles = useMemo(
+    () => makeStyles(palette, fontSizes),
+    [palette, fontSizes],
+  );
   const { folders, createFolder } = useFolders();
   const [searchText, setSearchText] = useState("");
   const [showSuggestions, setShowSuggestions] = useState(false);
 
   const filteredFolders = folders.filter((folder) =>
-    folder.name.toLowerCase().includes(searchText.toLowerCase())
+    folder.name.toLowerCase().includes(searchText.toLowerCase()),
   );
 
   const exactMatch = folders.find(
-    (folder) => folder.name.toLowerCase() === searchText.toLowerCase()
+    (folder) => folder.name.toLowerCase() === searchText.toLowerCase(),
   );
 
   const handleToggleFolder = (folderId: number) => {
@@ -49,7 +54,7 @@ export function FolderSelector({
       "Creating folder:",
       searchText.trim(),
       "Current folders:",
-      folders
+      folders,
     );
     if (!searchText.trim() || exactMatch) return;
 
@@ -65,7 +70,7 @@ export function FolderSelector({
   };
 
   const selectedFolders = folders.filter((folder) =>
-    selectedFolderIds.includes(folder.id)
+    selectedFolderIds.includes(folder.id),
   );
 
   return (
@@ -146,84 +151,89 @@ export function FolderSelector({
   );
 }
 
-const styles = StyleSheet.create({
-  container: {},
-  title: {
-    fontSize: fontSizes.title,
-    fontWeight: "600",
-    color: palette.foreground,
-    marginBottom: spacing.s,
-  },
-  selectedContainer: {
-    flexDirection: "row",
-    flexWrap: "wrap",
-    marginBottom: spacing.s,
-  },
-  folderBubble: {
-    flexDirection: "row",
-    alignItems: "center",
-    backgroundColor: palette.accent,
-    paddingHorizontal: spacing.s,
-    paddingVertical: spacing.xs,
-    borderRadius: 16,
-    marginRight: spacing.xs,
-    marginBottom: spacing.xs,
-  },
-  bubbleText: {
-    color: palette.background,
-    fontSize: fontSizes.small,
-    fontWeight: "500",
-    marginRight: spacing.xs,
-  },
-  removeButton: {
-    padding: 2,
-  },
-  searchInput: {
-    // borderWidth: 1,
-    borderColor: palette.border,
-    borderRadius: 8,
-    paddingVertical: spacing.s,
+function makeStyles(
+  palette: ThemeContextValue["palette"],
+  fontSizes: ThemeContextValue["fontSizes"],
+) {
+  return StyleSheet.create({
+    container: {},
+    title: {
+      fontSize: fontSizes.title,
+      fontWeight: "600",
+      color: palette.foreground,
+      marginBottom: spacing.s,
+    },
+    selectedContainer: {
+      flexDirection: "row",
+      flexWrap: "wrap",
+      marginBottom: spacing.s,
+    },
+    folderBubble: {
+      flexDirection: "row",
+      alignItems: "center",
+      backgroundColor: palette.accent,
+      paddingHorizontal: spacing.s,
+      paddingVertical: spacing.xs,
+      borderRadius: 16,
+      marginRight: spacing.xs,
+      marginBottom: spacing.xs,
+    },
+    bubbleText: {
+      color: palette.background,
+      fontSize: fontSizes.small,
+      fontWeight: "500",
+      marginRight: spacing.xs,
+    },
+    removeButton: {
+      padding: 2,
+    },
+    searchInput: {
+      // borderWidth: 1,
+      borderColor: palette.border,
+      borderRadius: 8,
+      paddingVertical: spacing.s,
 
-    fontSize: fontSizes.body,
-    color: palette.foreground,
-    backgroundColor: palette.background,
-  },
-  suggestionsContainer: {
-    marginTop: spacing.xs,
-    borderWidth: 1,
-    borderColor: palette.border,
-    borderRadius: 8,
-    backgroundColor: palette.background,
-    maxHeight: 200,
-  },
-  suggestionItem: {
-    flexDirection: "row",
-    alignItems: "center",
-    paddingHorizontal: spacing.s,
-    paddingVertical: spacing.s,
-    borderBottomWidth: 1,
-    borderBottomColor: palette.border,
-  },
-  selectedSuggestion: {
-    backgroundColor: palette.backgroundDarker,
-  },
-  suggestionText: {
-    marginLeft: spacing.s,
-    fontSize: fontSizes.body,
-    color: palette.foreground,
-    flex: 1,
-  },
-  createOption: {
-    flexDirection: "row",
-    alignItems: "center",
-    paddingHorizontal: spacing.s,
-    paddingVertical: spacing.s,
-    backgroundColor: palette.backgroundDarker,
-  },
-  createText: {
-    marginLeft: spacing.s,
-    fontSize: fontSizes.body,
-    color: palette.accent,
-    fontWeight: "500",
-  },
-});
+      fontSize: fontSizes.body,
+      color: palette.foreground,
+      backgroundColor: palette.background,
+    },
+    suggestionsContainer: {
+      marginTop: spacing.xs,
+      borderWidth: 1,
+      borderColor: palette.border,
+      borderRadius: 8,
+      backgroundColor: palette.background,
+      maxHeight: 200,
+    },
+    suggestionItem: {
+      flexDirection: "row",
+      alignItems: "center",
+      paddingHorizontal: spacing.s,
+      paddingVertical: spacing.s,
+      borderBottomWidth: 1,
+      borderBottomColor: palette.border,
+    },
+    selectedSuggestion: {
+      backgroundColor: palette.backgroundDarker,
+    },
+    suggestionText: {
+      marginLeft: spacing.s,
+      fontSize: fontSizes.body,
+      color: palette.foreground,
+      flex: 1,
+    },
+    createOption: {
+      flexDirection: "row",
+      alignItems: "center",
+      paddingHorizontal: spacing.s,
+      paddingVertical: spacing.s,
+      backgroundColor: palette.backgroundDarker,
+    },
+    createText: {
+      marginLeft: spacing.s,
+      fontSize: fontSizes.body,
+      color: palette.accent,
+      fontWeight: "500",
+    },
+  });
+}
