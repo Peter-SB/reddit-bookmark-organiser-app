@@ -8,12 +8,14 @@ import { useTheme } from "@/contexts/ThemeContext";
 import { PostListItem } from "@/models/models";
 import { PostCard } from "./PostCard";
 
+// TODO: add optimistic ui updates
+
 interface SwipeablePostCardProps {
   post: PostListItem;
   onToggleFavorite: (id: number) => void;
 }
 
-const ACTION_WIDTH = 60;
+const ACTION_WIDTH = 70;
 
 function LeftAction({
   isFavorite,

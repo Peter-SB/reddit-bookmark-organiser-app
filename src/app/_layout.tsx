@@ -5,6 +5,7 @@ import {
 } from "@react-navigation/native";
 import { useFonts } from "expo-font";
 import * as Linking from "expo-linking";
+import * as NavigationBar from "expo-navigation-bar";
 import { Stack, useRouter } from "expo-router";
 import { StatusBar } from "expo-status-bar";
 import * as SystemUI from "expo-system-ui";
@@ -30,7 +31,14 @@ function AppContent() {
   // Keep system nav bar and background colour in sync with theme
   useEffect(() => {
     SystemUI.setBackgroundColorAsync(palette.background);
+    NavigationBar.setStyle(isDarkMode ? "light" : "dark");
   }, [palette.background]);
+
+  // Make navigation bar transparent
+  useEffect(() => {
+    NavigationBar.setPositionAsync("absolute");
+    NavigationBar.setBackgroundColorAsync("#ffffff01");
+  }, []);
 
   useEffect(() => {
     DatabaseService.getInstance().catch((err) => {
