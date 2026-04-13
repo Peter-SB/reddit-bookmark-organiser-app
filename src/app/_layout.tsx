@@ -11,6 +11,7 @@ import * as SystemUI from "expo-system-ui";
 import { useEffect } from "react";
 import "react-native-reanimated";
 
+import { GestureHandlerRootView } from "react-native-gesture-handler";
 import { useColorScheme } from "@/hooks/useColorScheme";
 import { usePostSync } from "@/hooks/usePostSync";
 import { DatabaseService } from "../services/DatabaseService";
@@ -118,8 +119,10 @@ export default function RootLayout() {
   }
 
   return (
-    <AppThemeProvider>
-      <AppContent />
-    </AppThemeProvider>
+    <GestureHandlerRootView style={{ flex: 1 }}>
+      <AppThemeProvider>
+        <AppContent />
+      </AppThemeProvider>
+    </GestureHandlerRootView>
   );
 }

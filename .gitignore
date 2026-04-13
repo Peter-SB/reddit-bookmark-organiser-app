@@ -43,7 +43,7 @@ app-example
 *.env
 *.env*
 *.secrets.json
-*.db
+*.db*
 
 _bin/
 android*/

@@ -28,7 +28,8 @@ import {
 import Icon from "react-native-vector-icons/MaterialIcons";
 
 import { InputBar } from "@/components/InputBar";
-import { PostCard } from "@/components/PostCard";
+
+import { SwipeablePostCard } from "@/components/SwipeablePostCard";
 import { spacing } from "@/constants/spacing";
 import { fontWeights } from "@/constants/typography";
 import { useTheme } from "@/contexts/ThemeContext";
@@ -54,7 +55,7 @@ export default function HomeScreen() {
     [palette, fontSizes],
   );
   const router = useRouter();
-  const { handleAddPost: addPostFromUrl } = usePosts();
+  const { handleAddPost: addPostFromUrl, toggleFavorite } = usePosts();
   const { folders, deleteFolder, refreshFolders } = useFolders();
   const { getPostData, loading: redditApiLoading } = useRedditApi();
   const { syncSinglePost } = usePostSync({ autoStart: false });
@@ -177,7 +178,7 @@ export default function HomeScreen() {
   };
 
   const renderPost = ({ item }: { item: PostListItem }) => (
-    <PostCard post={item} />
+    <SwipeablePostCard post={item} onToggleFavorite={toggleFavorite} />
   );
 
   useEffect(() => {
