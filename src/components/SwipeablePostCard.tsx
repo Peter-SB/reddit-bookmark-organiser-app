@@ -12,27 +12,27 @@ import { PostCard } from "./PostCard";
 
 interface SwipeablePostCardProps {
   post: PostListItem;
-  onToggleFavorite: (id: number) => void;
+  onToggleQueue: (id: number) => void;
 }
 
 const ACTION_WIDTH = 70;
 
 function LeftAction({
-  isFavorite,
+  isQueued,
   palette,
 }: {
-  isFavorite: boolean;
+  isQueued: boolean;
   palette: any;
 }) {
   return (
     <View
       style={[
         styles.leftAction,
-        { backgroundColor: palette.favHeartRed, width: ACTION_WIDTH },
+        { backgroundColor: palette.saveGreen, width: ACTION_WIDTH },
       ]}
     >
       <Ionicons
-        name={isFavorite ? "heart-dislike" : "heart"}
+        name={isQueued ? "remove-circle" : "time"}
         size={28}
         color="#fff"
       />
@@ -42,7 +42,7 @@ function LeftAction({
 
 export const SwipeablePostCard: React.FC<SwipeablePostCardProps> = ({
   post,
-  onToggleFavorite,
+  onToggleQueue,
 }) => {
   const { palette } = useTheme();
   const swipeableRef = useRef<SwipeableMethods>(null);
@@ -51,25 +51,26 @@ export const SwipeablePostCard: React.FC<SwipeablePostCardProps> = ({
     (direction: "left" | "right") => {
       console.log("Swipe opened in direction:", direction);
       if (direction === "right") {
-        // Swiped left-to-right → toggle favourite
+        // Swiped left-to-right → toggle queue
 
-        onToggleFavorite(post.id);
+        onToggleQueue(post.id);
       }
       swipeableRef.current?.close();
     },
-    [onToggleFavorite, post.id],
+    [onToggleQueue, post.id],
   );
 
   const renderLeftActions = useCallback(() => {
-    return <LeftAction isFavorite={post.isFavorite} palette={palette} />;
-  }, [post.isFavorite, palette]);
+    return <LeftAction isQueued={!!post.queuedAt} palette={palette} />;
+  }, [post.queuedAt, palette]);
 
   return (
     <ReanimatedSwipeable
       ref={swipeableRef}
       friction={2}
       leftThreshold={ACTION_WIDTH}
-      overshootLeft={false}
+      overshootLeft={true}
+      overshootFriction={2}
       renderLeftActions={renderLeftActions}
       onSwipeableOpen={handleSwipeOpen}
     >

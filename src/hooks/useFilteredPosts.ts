@@ -78,6 +78,7 @@ export function useFilteredPosts(options: UseFilteredPostsOptions): {
     options.favouritesFilter,
     options.readFilter,
     options.archivedFilter,
+    options.queuedFilter,
     options.orderBy,
     options.orderDirection,
     options.randomSeed,

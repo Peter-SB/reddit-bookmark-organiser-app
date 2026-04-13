@@ -37,6 +37,8 @@ export interface Post {
   isRead: boolean;
   readAt?: Date | null;  // When the post was last marked as read (only updated when transitioning to read)
   isFavorite: boolean;
+  /** When the post was queued (null = not queued) */
+  queuedAt?: Date | null;
   /** Archive flag */
   isArchived?: boolean;
   /** Soft delete flag */
@@ -76,6 +78,7 @@ export interface PostListItem {
   isFavorite: boolean;
   isArchived?: boolean;
   readAt?: Date | null;
+  queuedAt?: Date | null;
   folderIds: number[];
   /** Pre-computed word count from SQL so we don't need to load bodyText */
   wordCount: number;

@@ -55,7 +55,7 @@ export default function HomeScreen() {
     [palette, fontSizes],
   );
   const router = useRouter();
-  const { handleAddPost: addPostFromUrl, toggleFavorite } = usePosts();
+  const { handleAddPost: addPostFromUrl, toggleQueue } = usePosts();
   const { folders, deleteFolder, refreshFolders } = useFolders();
   const { getPostData, loading: redditApiLoading } = useRedditApi();
   const { syncSinglePost } = usePostSync({ autoStart: false });
@@ -67,6 +67,7 @@ export default function HomeScreen() {
   const [favouritesFilter, setFavouritesFilter] = useState<TripleFilter>("all");
   const [readFilter, setReadFilter] = useState<TripleFilter>("all");
   const [archivedFilter, setArchivedFilter] = useState<TripleFilter>("no");
+  const [queuedFilter, setQueuedFilter] = useState<TripleFilter>("all");
   const [search, setSearch] = useState("");
   // Track selected folders
   const [selectedFolders, setSelectedFolders] = useState<number[]>([]);
@@ -86,6 +87,7 @@ export default function HomeScreen() {
     favouritesFilter,
     readFilter,
     archivedFilter: search.trim() ? "all" : archivedFilter,
+    queuedFilter,
     orderBy,
     orderDirection,
     randomSeed,
@@ -147,6 +149,7 @@ export default function HomeScreen() {
       setFavouritesFilter("all");
       setReadFilter("all");
       setArchivedFilter("no");
+      setQueuedFilter("all");
       setSelectedFolders([]);
       setOrderBy(OrderByOption.AddedAt);
       setOrderDirection("desc");
@@ -178,7 +181,7 @@ export default function HomeScreen() {
   };
 
   const renderPost = ({ item }: { item: PostListItem }) => (
-    <SwipeablePostCard post={item} onToggleFavorite={toggleFavorite} />
+    <SwipeablePostCard post={item} onToggleQueue={toggleQueue} />
   );
 
   useEffect(() => {
@@ -245,9 +248,11 @@ export default function HomeScreen() {
         favouritesFilter={favouritesFilter}
         readFilter={readFilter}
         archivedFilter={archivedFilter}
+        queuedFilter={queuedFilter}
         onFavouritesFilterChange={setFavouritesFilter}
         onReadFilterChange={setReadFilter}
         onArchivedFilterChange={setArchivedFilter}
+        onQueuedFilterChange={setQueuedFilter}
         selectedFolders={selectedFolders}
         onSelectedFoldersChange={setSelectedFolders}
         onDeleteFolder={deleteFolder}

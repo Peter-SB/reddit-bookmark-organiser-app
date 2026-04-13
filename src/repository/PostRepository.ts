@@ -17,6 +17,7 @@ export type PostFilterOptions = {
   favouritesFilter?: TripleFilter;
   readFilter?: TripleFilter;
   archivedFilter?: TripleFilter;
+  queuedFilter?: TripleFilter;
   /** Column to sort by. 'random' shuffles client-side using the provided randomSeed. */
   orderBy?: OrderByOption;
   orderDirection?: 'asc' | 'desc';
@@ -51,6 +52,7 @@ type PostRow = {
   extraFields: string | null;
   summary: string | null;
   readAt: string | null;
+  queuedAt: string | null;
 };
 
 export class PostRepository {
@@ -96,6 +98,7 @@ export class PostRepository {
       extraFields,
       summary: row.summary ?? undefined,
       readAt: row.readAt ? parseDbDate(row.readAt) : null,
+      queuedAt: row.queuedAt ? parseDbDate(row.queuedAt) : null,
       folderIds,
     };
   }
@@ -168,13 +171,14 @@ export class PostRepository {
       isFavorite: number;
       isArchived: number;
       readAt: string | null;
+      queuedAt: string | null;
       wordCount: number;
     };
     const rows = await this.db.getAllAsync<ListRow>(
       `SELECT
          id, redditId, url, title, author, subreddit,
          redditCreatedAt, addedAt, updatedAt,
-         customTitle, notes, rating, isRead, isFavorite, isArchived, readAt,
+         customTitle, notes, rating, isRead, isFavorite, isArchived, readAt, queuedAt,
          CASE
            WHEN COALESCE(customBody, bodyText) IS NULL OR COALESCE(customBody, bodyText) = '' THEN 0
            ELSE LENGTH(TRIM(COALESCE(customBody, bodyText))) - LENGTH(REPLACE(TRIM(COALESCE(customBody, bodyText)), ' ', '')) + 1
@@ -202,6 +206,7 @@ export class PostRepository {
       isFavorite: r.isFavorite === 1,
       isArchived: r.isArchived === 1,
       readAt: r.readAt ? parseDbDate(r.readAt) : null,
+      queuedAt: r.queuedAt ? parseDbDate(r.queuedAt) : null,
       folderIds: folderMap.get(r.id) ?? [],
       wordCount: r.wordCount,
     }));
@@ -220,6 +225,7 @@ export class PostRepository {
       favouritesFilter = 'all',
       readFilter = 'all',
       archivedFilter = 'no',
+      queuedFilter = 'all',
       orderBy = OrderByOption.AddedAt,
       orderDirection = 'desc',
       authorFilter,
@@ -264,6 +270,9 @@ export class PostRepository {
     if (archivedFilter === 'yes') conditions.push('isArchived = 1');
     else if (archivedFilter === 'no') conditions.push('isArchived = 0');
 
+    if (queuedFilter === 'yes') conditions.push('queuedAt IS NOT NULL');
+    else if (queuedFilter === 'no') conditions.push('queuedAt IS NULL');
+
     const where = conditions.join(' AND ');
     const dir = orderDirection.toUpperCase() as 'ASC' | 'DESC';
 
@@ -292,8 +301,9 @@ export class PostRepository {
       case OrderByOption.Rating:
         orderClause = `ORDER BY COALESCE(rating, 0) ${dir}`;
         break;
-      case OrderByOption.Title:
-        orderClause = `ORDER BY LOWER(title) ${dir}`;
+      case OrderByOption.QueuedAt:
+        // NULL queuedAt always sorts last regardless of direction
+        orderClause = `ORDER BY CASE WHEN queuedAt IS NULL THEN 1 ELSE 0 END ASC, queuedAt ${dir}`;
         break;
       case OrderByOption.Length:
         // wordCount is the SELECT alias; SQLite allows ORDER BY on SELECT aliases
@@ -308,14 +318,14 @@ export class PostRepository {
       author: string; subreddit: string; redditCreatedAt: string;
       addedAt: string; updatedAt: string; customTitle: string | null;
       notes: string | null; rating: number | null; isRead: number;
-      isFavorite: number; isArchived: number; readAt: string | null; wordCount: number;
+      isFavorite: number; isArchived: number; readAt: string | null; queuedAt: string | null; wordCount: number;
     };
 
     const sql = `
       SELECT
         id, redditId, url, title, author, subreddit,
         redditCreatedAt, addedAt, updatedAt,
-        customTitle, notes, rating, isRead, isFavorite, isArchived, readAt,
+        customTitle, notes, rating, isRead, isFavorite, isArchived, readAt, queuedAt,
         CASE
           WHEN COALESCE(customBody, bodyText) IS NULL OR COALESCE(customBody, bodyText) = '' THEN 0
           ELSE LENGTH(TRIM(COALESCE(customBody, bodyText)))
@@ -350,6 +360,7 @@ export class PostRepository {
       isFavorite: r.isFavorite === 1,
       isArchived: r.isArchived === 1,
       readAt: r.readAt ? parseDbDate(r.readAt) : null,
+      queuedAt: r.queuedAt ? parseDbDate(r.queuedAt) : null,
       folderIds: folderMap.get(r.id) ?? [],
       wordCount: r.wordCount,
     }));
@@ -580,6 +591,7 @@ export class PostRepository {
          extraFields   = ?,
          summary       = ?,
          readAt        = ?,
+         queuedAt      = ?,
          updatedAt     = CURRENT_TIMESTAMP
        WHERE id = ?`,
       post.title,
@@ -595,6 +607,7 @@ export class PostRepository {
       extraFields,
       post.summary ?? null,
       post.readAt instanceof Date ? post.readAt.toISOString() : post.readAt ?? null,
+      post.queuedAt instanceof Date ? post.queuedAt.toISOString() : post.queuedAt ?? null,
       post.id
     );
 
@@ -650,6 +663,23 @@ export class PostRepository {
       `SELECT isArchived FROM posts WHERE id = ?`, id
     );
     return row?.isArchived === 1;
+  }
+
+  /**
+   * Toggle queuedAt directly in DB without loading the full post.
+   * If currently queued (queuedAt IS NOT NULL), sets it to NULL.
+   * If not queued, sets it to CURRENT_TIMESTAMP.
+   * Returns the new queuedAt value (Date or null).
+   */
+  public async toggleQueueById(id: number): Promise<Date | null> {
+    await this.db.runAsync(
+      `UPDATE posts SET queuedAt = CASE WHEN queuedAt IS NOT NULL THEN NULL ELSE CURRENT_TIMESTAMP END, updatedAt = CURRENT_TIMESTAMP WHERE id = ?`,
+      id
+    );
+    const row = await this.db.getFirstAsync<{ queuedAt: string | null }>(
+      `SELECT queuedAt FROM posts WHERE id = ?`, id
+    );
+    return row?.queuedAt ? parseDbDate(row.queuedAt) : null;
   }
 
   /**

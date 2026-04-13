@@ -137,10 +137,14 @@ export function sortPosts<T extends PostLike>(
         aValue = (a as any).rating ?? 0;
         bValue = (b as any).rating ?? 0;
         break;
-      case OrderByOption.Title:
-        aValue = (a.title ?? "").toLowerCase();
-        bValue = (b.title ?? "").toLowerCase();
-        break;
+      case OrderByOption.QueuedAt: {
+        const aQueued = a.queuedAt ? new Date(a.queuedAt).getTime() : null;
+        const bQueued = b.queuedAt ? new Date(b.queuedAt).getTime() : null;
+        if (aQueued === null && bQueued === null) return 0;
+        if (aQueued === null) return 1;
+        if (bQueued === null) return -1;
+        return compare(aQueued, bQueued);
+      }
       case OrderByOption.Length:
         aValue = 'wordCount' in a ? a.wordCount : ((a as any).customBody ?? (a as any).bodyText ?? "").length;
         bValue = 'wordCount' in b ? b.wordCount : ((b as any).customBody ?? (b as any).bodyText ?? "").length;

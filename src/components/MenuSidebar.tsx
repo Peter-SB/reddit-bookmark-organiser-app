@@ -41,9 +41,11 @@ export interface MenuSidebarProps {
   favouritesFilter: "all" | "yes" | "no";
   readFilter: "all" | "yes" | "no";
   archivedFilter: "all" | "yes" | "no";
+  queuedFilter: "all" | "yes" | "no";
   onFavouritesFilterChange: (val: "all" | "yes" | "no") => void;
   onReadFilterChange: (val: "all" | "yes" | "no") => void;
   onArchivedFilterChange: (val: "all" | "yes" | "no") => void;
+  onQueuedFilterChange: (val: "all" | "yes" | "no") => void;
   selectedFolders?: number[];
   onSelectedFoldersChange?: (ids: number[]) => void;
   onDeleteFolder?: (id: number) => void;
@@ -62,9 +64,11 @@ export const MenuSidebar: React.FC<MenuSidebarProps> = ({
   favouritesFilter,
   readFilter,
   archivedFilter,
+  queuedFilter,
   onFavouritesFilterChange,
   onReadFilterChange,
   onArchivedFilterChange,
+  onQueuedFilterChange,
   selectedFolders = [],
   onSelectedFoldersChange,
   onDeleteFolder,
@@ -373,6 +377,35 @@ export const MenuSidebar: React.FC<MenuSidebarProps> = ({
                 />
               </View>
               <Text style={styles.label}>Authors</Text>
+            </TouchableOpacity>
+
+            {/* Queue toggle button */}
+            <TouchableOpacity
+              style={styles.item}
+              onPress={() => {
+                let next: "all" | "yes" | "no";
+                if (queuedFilter === "all") next = "yes";
+                else if (queuedFilter === "yes") next = "no";
+                else next = "all";
+                onQueuedFilterChange(next);
+              }}
+            >
+              <View style={styles.iconContainer}>
+                <Icon
+                  name="queue"
+                  size={24}
+                  style={styles.icon}
+                  color={palette.foreground}
+                />
+              </View>
+              <Text style={styles.label}>
+                Queue{" "}
+                {queuedFilter === "yes"
+                  ? "(Yes)"
+                  : queuedFilter === "no"
+                    ? "(No)"
+                    : ""}
+              </Text>
             </TouchableOpacity>
 
             {/* Archived toggle button */}

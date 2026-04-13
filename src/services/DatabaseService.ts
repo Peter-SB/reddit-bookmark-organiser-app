@@ -182,6 +182,11 @@ export class DatabaseService {
     if (!hasIsArchived) {
       await this.db.execAsync(`ALTER TABLE posts ADD COLUMN isArchived INTEGER NOT NULL DEFAULT 0;`);
     }
+    // Migration: add queuedAt column if it doesn't exist
+    const hasQueuedAt = columns.some((col: any) => col.name === 'queuedAt');
+    if (!hasQueuedAt) {
+      await this.db.execAsync(`ALTER TABLE posts ADD COLUMN queuedAt TEXT;`);
+    }
   }
 
   public getDb(): SQLiteDatabase {

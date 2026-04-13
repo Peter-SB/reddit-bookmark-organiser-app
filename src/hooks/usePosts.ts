@@ -30,6 +30,7 @@ export interface UsePostsResult {
   toggleRead: (id: number) => Promise<void>;
   toggleFavorite: (id: number) => Promise<void>;
   toggleArchive: (id: number) => Promise<void>;
+  toggleQueue: (id: number) => Promise<void>;
   checkForSimilarPosts: (bodyText: string, threshold?: number) => Promise<Post[]>;
   setFolders: (postId: number, newFolderIds: number[]) => Promise<void>;
   recomputeMissingMinHashes: () => Promise<number>;
@@ -264,6 +265,7 @@ export function usePosts(): UsePostsResult {
             isRead: updated.isRead,
             isFavorite: updated.isFavorite,
             readAt: updated.readAt,
+            queuedAt: updated.queuedAt,
             updatedAt: updated.updatedAt,
             folderIds: updated.folderIds,
           }
@@ -320,6 +322,18 @@ export function usePosts(): UsePostsResult {
     notifyListeners();
   }, []);
 
+  const toggleQueue = useCallback(async (id: number) => {
+    console.debug('Toggling queue status for post:', id);
+    const repo = await initSharedRepo();
+    const newQueuedAt = await repo.toggleQueueById(id);
+
+    // Optimistic: update local state without reloading
+    sharedPosts = sharedPosts.map(p =>
+      p.id === id ? { ...p, queuedAt: newQueuedAt } : p
+    );
+    notifyListeners();
+  }, []);
+
   const setFolders = useCallback(
     async (postId: number, newFolderIds: number[]) => {
       console.debug('Setting folders for post:', postId + " ids:" + newFolderIds);
@@ -366,6 +380,7 @@ export function usePosts(): UsePostsResult {
     toggleRead,
     toggleFavorite,
     toggleArchive,
+    toggleQueue,
     checkForSimilarPosts,
     setFolders,
     recomputeMissingMinHashes,

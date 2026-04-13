@@ -101,6 +101,14 @@ export const PostCard: React.FC<PostCardProps> = ({ post, footer }) => {
               style={{ marginRight: 2 }}
             />
           )}
+          {/* {post.queuedAt && (
+            <Ionicons
+              name="time"
+              size={16}
+              color={palette.saveGreen}
+              style={{ marginRight: 2 }}
+            />
+          )} */}
           {post.isFavorite && (
             <Ionicons
               name="heart"

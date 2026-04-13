@@ -15,6 +15,7 @@ function makeListItem(overrides: Partial<PostListItem> & { id: number }): PostLi
     isRead: false,
     isFavorite: false,
     readAt: null,
+    queuedAt: null,
     folderIds: [],
     wordCount: 100,
     ...overrides,
@@ -273,19 +274,19 @@ describe("sortPosts", () => {
     expect(result.map((p) => p.id)).toEqual([2, 1]);
   });
 
-  it("sorts by title alphabetically", () => {
+  it("sorts by queuedAt with nulls last", () => {
     // Arrange
     const posts = [
-      makeListItem({ id: 1, title: "Zebra" }),
-      makeListItem({ id: 2, title: "Apple" }),
-      makeListItem({ id: 3, title: "Mango" }),
+      makeListItem({ id: 1, queuedAt: null }),
+      makeListItem({ id: 2, queuedAt: new Date("2024-01-03") }),
+      makeListItem({ id: 3, queuedAt: new Date("2024-01-01") }),
     ];
 
     // Act
-    const result = sortPosts(posts, "title", "asc");
+    const result = sortPosts(posts, "queuedAt", "asc");
 
     // Assert
-    expect(result.map((p) => p.id)).toEqual([2, 3, 1]);
+    expect(result.map((p) => p.id)).toEqual([3, 2, 1]);
   });
 
   it("sorts by rating descending", () => {

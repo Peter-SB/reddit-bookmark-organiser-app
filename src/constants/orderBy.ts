@@ -1,9 +1,9 @@
 export enum OrderByOption {
   AddedAt = "addedAt",
   UpdatedAt = "updatedAt",
+  QueuedAt = "queuedAt",
   ReadAt = "readAt",
   Rating = "rating",
-  Title = "title",
   Length = "length",
   Random = "random",
   PostedAt = "postedAt",
@@ -20,10 +20,10 @@ export enum OrderByOption {
 export const POST_ORDER_BY_LABELS: Partial<Record<OrderByOption, string>> = {
   [OrderByOption.AddedAt]: "Added At",
   [OrderByOption.UpdatedAt]: "Updated At",
+  [OrderByOption.QueuedAt]: "Queued At",
   [OrderByOption.PostedAt]: "Posted At",
   [OrderByOption.ReadAt]: "Read At",
   [OrderByOption.Rating]: "Rating",
-  [OrderByOption.Title]: "Title",
   [OrderByOption.Length]: "Length",
   [OrderByOption.Random]: "Random",
 };
@@ -61,7 +61,6 @@ export const AUTHOR_POST_ORDER_OPTIONS: { key: OrderByOption; label: string }[] 
   { key: OrderByOption.AddedAt, label: ORDER_BY_LABELS[OrderByOption.AddedAt] },
   { key: OrderByOption.PostedAt, label: ORDER_BY_LABELS[OrderByOption.PostedAt] },
   { key: OrderByOption.Rating, label: ORDER_BY_LABELS[OrderByOption.Rating] },
-  { key: OrderByOption.Title, label: ORDER_BY_LABELS[OrderByOption.Title] },
   { key: OrderByOption.Length, label: ORDER_BY_LABELS[OrderByOption.Length] },
   { key: OrderByOption.ReadAt, label: ORDER_BY_LABELS[OrderByOption.ReadAt] },
 ];
