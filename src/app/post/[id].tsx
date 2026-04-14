@@ -68,6 +68,7 @@ export default function PostScreen() {
     toggleRead,
     toggleFavorite,
     toggleArchive,
+    toggleQueue,
     getPostById,
   } = usePosts();
   const { syncSinglePost } = usePostSync({ autoStart: false });
@@ -369,6 +370,12 @@ export default function PostScreen() {
     setPost((prev) => (prev ? { ...prev, isArchived: newIsArchived } : prev));
   };
 
+  const handleToggleQueue = async () => {
+    if (!post) return;
+    await toggleQueue(post.id);
+    setPost((prev) => (prev ? { ...prev, queuedAt: new Date() } : prev));
+  };
+
   const handleToggleFavorite = async () => {
     if (!post) return;
     await toggleFavorite(post.id);
@@ -649,7 +656,7 @@ export default function PostScreen() {
                 />
                 <TouchableOpacity
                   onPress={handleToggleRead}
-                  style={styles.readToggle}
+                  style={styles.actionToggle}
                 >
                   <Ionicons
                     name={
@@ -665,20 +672,8 @@ export default function PostScreen() {
                   </Text>
                 </TouchableOpacity>
                 <TouchableOpacity
-                  onPress={handleToggleArchive}
-                  style={styles.readToggle}
-                >
-                  <Ionicons
-                    name={post.isArchived ? "archive" : "archive-outline"}
-                    size={18}
-                    color={
-                      post.isArchived ? palette.archiveOrange : palette.muted
-                    }
-                  />
-                </TouchableOpacity>
-                <TouchableOpacity
                   onPress={handleToggleFavorite}
-                  style={styles.readToggle}
+                  style={[styles.actionToggle, { marginRight: spacing.s }]}
                 >
                   <Ionicons
                     name={editedIsFavorite ? "heart" : "heart-outline"}
@@ -811,6 +806,8 @@ export default function PostScreen() {
         highlights={highlights}
         onHighlightPress={handleHighlightPress}
         toggleFontOption={toggleFontOption}
+        onToggleArchive={handleToggleArchive}
+        onToggleQueue={handleToggleQueue}
       />
       <HighlightActionModal
         visible={highlightModalVisible}
@@ -953,7 +950,7 @@ function makeStyles(
       alignItems: "center",
       justifyContent: "space-between",
     },
-    readToggle: {
+    actionToggle: {
       flexDirection: "row",
       alignItems: "center",
       gap: spacing.xs,

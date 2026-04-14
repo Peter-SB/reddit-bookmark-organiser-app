@@ -16,7 +16,6 @@ import {
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import Icon from "react-native-vector-icons/MaterialIcons";
-
 import { spacing } from "@/constants/spacing";
 import { fontWeights } from "@/constants/typography";
 import type { ThemeContextValue } from "@/contexts/ThemeContext";
@@ -391,8 +390,8 @@ export const MenuSidebar: React.FC<MenuSidebarProps> = ({
               }}
             >
               <View style={styles.iconContainer}>
-                <Icon
-                  name="queue"
+                <Ionicons
+                  name="time"
                   size={24}
                   style={styles.icon}
                   color={palette.foreground}

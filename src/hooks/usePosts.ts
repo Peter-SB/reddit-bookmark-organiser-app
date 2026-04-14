@@ -323,9 +323,9 @@ export function usePosts(): UsePostsResult {
   }, []);
 
   const toggleQueue = useCallback(async (id: number) => {
-    console.debug('Toggling queue status for post:', id);
+    console.debug('Setting queue timestamp for post:', id);
     const repo = await initSharedRepo();
-    const newQueuedAt = await repo.toggleQueueById(id);
+    const newQueuedAt = await repo.setQueuedAtById(id);
 
     // Optimistic: update local state without reloading
     sharedPosts = sharedPosts.map(p =>

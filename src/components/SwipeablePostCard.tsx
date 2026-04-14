@@ -31,11 +31,7 @@ function LeftAction({
         { backgroundColor: palette.saveGreen, width: ACTION_WIDTH },
       ]}
     >
-      <Ionicons
-        name={isQueued ? "remove-circle" : "time"}
-        size={28}
-        color="#fff"
-      />
+      <Ionicons name="time" size={28} color="#fff" />
     </View>
   );
 }

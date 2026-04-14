@@ -39,6 +39,8 @@ interface SidebarProps {
   highlights?: Highlight[];
   onHighlightPress?: (highlight: Highlight) => void;
   toggleFontOption?: () => void;
+  onToggleArchive: () => void;
+  onToggleQueue: () => void;
 }
 
 export const PostSidebar: React.FC<SidebarProps> = ({
@@ -57,6 +59,8 @@ export const PostSidebar: React.FC<SidebarProps> = ({
   highlights = [],
   onHighlightPress,
   toggleFontOption,
+  onToggleArchive,
+  onToggleQueue,
 }) => {
   const router = useRouter();
   const safeInsets = useSafeAreaInsets();
@@ -163,6 +167,49 @@ export const PostSidebar: React.FC<SidebarProps> = ({
           </View>
         </View>
         <ScrollView style={styles.sidebarContent}>
+          {/* Quick Actions */}
+          <View style={[styles.sidebarSection, styles.actionsRow]}>
+            <TouchableOpacity
+              style={styles.actionBtn}
+              onPress={onToggleArchive}
+              accessibilityLabel="Toggle archive"
+            >
+              <Ionicons
+                name={post.isArchived ? "archive" : "archive-outline"}
+                size={18}
+                color={
+                  post.isArchived ? palette.archiveOrange : palette.foreground
+                }
+              />
+              <Text
+                style={[
+                  styles.actionBtnLabel,
+                  post.isArchived && { color: palette.archiveOrange },
+                ]}
+              >
+                {post.isArchived ? "Archived" : "Archive"}
+              </Text>
+            </TouchableOpacity>
+            <TouchableOpacity
+              style={styles.actionBtn}
+              onPress={onToggleQueue}
+              accessibilityLabel="Toggle queue"
+            >
+              <Ionicons
+                name={post.queuedAt ? "time" : "time-outline"}
+                size={18}
+                color={post.queuedAt ? palette.saveGreen : palette.foreground}
+              />
+              <Text
+                style={[
+                  styles.actionBtnLabel,
+                  post.queuedAt && { color: palette.saveGreen },
+                ]}
+              >
+                {post.queuedAt ? "Queued" : "Queue"}
+              </Text>
+            </TouchableOpacity>
+          </View>
           {/* Notes */}
           <View style={styles.sidebarSection}>
             <Text style={styles.sidebarSectionTitle}>Notes</Text>
@@ -244,7 +291,8 @@ export const PostSidebar: React.FC<SidebarProps> = ({
                   }`
                 : "Not synced yet"}
             </Text>
-            {post.lastSyncError ? (
+            {post.lastSyncError &&
+            post.lastSyncError !== "Network request failed" ? (
               <Text style={[styles.sidebarText, styles.errorText]}>
                 Last error: {post.lastSyncError}
               </Text>
@@ -373,6 +421,21 @@ function makeStyles(
     },
     sidebarSection: {
       marginBottom: spacing.l,
+    },
+    actionsRow: {
+      flexDirection: "row",
+    },
+    actionBtn: {
+      flex: 1,
+      flexDirection: "row",
+      alignItems: "center",
+      justifyContent: "center",
+      gap: spacing.xs,
+    },
+    actionBtnLabel: {
+      fontSize: fontSizes.small,
+      color: palette.foreground,
+      fontWeight: fontWeights.normal,
     },
     sidebarSectionTitle: {
       fontSize: fontSizes.body,

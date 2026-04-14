@@ -302,8 +302,9 @@ export class PostRepository {
         orderClause = `ORDER BY COALESCE(rating, 0) ${dir}`;
         break;
       case OrderByOption.QueuedAt:
-        // NULL queuedAt always sorts last regardless of direction
-        orderClause = `ORDER BY CASE WHEN queuedAt IS NULL THEN 1 ELSE 0 END ASC, queuedAt ${dir}`;
+        // When sorting by queue order, only show queued posts and sort by queuedAt
+        conditions.push('queuedAt IS NOT NULL');
+        orderClause = `ORDER BY queuedAt ${dir}`;
         break;
       case OrderByOption.Length:
         // wordCount is the SELECT alias; SQLite allows ORDER BY on SELECT aliases
@@ -666,20 +667,19 @@ export class PostRepository {
   }
 
   /**
-   * Toggle queuedAt directly in DB without loading the full post.
-   * If currently queued (queuedAt IS NOT NULL), sets it to NULL.
-   * If not queued, sets it to CURRENT_TIMESTAMP.
-   * Returns the new queuedAt value (Date or null).
+   * Set queuedAt to the current timestamp, always moving the post to the top of the queue.
+   * Never removes from queue — use update() to clear queuedAt.
+   * Returns the new queuedAt value.
    */
-  public async toggleQueueById(id: number): Promise<Date | null> {
+  public async setQueuedAtById(id: number): Promise<Date> {
     await this.db.runAsync(
-      `UPDATE posts SET queuedAt = CASE WHEN queuedAt IS NOT NULL THEN NULL ELSE CURRENT_TIMESTAMP END, updatedAt = CURRENT_TIMESTAMP WHERE id = ?`,
+      `UPDATE posts SET queuedAt = CURRENT_TIMESTAMP, updatedAt = CURRENT_TIMESTAMP WHERE id = ?`,
       id
     );
-    const row = await this.db.getFirstAsync<{ queuedAt: string | null }>(
+    const row = await this.db.getFirstAsync<{ queuedAt: string }>(
       `SELECT queuedAt FROM posts WHERE id = ?`, id
     );
-    return row?.queuedAt ? parseDbDate(row.queuedAt) : null;
+    return parseDbDate(row!.queuedAt);
   }
 
   /**
