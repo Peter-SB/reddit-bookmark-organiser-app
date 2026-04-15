@@ -640,7 +640,11 @@ export class PostRepository {
    */
   public async toggleFavoriteById(id: number): Promise<boolean> {
     const result = await this.db.runAsync(
-      `UPDATE posts SET isFavorite = CASE WHEN isFavorite = 1 THEN 0 ELSE 1 END, updatedAt = CURRENT_TIMESTAMP WHERE id = ?`,
+      `UPDATE posts SET 
+        isFavorite = CASE WHEN isFavorite = 1 THEN 0 ELSE 1 END,
+        updatedAt = CURRENT_TIMESTAMP,
+        queuedAt = strftime('%Y-%m-%dT%H:%M:%SZ', 'now')
+        WHERE id = ?`,
       id
     );
     if (result.changes === 0) return false;
@@ -673,7 +677,8 @@ export class PostRepository {
    */
   public async setQueuedAtById(id: number): Promise<Date> {
     await this.db.runAsync(
-      `UPDATE posts SET queuedAt = CURRENT_TIMESTAMP, updatedAt = CURRENT_TIMESTAMP WHERE id = ?`,
+      `UPDATE posts SET queuedAt = strftime('%Y-%m-%dT%H:%M:%SZ', 'now'), 
+        updatedAt = CURRENT_TIMESTAMP WHERE id = ?`, // updatedAt uses CURRENT_TIMESTAMP timestamp format  
       id
     );
     const row = await this.db.getFirstAsync<{ queuedAt: string }>(
@@ -691,7 +696,7 @@ export class PostRepository {
     const result = await this.db.runAsync(
       `UPDATE posts SET
          isRead = CASE WHEN isRead = 1 THEN 0 ELSE 1 END,
-         readAt = CASE WHEN isRead = 0 THEN CURRENT_TIMESTAMP ELSE readAt END,
+         readAt = CASE WHEN isRead = 0 THEN strftime('%Y-%m-%dT%H:%M:%SZ', 'now') ELSE readAt END,
          updatedAt = CURRENT_TIMESTAMP
        WHERE id = ?`,
       id
