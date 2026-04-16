@@ -636,6 +636,7 @@ export class PostRepository {
 
   /**
    * Toggle isFavorite directly in DB without loading the full post.
+   * When setting favorite ON, also updates queuedAt.
    * Returns the new isFavorite value.
    */
   public async toggleFavoriteById(id: number): Promise<boolean> {
@@ -643,7 +644,7 @@ export class PostRepository {
       `UPDATE posts SET 
         isFavorite = CASE WHEN isFavorite = 1 THEN 0 ELSE 1 END,
         updatedAt = CURRENT_TIMESTAMP,
-        queuedAt = strftime('%Y-%m-%dT%H:%M:%SZ', 'now')
+        queuedAt = CASE WHEN isFavorite = 0 THEN strftime('%Y-%m-%dT%H:%M:%SZ', 'now') ELSE queuedAt END
         WHERE id = ?`,
       id
     );
@@ -673,12 +674,12 @@ export class PostRepository {
   /**
    * Set queuedAt to the current timestamp, always moving the post to the top of the queue.
    * Never removes from queue — use update() to clear queuedAt.
+   * Does not update updatedAt.
    * Returns the new queuedAt value.
    */
   public async setQueuedAtById(id: number): Promise<Date> {
     await this.db.runAsync(
-      `UPDATE posts SET queuedAt = strftime('%Y-%m-%dT%H:%M:%SZ', 'now'), 
-        updatedAt = CURRENT_TIMESTAMP WHERE id = ?`, // updatedAt uses CURRENT_TIMESTAMP timestamp format  
+      `UPDATE posts SET queuedAt = strftime('%Y-%m-%dT%H:%M:%SZ', 'now') WHERE id = ?`,
       id
     );
     const row = await this.db.getFirstAsync<{ queuedAt: string }>(
