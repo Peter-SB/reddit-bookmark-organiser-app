@@ -56,6 +56,7 @@ export default function AuthorImportScreen() {
   } = useAuthorImport(authorName);
   const {
     posts: savedPosts,
+    addPost,
     handleAddPost: addPostFromUrl,
     refreshPosts,
   } = usePosts();
@@ -63,6 +64,9 @@ export default function AuthorImportScreen() {
   const { syncSinglePost } = usePostSync({ autoStart: false });
 
   const [addingPostIds, setAddingPostIds] = useState<Set<string>>(new Set());
+  const [archivingPostIds, setArchivingPostIds] = useState<Set<string>>(
+    new Set(),
+  );
   const [hideEmpty, setHideEmpty] = useState(true);
   const [search, setSearch] = useState("");
 
@@ -167,11 +171,55 @@ export default function AuthorImportScreen() {
     [addingPostIds, addPostFromUrl, getPostData, syncSinglePost, refreshPosts],
   );
 
+  // Handle adding a post directly to archive
+  const handleAddArchived = useCallback(
+    async (redditPost: RedditPostPreview) => {
+      if (
+        addingPostIds.has(redditPost.id) ||
+        archivingPostIds.has(redditPost.id)
+      )
+        return;
+      if (savedRedditIds.has(redditPost.id)) return;
+
+      setArchivingPostIds((prev) => new Set(prev).add(redditPost.id));
+
+      try {
+        const fullUrl = `https://www.reddit.com${redditPost.permalink}`;
+        const postData = await getPostData(fullUrl);
+        const created = await addPost({ ...postData, isArchived: true });
+        await syncSinglePost(created.id);
+        await refreshPosts();
+        Alert.alert("Archived", "Post added to archive!");
+      } catch (err) {
+        Alert.alert(
+          "Error",
+          `Failed to archive post: ${(err as Error).message}`,
+        );
+      } finally {
+        setArchivingPostIds((prev) => {
+          const newSet = new Set(prev);
+          newSet.delete(redditPost.id);
+          return newSet;
+        });
+      }
+    },
+    [
+      addingPostIds,
+      archivingPostIds,
+      addPost,
+      getPostData,
+      refreshPosts,
+      savedRedditIds,
+      syncSinglePost,
+    ],
+  );
+
   // Render each Reddit post item
   const renderPostItem = useCallback(
     ({ item }: { item: RedditPostPreview }) => {
       const isAdded = savedRedditIds.has(item.id);
       const isAdding = addingPostIds.has(item.id);
+      const isArchiving = archivingPostIds.has(item.id);
       const wordCount = getWordCount(item.bodyText);
       const publishedDate = formatPostDate(item.created);
       const score =
@@ -225,7 +273,7 @@ export default function AuthorImportScreen() {
               style={styles.postAction}
               onStartShouldSetResponder={() => true}
             >
-              {isAdding ? (
+              {isAdding || isArchiving ? (
                 <ActivityIndicator
                   size="small"
                   color={palette.foregroundMidLight}
@@ -233,17 +281,31 @@ export default function AuthorImportScreen() {
               ) : isAdded ? (
                 <Icon name="check-circle" size={20} color={palette.saveGreen} />
               ) : (
-                <TouchableOpacity
-                  onPress={() => handleAddPost(item)}
-                  style={styles.addButton}
-                  accessibilityLabel="Add post"
-                >
-                  <Icon
-                    name="download"
-                    size={20}
-                    color={palette.foregroundMidLight}
-                  />
-                </TouchableOpacity>
+                <>
+                  <TouchableOpacity
+                    onPress={() => handleAddPost(item)}
+                    style={styles.addButton}
+                    accessibilityLabel="Add post"
+                  >
+                    <Icon
+                      name="download"
+                      size={20}
+                      color={palette.foregroundMidLight}
+                    />
+                  </TouchableOpacity>
+                  <TouchableOpacity
+                    onPress={() => handleAddArchived(item)}
+                    style={styles.addButton}
+                    accessibilityLabel="Add to archive"
+                  >
+                    <Icon
+                      name="archive"
+                      size={18}
+                      color={palette.foregroundMidLight}
+                      style={{ marginBottom: 2 }}
+                    />
+                  </TouchableOpacity>
+                </>
               )}
             </View>
           </View>
@@ -253,12 +315,14 @@ export default function AuthorImportScreen() {
     [
       savedRedditIds,
       addingPostIds,
+      archivingPostIds,
       getWordCount,
       formatPostDate,
       savedPostByRedditId,
       savedTitlesForAuthor,
       router,
       handleAddPost,
+      handleAddArchived,
       styles,
       palette,
     ],
@@ -473,9 +537,10 @@ function makeStyles(
       marginHorizontal: spacing.xs,
     },
     postAction: {
-      width: 24,
+      flexDirection: "row",
       alignItems: "center",
       justifyContent: "center",
+      gap: spacing.s,
     },
     addButton: {
       padding: spacing.xs / 2,

@@ -1,11 +1,13 @@
 import { OrderByRow } from "@/components/OrderByRow";
-import { PostCard } from "@/components/PostCard";
+import { SearchBar } from "@/components/SearchBar";
+import { SwipeablePostCard } from "@/components/SwipeablePostCard";
 import { OrderByOption, AUTHOR_POST_ORDER_OPTIONS } from "@/constants/orderBy";
 import { spacing } from "@/constants/spacing";
 import { fontWeights } from "@/constants/typography";
 import { useTheme } from "@/contexts/ThemeContext";
 import type { ThemeContextValue } from "@/contexts/ThemeContext";
 import { useFilteredPosts } from "@/hooks/useFilteredPosts";
+import { usePosts } from "@/hooks/usePosts";
 import { PostListItem } from "@/models/models";
 import { openRedditUser } from "@/utils/redditLinks";
 import { useFocusEffect, useLocalSearchParams, useRouter } from "expo-router";
@@ -48,12 +50,16 @@ export default function AuthorPostsScreen() {
   const [orderDirection, setOrderDirection] = useState<"asc" | "desc">("desc");
   const [hasLoaded, setHasLoaded] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
+  const [search, setSearch] = useState("");
+
+  const { toggleQueue } = usePosts();
 
   const { posts: authorPosts, loading } = useFilteredPosts({
     authorFilter: authorName || undefined,
     orderBy,
     orderDirection,
     archivedFilter: "all",
+    search: search || undefined,
   });
 
   useEffect(() => {
@@ -80,8 +86,10 @@ export default function AuthorPostsScreen() {
   }, []);
 
   const renderItem = useCallback(
-    ({ item }: { item: PostListItem }) => <PostCard post={item} />,
-    [],
+    ({ item }: { item: PostListItem }) => (
+      <SwipeablePostCard post={item} onToggleQueue={toggleQueue} />
+    ),
+    [toggleQueue],
   );
 
   const statusText =
@@ -120,6 +128,16 @@ export default function AuthorPostsScreen() {
           localOrderDirection={orderDirection}
           onOrderByChange={setOrderBy}
           onOrderDirectionChange={setOrderDirection}
+        />
+      </View>
+
+      {/* Search */}
+      <View style={styles.searchContainer}>
+        <SearchBar
+          value={search}
+          onChangeText={setSearch}
+          placeholder="Search saved posts..."
+          cancelButtonCallback={() => setSearch("")}
         />
       </View>
 
@@ -209,6 +227,13 @@ function makeStyles(
     sortRow: {
       paddingHorizontal: spacing.s,
       paddingVertical: spacing.xs,
+      borderBottomWidth: 1,
+      borderBottomColor: palette.border,
+    },
+    searchContainer: {
+      paddingHorizontal: spacing.m,
+      paddingTop: spacing.s,
+      paddingBottom: spacing.xs,
       borderBottomWidth: 1,
       borderBottomColor: palette.border,
     },

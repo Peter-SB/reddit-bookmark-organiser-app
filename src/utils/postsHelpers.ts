@@ -145,6 +145,10 @@ export function sortPosts<T extends PostLike>(
         if (bQueued === null) return -1;
         return compare(aQueued, bQueued);
       }
+      case OrderByOption.PostedAt:
+        aValue = toTime(a.redditCreatedAt);
+        bValue = toTime(b.redditCreatedAt);
+        break;
       case OrderByOption.Length:
         aValue = 'wordCount' in a ? a.wordCount : ((a as any).customBody ?? (a as any).bodyText ?? "").length;
         bValue = 'wordCount' in b ? b.wordCount : ((b as any).customBody ?? (b as any).bodyText ?? "").length;
