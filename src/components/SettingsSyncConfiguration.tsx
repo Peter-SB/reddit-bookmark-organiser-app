@@ -1,6 +1,5 @@
-import { palette } from "@/constants/Colors";
 import { spacing } from "@/constants/spacing";
-import { fontSizes, fontWeights } from "@/constants/typography";
+import { fontWeights } from "@/constants/typography";
 import {
   DEFAULT_EMBED_MODEL,
   DEFAULT_SYNC_TABLE,
@@ -11,7 +10,7 @@ import {
 } from "@/constants/sync";
 import { usePostSync } from "@/hooks/usePostSync";
 import { SettingsRepository } from "@/repository/SettingsRepository";
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import {
   ActivityIndicator,
   Alert,
@@ -22,6 +21,8 @@ import {
   View,
 } from "react-native";
 import { Picker } from "@react-native-picker/picker";
+import { useTheme } from "@/contexts/ThemeContext";
+import type { ThemeContextValue } from "@/contexts/ThemeContext";
 
 type EmbeddingProfile = {
   name: string;
@@ -41,6 +42,11 @@ const normaliseServerUrl = (raw: string) => {
 };
 
 export default function SettingsSyncConfiguration() {
+  const { palette, fontSizes } = useTheme();
+  const styles = useMemo(
+    () => makeStyles(palette, fontSizes),
+    [palette, fontSizes],
+  );
   const [serverUrl, setServerUrl] = useState("");
   const [tableName, setTableName] = useState(DEFAULT_SYNC_TABLE);
   const [semanticEmbeddingModel, setSemanticEmbeddingModel] =
@@ -53,7 +59,9 @@ export default function SettingsSyncConfiguration() {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [statusMessage, setStatusMessage] = useState<string | null>(null);
-  const { syncPending, syncing, lastSyncAt, forceResyncAll } = usePostSync({ autoStart: false });
+  const { syncPending, syncing, lastSyncAt, forceResyncAll } = usePostSync({
+    autoStart: false,
+  });
 
   useEffect(() => {
     (async () => {
@@ -65,10 +73,14 @@ export default function SettingsSyncConfiguration() {
           SYNC_SEMANTIC_EMBED_MODEL_KEY,
           SYNC_SIMILAR_EMBED_MODEL_KEY,
         ]);
-        if (settings[SYNC_SERVER_URL_KEY]) setServerUrl(settings[SYNC_SERVER_URL_KEY]);
-        if (settings[SYNC_TABLE_NAME_KEY]) setTableName(settings[SYNC_TABLE_NAME_KEY]);
-        if (settings[SYNC_SEMANTIC_EMBED_MODEL_KEY]) setSemanticEmbeddingModel(settings[SYNC_SEMANTIC_EMBED_MODEL_KEY]);
-        if (settings[SYNC_SIMILAR_EMBED_MODEL_KEY]) setSimilarEmbeddingModel(settings[SYNC_SIMILAR_EMBED_MODEL_KEY]);
+        if (settings[SYNC_SERVER_URL_KEY])
+          setServerUrl(settings[SYNC_SERVER_URL_KEY]);
+        if (settings[SYNC_TABLE_NAME_KEY])
+          setTableName(settings[SYNC_TABLE_NAME_KEY]);
+        if (settings[SYNC_SEMANTIC_EMBED_MODEL_KEY])
+          setSemanticEmbeddingModel(settings[SYNC_SEMANTIC_EMBED_MODEL_KEY]);
+        if (settings[SYNC_SIMILAR_EMBED_MODEL_KEY])
+          setSimilarEmbeddingModel(settings[SYNC_SIMILAR_EMBED_MODEL_KEY]);
       } catch (err) {
         console.warn("Failed to load sync settings:", err);
       } finally {
@@ -88,7 +100,9 @@ export default function SettingsSyncConfiguration() {
       setProfilesLoading(true);
       setProfilesError(null);
       try {
-        const res = await fetch(`${normaliseServerUrl(url)}/embedding-profiles`);
+        const res = await fetch(
+          `${normaliseServerUrl(url)}/embedding-profiles`,
+        );
         if (!res.ok) {
           throw new Error(`HTTP ${res.status}`);
         }
@@ -123,9 +137,18 @@ export default function SettingsSyncConfiguration() {
     try {
       await Promise.all([
         SettingsRepository.setSetting(SYNC_SERVER_URL_KEY, serverUrl.trim()),
-        SettingsRepository.setSetting(SYNC_TABLE_NAME_KEY, tableName.trim() || DEFAULT_SYNC_TABLE),
-        SettingsRepository.setSetting(SYNC_SEMANTIC_EMBED_MODEL_KEY, semanticEmbeddingModel.trim() || DEFAULT_EMBED_MODEL),
-        SettingsRepository.setSetting(SYNC_SIMILAR_EMBED_MODEL_KEY, similarEmbeddingModel.trim() || DEFAULT_EMBED_MODEL),
+        SettingsRepository.setSetting(
+          SYNC_TABLE_NAME_KEY,
+          tableName.trim() || DEFAULT_SYNC_TABLE,
+        ),
+        SettingsRepository.setSetting(
+          SYNC_SEMANTIC_EMBED_MODEL_KEY,
+          semanticEmbeddingModel.trim() || DEFAULT_EMBED_MODEL,
+        ),
+        SettingsRepository.setSetting(
+          SYNC_SIMILAR_EMBED_MODEL_KEY,
+          similarEmbeddingModel.trim() || DEFAULT_EMBED_MODEL,
+        ),
       ]);
       setStatusMessage("Sync settings saved.");
     } catch (err) {
@@ -146,7 +169,9 @@ export default function SettingsSyncConfiguration() {
       }
       const success = results.filter((r) => r.success).length;
       const failed = results.length - success;
-      setStatusMessage(`Sync finished: ${success} succeeded${failed ? `, ${failed} failed` : ""}.`);
+      setStatusMessage(
+        `Sync finished: ${success} succeeded${failed ? `, ${failed} failed` : ""}.`,
+      );
     } catch (err) {
       console.error("Manual sync failed:", err);
       Alert.alert("Sync failed", (err as Error).message);
@@ -164,7 +189,7 @@ export default function SettingsSyncConfiguration() {
       const success = results.filter((r) => r.success).length;
       const failed = results.length - success;
       setStatusMessage(
-        `Force re-sync finished: ${success} succeeded${failed ? `, ${failed} failed` : ""}.`
+        `Force re-sync finished: ${success} succeeded${failed ? `, ${failed} failed` : ""}.`,
       );
     } catch (err) {
       console.error("Force re-sync failed:", err);
@@ -207,7 +232,11 @@ export default function SettingsSyncConfiguration() {
       <Text style={styles.label}>Semantic Search Embedding</Text>
       <View style={styles.pickerContainer}>
         {profilesLoading ? (
-          <ActivityIndicator size="small" color={palette.accent} style={{ paddingVertical: spacing.s }} />
+          <ActivityIndicator
+            size="small"
+            color={palette.accent}
+            style={{ paddingVertical: spacing.s }}
+          />
         ) : (
           <Picker
             selectedValue={semanticEmbeddingModel}
@@ -229,7 +258,11 @@ export default function SettingsSyncConfiguration() {
       <Text style={styles.label}>Similar Posts Embedding</Text>
       <View style={styles.pickerContainer}>
         {profilesLoading ? (
-          <ActivityIndicator size="small" color={palette.accent} style={{ paddingVertical: spacing.s }} />
+          <ActivityIndicator
+            size="small"
+            color={palette.accent}
+            style={{ paddingVertical: spacing.s }}
+          />
         ) : (
           <Picker
             selectedValue={similarEmbeddingModel}
@@ -265,11 +298,14 @@ export default function SettingsSyncConfiguration() {
           onPress={triggerManualSync}
           disabled={syncing}
         >
-          <Text style={styles.buttonText}>{syncing ? "Syncing..." : "Sync Pending Now"}</Text>
+          <Text style={styles.buttonText}>
+            {syncing ? "Syncing..." : "Sync Pending Now"}
+          </Text>
         </TouchableOpacity>
       </View>
 
-      <TouchableOpacity
+      {/* Disabled for safety */}
+      {/* <TouchableOpacity
         style={[styles.button, styles.fullWidthButton, syncing && styles.buttonDisabled]}
         onPress={triggerForceResync}
         disabled={syncing}
@@ -277,79 +313,86 @@ export default function SettingsSyncConfiguration() {
         <Text style={styles.buttonText}>
           {syncing ? "Re-syncing..." : "Force Re-sync All Posts"}
         </Text>
-      </TouchableOpacity>
+      </TouchableOpacity> */}
 
       {statusMessage && <Text style={styles.status}>{statusMessage}</Text>}
       {lastSyncAt && (
-        <Text style={styles.status}>Last successful sync: {lastSyncAt.toLocaleString()}</Text>
+        <Text style={styles.status}>
+          Last successful sync: {lastSyncAt.toLocaleString()}
+        </Text>
       )}
     </View>
   );
 }
 
-const styles = StyleSheet.create({
-  container: {
-    padding: spacing.m,
-    backgroundColor: palette.background,
-    gap: spacing.xs,
-  },
-  label: {
-    fontSize: fontSizes.body,
-    fontWeight: fontWeights.medium,
-    color: palette.foreground,
-    marginTop: spacing.s,
-    marginBottom: spacing.xs,
-  },
-  input: {
-    borderWidth: 1,
-    borderColor: palette.border,
-    borderRadius: 6,
-    padding: spacing.s,
-    backgroundColor: palette.backgroundMidLight,
-    fontSize: fontSizes.body,
-    color: palette.foreground,
-  },
-  buttonRow: {
-    flexDirection: "row",
-    marginTop: spacing.m,
-    gap: spacing.s,
-  },
-  button: {
-    flex: 1,
-    padding: spacing.s,
-    backgroundColor: palette.background,
-    borderRadius: 6,
-    borderColor: palette.border,
-    borderWidth: 1,
-    alignItems: "center",
-  },
-  buttonDisabled: {
-    opacity: 0.6,
-  },
-  fullWidthButton: {
-    marginTop: spacing.s,
-    flex: 0,
-    width: "100%",
-  },
-  buttonText: {
-    color: palette.foreground,
-    fontSize: fontSizes.body,
-    fontWeight: fontWeights.medium,
-  },
-  pickerContainer: {
-    borderWidth: 1,
-    borderColor: palette.border,
-    borderRadius: 6,
-    backgroundColor: palette.backgroundMidLight,
-  },
-  status: {
-    marginTop: spacing.s,
-    fontSize: fontSizes.small,
-    color: palette.muted,
-  },
-  statusError: {
-    marginTop: spacing.s,
-    fontSize: fontSizes.small,
-    color: palette.favHeartRed,
-  },
-});
+function makeStyles(
+  palette: ThemeContextValue["palette"],
+  fontSizes: ThemeContextValue["fontSizes"],
+) {
+  return StyleSheet.create({
+    container: {
+      padding: spacing.m,
+      backgroundColor: palette.background,
+      gap: spacing.xs,
+    },
+    label: {
+      fontSize: fontSizes.body,
+      fontWeight: fontWeights.medium,
+      color: palette.foreground,
+      marginTop: spacing.s,
+      marginBottom: spacing.xs,
+    },
+    input: {
+      borderWidth: 1,
+      borderColor: palette.border,
+      borderRadius: 6,
+      padding: spacing.s,
+      backgroundColor: palette.backgroundMidLight,
+      fontSize: fontSizes.body,
+      color: palette.foreground,
+    },
+    buttonRow: {
+      flexDirection: "row",
+      marginTop: spacing.m,
+      gap: spacing.s,
+    },
+    button: {
+      flex: 1,
+      padding: spacing.s,
+      backgroundColor: palette.background,
+      borderRadius: 6,
+      borderColor: palette.border,
+      borderWidth: 1,
+      alignItems: "center",
+    },
+    buttonDisabled: {
+      opacity: 0.6,
+    },
+    fullWidthButton: {
+      marginTop: spacing.s,
+      flex: 0,
+      width: "100%",
+    },
+    buttonText: {
+      color: palette.foreground,
+      fontSize: fontSizes.body,
+      fontWeight: fontWeights.medium,
+    },
+    pickerContainer: {
+      borderWidth: 1,
+      borderColor: palette.border,
+      borderRadius: 6,
+      backgroundColor: palette.backgroundMidLight,
+    },
+    status: {
+      marginTop: spacing.s,
+      fontSize: fontSizes.small,
+      color: palette.muted,
+    },
+    statusError: {
+      marginTop: spacing.s,
+      fontSize: fontSizes.small,
+      color: palette.favHeartRed,
+    },
+  });
+}

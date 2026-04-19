@@ -1,4 +1,4 @@
-export const fontSizes = { 
+export const baseFontSizes = { 
   title: 18, 
   body: 14, 
   small: 12,
@@ -7,6 +7,20 @@ export const fontSizes = {
   large: 20,
   xlarge: 24 
 };
+
+export const fontSizes = baseFontSizes;
+
+export function scaledFontSizes(scale: number) {
+  return {
+    title: baseFontSizes.title * scale,
+    body: baseFontSizes.body * scale,
+    small: baseFontSizes.small * scale,
+    xsmall: baseFontSizes.xsmall * scale,
+    xxsmall: baseFontSizes.xxsmall * scale,
+    large: baseFontSizes.large * scale,
+    xlarge: baseFontSizes.xlarge * scale,
+  };
+}
 
 export const fontWeights = {
   normal: '400' as const,

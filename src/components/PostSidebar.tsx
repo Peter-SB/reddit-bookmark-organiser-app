@@ -1,15 +1,14 @@
-import { palette } from "@/constants/Colors";
 import { spacing } from "@/constants/spacing";
-import { fontSizes, fontWeights } from "@/constants/typography";
-import { Post } from "@/models/models";
+import { fontWeights } from "@/constants/typography";
+import { Post, Highlight } from "@/models/models";
 import {
   openRedditPost,
   openRedditSubreddit,
   openRedditUser,
 } from "@/utils/redditLinks";
 import { useRouter } from "expo-router";
-import { Ionicons } from "@expo/vector-icons";
-import React, { useEffect, useState } from "react";
+import { Ionicons, MaterialCommunityIcons } from "@expo/vector-icons";
+import React, { useEffect, useMemo, useState } from "react";
 import {
   Animated,
   ScrollView,
@@ -20,6 +19,9 @@ import {
   View,
 } from "react-native";
 import { FolderSelector } from "./FolderSelector";
+import { useTheme } from "@/contexts/ThemeContext";
+import type { ThemeContextValue } from "@/contexts/ThemeContext";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 interface SidebarProps {
   sidebarAnim: Animated.Value;
@@ -34,6 +36,11 @@ interface SidebarProps {
   setEditedNotes: (notes: string) => void;
   formatDate: (dt: Date) => string;
   setFolders: (postId: number, folderIds: number[]) => Promise<void>;
+  highlights?: Highlight[];
+  onHighlightPress?: (highlight: Highlight) => void;
+  toggleFontOption?: () => void;
+  onToggleArchive: () => void;
+  onToggleQueue: () => void;
 }
 
 export const PostSidebar: React.FC<SidebarProps> = ({
@@ -49,8 +56,19 @@ export const PostSidebar: React.FC<SidebarProps> = ({
   setEditedNotes,
   formatDate,
   setFolders,
+  highlights = [],
+  onHighlightPress,
+  toggleFontOption,
+  onToggleArchive,
+  onToggleQueue,
 }) => {
   const router = useRouter();
+  const safeInsets = useSafeAreaInsets();
+  const { palette, fontSizes, isDarkMode, toggleDarkMode } = useTheme();
+  const styles = useMemo(
+    () => makeStyles(palette, fontSizes),
+    [palette, fontSizes],
+  );
   const [postFolderIds, setPostFolderIds] = useState<number[]>([]);
 
   const handleFolderChange = async (folderIds: number[]) => {
@@ -110,11 +128,88 @@ export const PostSidebar: React.FC<SidebarProps> = ({
       >
         <View style={styles.sidebarHeaderNoBorder}>
           <Text style={styles.sidebarTitle}>Details</Text>
-          <TouchableOpacity onPress={toggleSidebar}>
-            <Ionicons name="close" size={24} color={palette.foreground} />
-          </TouchableOpacity>
+
+          <View
+            style={{
+              flexDirection: "row",
+              alignItems: "center",
+            }}
+          >
+            <TouchableOpacity
+              style={styles.bottomIconBtn}
+              onPress={toggleDarkMode}
+              accessibilityLabel="Toggle dark mode"
+            >
+              <Ionicons
+                name={isDarkMode ? "sunny" : "moon"}
+                size={isDarkMode ? 22 : 18}
+                color={palette.foreground}
+              />
+            </TouchableOpacity>
+            <TouchableOpacity
+              onPress={toggleFontOption}
+              style={{
+                padding: spacing.xs,
+                paddingRight: spacing.m,
+              }}
+              hitSlop={1}
+            >
+              <MaterialCommunityIcons
+                name="format-size"
+                size={22}
+                color={palette.foreground}
+              />
+            </TouchableOpacity>
+
+            <TouchableOpacity onPress={toggleSidebar}>
+              <Ionicons name="close" size={24} color={palette.foreground} />
+            </TouchableOpacity>
+          </View>
         </View>
         <ScrollView style={styles.sidebarContent}>
+          {/* Quick Actions */}
+          <View style={[styles.sidebarSection, styles.actionsRow]}>
+            <TouchableOpacity
+              style={styles.actionBtn}
+              onPress={onToggleArchive}
+              accessibilityLabel="Toggle archive"
+            >
+              <Ionicons
+                name={post.isArchived ? "archive" : "archive-outline"}
+                size={18}
+                color={
+                  post.isArchived ? palette.archiveOrange : palette.foreground
+                }
+              />
+              <Text
+                style={[
+                  styles.actionBtnLabel,
+                  post.isArchived && { color: palette.archiveOrange },
+                ]}
+              >
+                {post.isArchived ? "Archived" : "Archive"}
+              </Text>
+            </TouchableOpacity>
+            <TouchableOpacity
+              style={styles.actionBtn}
+              onPress={onToggleQueue}
+              accessibilityLabel="Toggle queue"
+            >
+              <Ionicons
+                name={post.queuedAt ? "time" : "time-outline"}
+                size={18}
+                color={post.queuedAt ? palette.saveGreen : palette.foreground}
+              />
+              <Text
+                style={[
+                  styles.actionBtnLabel,
+                  post.queuedAt && { color: palette.saveGreen },
+                ]}
+              >
+                {post.queuedAt ? "Queued" : "Queue"}
+              </Text>
+            </TouchableOpacity>
+          </View>
           {/* Notes */}
           <View style={styles.sidebarSection}>
             <Text style={styles.sidebarSectionTitle}>Notes</Text>
@@ -124,6 +219,7 @@ export const PostSidebar: React.FC<SidebarProps> = ({
               onChangeText={setEditedNotes}
               multiline
               placeholder="Add your notes..."
+              placeholderTextColor={palette.muted}
               textAlignVertical="top"
             />
           </View>
@@ -181,6 +277,11 @@ export const PostSidebar: React.FC<SidebarProps> = ({
             <Text style={styles.sidebarText}>
               Added: {formatDate(post.addedAt)}
             </Text>
+            {post.readAt && (
+              <Text style={styles.sidebarText}>
+                Read: {formatDate(post.readAt)}
+              </Text>
+            )}
             <Text style={styles.sidebarText}>
               Synced: {/* {post.syncedAt ? formatDate(post.syncedAt) : ""} */}
               {post.lastSyncStatus
@@ -190,7 +291,8 @@ export const PostSidebar: React.FC<SidebarProps> = ({
                   }`
                 : "Not synced yet"}
             </Text>
-            {post.lastSyncError ? (
+            {post.lastSyncError &&
+            post.lastSyncError !== "Network request failed" ? (
               <Text style={[styles.sidebarText, styles.errorText]}>
                 Last error: {post.lastSyncError}
               </Text>
@@ -236,80 +338,177 @@ export const PostSidebar: React.FC<SidebarProps> = ({
               <Text style={styles.similarButtonText}>Similar Posts</Text>
             </TouchableOpacity>
           </View>
-          <View style={{ height: 200 }} />
+
+          {/* Highlights */}
+          <View style={styles.sidebarSection}>
+            <Text style={styles.sidebarSectionTitle}>Highlights</Text>
+            {highlights.length === 0 ? (
+              <Text style={styles.emptyText}>No highlights yet</Text>
+            ) : (
+              highlights.map((highlight) => (
+                <TouchableOpacity
+                  key={highlight.id}
+                  style={styles.highlightItem}
+                  onPress={() => onHighlightPress?.(highlight)}
+                >
+                  <View style={styles.highlightContent}>
+                    <Text style={styles.highlightText} numberOfLines={2}>
+                      {highlight.text}
+                    </Text>
+                    {highlight.note && (
+                      <Text style={styles.highlightNote} numberOfLines={1}>
+                        {highlight.note}
+                      </Text>
+                    )}
+                  </View>
+                  <Ionicons
+                    name="ellipsis-horizontal"
+                    size={18}
+                    color={palette.muted}
+                  />
+                </TouchableOpacity>
+              ))
+            )}
+          </View>
+          <View style={{ height: 300 }} />
         </ScrollView>
       </Animated.View>
     </>
   );
 };
 
-const styles = StyleSheet.create({
-  sidebar: {
-    position: "absolute",
-    top: 0,
-    right: 0,
-    bottom: 0,
-    backgroundColor: palette.background,
-    borderLeftWidth: 1,
-    borderLeftColor: palette.border,
-    zIndex: 2,
-  },
-  overlay: {
-    position: "absolute",
-    top: 0,
-    left: 0,
-    bottom: 0,
-    width: "100%",
-    backgroundColor: "rgba(0,0,0,0.2)",
-    zIndex: 1,
-  },
-  sidebarHeaderNoBorder: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "center",
-    padding: spacing.m,
-  },
-  sidebarTitle: {
-    fontSize: fontSizes.title,
-    fontWeight: fontWeights.semibold,
-    color: palette.foreground,
-  },
-  sidebarContent: {
-    flex: 1,
-    padding: spacing.m,
-  },
-  sidebarSection: {
-    marginBottom: spacing.l,
-  },
-  sidebarSectionTitle: {
-    fontSize: fontSizes.body,
-    fontWeight: fontWeights.semibold,
-    color: palette.foreground,
-    marginBottom: spacing.s,
-  },
-  sidebarText: {
-    fontSize: fontSizes.body,
-    color: palette.muted,
-    lineHeight: 20,
-    padding: 0,
-    paddingTop: spacing.xs,
-  },
-  errorText: {
-    color: palette.favHeartRed,
-  },
-  similarButton: {
-    flexDirection: "row",
-    alignItems: "center",
-    // borderWidth: 1,
-    // borderColor: palette.border,
-    // borderRadius: 8,
-    paddingVertical: spacing.s,
-    // paddingHorizontal: spacing.m,
-    // backgroundColor: palette.backgroundMidLight,
-  },
-  similarButtonText: {
-    color: palette.foreground,
-    fontSize: fontSizes.body,
-    fontWeight: fontWeights.normal,
-  },
-});
+function makeStyles(
+  palette: ThemeContextValue["palette"],
+  fontSizes: ThemeContextValue["fontSizes"],
+) {
+  return StyleSheet.create({
+    sidebar: {
+      position: "absolute",
+      top: 0,
+      right: 0,
+      bottom: 0,
+      backgroundColor: palette.background,
+      borderLeftWidth: 1,
+      borderLeftColor: palette.border,
+      zIndex: 2,
+    },
+    overlay: {
+      position: "absolute",
+      top: 0,
+      left: 0,
+      bottom: 0,
+      width: "100%",
+      backgroundColor: "rgba(0,0,0,0.2)",
+      zIndex: 1,
+    },
+    sidebarHeaderNoBorder: {
+      flexDirection: "row",
+      justifyContent: "space-between",
+      alignItems: "center",
+      paddingHorizontal: spacing.m,
+      borderBottomWidth: 1,
+      borderBottomColor: palette.border,
+      height: 58,
+    },
+    sidebarTitle: {
+      fontSize: fontSizes.title,
+      fontWeight: fontWeights.semibold,
+      color: palette.foreground,
+    },
+    sidebarContent: {
+      flex: 1,
+      padding: spacing.m,
+    },
+    sidebarSection: {
+      marginBottom: spacing.l,
+    },
+    actionsRow: {
+      flexDirection: "row",
+    },
+    actionBtn: {
+      flex: 1,
+      flexDirection: "row",
+      alignItems: "center",
+      justifyContent: "center",
+      gap: spacing.xs,
+    },
+    actionBtnLabel: {
+      fontSize: fontSizes.small,
+      color: palette.foreground,
+      fontWeight: fontWeights.normal,
+    },
+    sidebarSectionTitle: {
+      fontSize: fontSizes.body,
+      fontWeight: fontWeights.semibold,
+      color: palette.foreground,
+      marginBottom: spacing.s,
+    },
+    sidebarText: {
+      fontSize: fontSizes.body,
+      color: palette.muted,
+      lineHeight: 20,
+      padding: 0,
+      paddingTop: spacing.xs,
+    },
+    errorText: {
+      color: palette.favHeartRed,
+    },
+    similarButton: {
+      flexDirection: "row",
+      alignItems: "center",
+      // borderWidth: 1,
+      // borderColor: palette.border,
+      // borderRadius: 8,
+      paddingVertical: spacing.s,
+      // paddingHorizontal: spacing.m,
+      // backgroundColor: palette.backgroundDarker,
+    },
+    similarButtonText: {
+      color: palette.foreground,
+      fontSize: fontSizes.body,
+      fontWeight: fontWeights.normal,
+    },
+    emptyText: {
+      fontSize: fontSizes.small,
+      color: palette.muted,
+      fontStyle: "italic",
+    },
+    highlightItem: {
+      flexDirection: "row",
+      alignItems: "center",
+      backgroundColor: palette.backgroundDarker,
+      borderRadius: 8,
+      padding: spacing.s,
+      marginBottom: spacing.s,
+      borderWidth: 1,
+      borderColor: palette.border,
+    },
+    highlightContent: {
+      flex: 1,
+      gap: spacing.xs,
+    },
+    highlightText: {
+      fontSize: fontSizes.small,
+      color: palette.foreground,
+      lineHeight: 18,
+    },
+    highlightNote: {
+      fontSize: fontSizes.small,
+      color: palette.muted,
+      fontStyle: "italic",
+    },
+    bottomBar: {
+      flexDirection: "row",
+      alignItems: "center",
+      justifyContent: "space-around",
+      borderTopWidth: 1,
+      paddingVertical: spacing.s,
+      paddingHorizontal: spacing.m,
+    },
+    bottomIconBtn: {
+      padding: spacing.s,
+      alignItems: "center",
+      justifyContent: "center",
+    },
+  });
+}

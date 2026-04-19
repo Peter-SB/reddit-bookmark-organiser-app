@@ -1,9 +1,9 @@
-import { palette } from "@/constants/Colors";
 import { spacing } from "@/constants/spacing";
-import { fontSizes } from "@/constants/typography";
-import React from "react";
+import React, { useMemo } from "react";
 import { StyleSheet, TextInput, TouchableOpacity, View } from "react-native";
 import Icon from "react-native-vector-icons/MaterialIcons";
+import { useTheme } from "@/contexts/ThemeContext";
+import type { ThemeContextValue } from "@/contexts/ThemeContext";
 
 interface SearchBarProps {
   value: string;
@@ -18,6 +18,11 @@ export function SearchBar({
   placeholder = "Search posts...",
   cancelButtonCallback = () => {},
 }: SearchBarProps) {
+  const { palette, fontSizes } = useTheme();
+  const styles = useMemo(
+    () => makeStyles(palette, fontSizes),
+    [palette, fontSizes],
+  );
   const handleClear = () => {
     onChangeText("");
     cancelButtonCallback();
@@ -47,28 +52,33 @@ export function SearchBar({
   );
 }
 
-const styles = StyleSheet.create({
-  searchbar: {
-    flexDirection: "row",
-    alignItems: "center",
-    backgroundColor: palette.background,
-    borderWidth: 1,
-    borderColor: palette.border,
-    borderRadius: 8,
-    paddingHorizontal: spacing.s,
-    minHeight: 44,
-  },
-  searchIcon: {
-    marginRight: spacing.s,
-  },
-  input: {
-    flex: 1,
-    fontSize: fontSizes.body,
-    color: palette.foreground,
-    paddingVertical: spacing.s,
-  },
-  clearButton: {
-    padding: spacing.xs,
-    marginLeft: spacing.s,
-  },
-});
+function makeStyles(
+  palette: ThemeContextValue["palette"],
+  fontSizes: ThemeContextValue["fontSizes"],
+) {
+  return StyleSheet.create({
+    searchbar: {
+      flexDirection: "row",
+      alignItems: "center",
+      backgroundColor: palette.background,
+      borderWidth: 1,
+      borderColor: palette.border,
+      borderRadius: 8,
+      paddingHorizontal: spacing.s,
+      minHeight: 44,
+    },
+    searchIcon: {
+      marginRight: spacing.s,
+    },
+    input: {
+      flex: 1,
+      fontSize: fontSizes.body,
+      color: palette.foreground,
+      paddingVertical: spacing.s,
+    },
+    clearButton: {
+      padding: spacing.xs,
+      marginLeft: spacing.s,
+    },
+  });
+}

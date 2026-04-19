@@ -2,7 +2,6 @@ import { useFocusEffect, useRouter } from "expo-router";
 import React, { useCallback, useMemo, useState } from "react";
 import {
   ActivityIndicator,
-  FlatList,
   KeyboardAvoidingView,
   Modal,
   Platform,
@@ -14,18 +13,20 @@ import {
   TouchableWithoutFeedback,
   View,
 } from "react-native";
+import { FlashList } from "@shopify/flash-list";
 import { SafeAreaView } from "react-native-safe-area-context";
 import Icon from "react-native-vector-icons/MaterialIcons";
 
 import { SearchBar } from "@/components/SearchBar";
 import { PostCard } from "@/components/PostCard";
-import { palette } from "@/constants/Colors";
 import {
   DEFAULT_SEARCH_INCLUDE_TEXT,
   DEFAULT_SEARCH_RESULTS,
 } from "@/constants/search";
 import { spacing } from "@/constants/spacing";
-import { fontSizes, fontWeights } from "@/constants/typography";
+import { fontWeights } from "@/constants/typography";
+import { useTheme } from "@/contexts/ThemeContext";
+import type { ThemeContextValue } from "@/contexts/ThemeContext";
 import { usePosts } from "@/hooks/usePosts";
 import {
   SemanticSearchResult,
@@ -33,6 +34,11 @@ import {
 } from "@/services/SemanticSearchService";
 
 export default function SemanticSearchScreen() {
+  const { palette, fontSizes } = useTheme();
+  const styles = useMemo(
+    () => makeStyles(palette, fontSizes),
+    [palette, fontSizes],
+  );
   const router = useRouter();
   const { posts, refreshPosts } = usePosts();
 
@@ -44,7 +50,7 @@ export default function SemanticSearchScreen() {
   const [showUnique, setShowUnique] = useState(false);
   const [results, setResults] = useState<SemanticSearchResult[]>([]);
   const [expandedResults, setExpandedResults] = useState<Set<string>>(
-    () => new Set()
+    () => new Set(),
   );
   const [modalVisible, setModalVisible] = useState(false);
   const [loading, setLoading] = useState(false);
@@ -54,13 +60,13 @@ export default function SemanticSearchScreen() {
   useFocusEffect(
     useCallback(() => {
       refreshPosts();
-    }, [refreshPosts])
+    }, [refreshPosts]),
   );
 
   useFocusEffect(
     useCallback(() => {
       setModalVisible(true);
-    }, [])
+    }, []),
   );
 
   const postsMap = useMemo(() => {
@@ -213,7 +219,7 @@ export default function SemanticSearchScreen() {
 
       {error ? <Text style={styles.errorText}>{error}</Text> : null}
 
-      <FlatList
+      <FlashList
         data={results}
         keyExtractor={(item, idx) => `${item.postId}-${idx}`}
         renderItem={renderResult}
@@ -318,201 +324,206 @@ export default function SemanticSearchScreen() {
   );
 }
 
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: palette.background,
-  },
-  header: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-between",
-    paddingHorizontal: spacing.m,
-    paddingVertical: spacing.s,
-    borderBottomWidth: 1,
-    borderBottomColor: palette.border,
-    backgroundColor: palette.background,
-  },
-  headerTitle: {
-    fontSize: fontSizes.large,
-    fontWeight: fontWeights.semibold,
-    color: palette.foreground,
-  },
-  headerIconButton: {
-    padding: spacing.xs,
-  },
-  statusRow: {
-    paddingHorizontal: spacing.m,
-    paddingVertical: spacing.s,
-    borderBottomWidth: 1,
-    borderBottomColor: palette.border,
-    backgroundColor: palette.background,
-  },
-  statusText: {
-    fontSize: fontSizes.body,
-    color: palette.muted,
-  },
-  errorText: {
-    color: palette.favHeartRed,
-    paddingHorizontal: spacing.m,
-    paddingBottom: spacing.s,
-  },
-  loadingRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    // paddingHorizontal: spacing.m,
-    paddingTop: spacing.s,
-  },
-  resultText: {
-    fontSize: fontSizes.small,
-    color: palette.foreground,
-    lineHeight: 18,
-  },
-  readMoreText: {
-    fontSize: fontSizes.small,
-    fontWeight: fontWeights.medium,
-    color: palette.foregroundMidLight,
-  },
-  fallbackCard: {
-    padding: spacing.m,
-    borderBottomWidth: 1,
-    borderColor: palette.border,
-    backgroundColor: palette.background,
-  },
-  fallbackHeader: {
-    flexDirection: "row",
-    alignItems: "flex-start",
-    justifyContent: "space-between",
-    marginBottom: spacing.xs,
-  },
-  fallbackTitle: {
-    fontSize: fontSizes.title * 0.9,
-    fontWeight: fontWeights.semibold,
-    color: palette.foreground,
-    flex: 1,
-    marginRight: spacing.s,
-  },
-  fallbackBadge: {
-    paddingHorizontal: spacing.xs,
-    paddingVertical: 2,
-    borderRadius: 6,
-    backgroundColor: palette.backgroundMidLight,
-  },
-  fallbackBadgeText: {
-    fontSize: fontSizes.small,
-    color: palette.muted,
-  },
-  fallbackMeta: {
-    fontSize: fontSizes.small,
-    color: palette.muted,
-  },
-  emptyListContainer: {
-    flexGrow: 1,
-  },
-  emptyState: {
-    flex: 1,
-    alignItems: "center",
-    justifyContent: "center",
-    paddingHorizontal: spacing.l,
-  },
-  emptyTitle: {
-    fontSize: fontSizes.title,
-    fontWeight: fontWeights.semibold,
-    color: palette.foreground,
-    marginBottom: spacing.s,
-  },
-  emptySubtitle: {
-    fontSize: fontSizes.body,
-    color: palette.muted,
-    textAlign: "center",
-    lineHeight: 20,
-  },
-  modalContainer: {
-    flex: 1,
-    justifyContent: "center",
-  },
-  modalBackdrop: {
-    ...StyleSheet.absoluteFillObject,
-    backgroundColor: "rgba(0,0,0,0.45)",
-  },
-  modalCenter: {
-    flex: 1,
-    justifyContent: "center",
-    paddingHorizontal: spacing.l,
-  },
-  modalCard: {
-    backgroundColor: palette.background,
-    borderRadius: 12,
-    padding: spacing.l,
-    borderWidth: 1,
-    borderColor: palette.border,
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 6 },
-    shadowOpacity: 0.15,
-    shadowRadius: 12,
-    elevation: 8,
-    gap: spacing.s,
-  },
-  modalHeader: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-between",
-  },
-  modalTitle: {
-    fontSize: fontSizes.large,
-    fontWeight: fontWeights.semibold,
-    color: palette.foreground,
-  },
-  inputRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-between",
-    gap: spacing.s,
-  },
-  inputLabel: {
-    fontSize: fontSizes.body,
-    color: palette.foreground,
-  },
-  input: {
-    flex: 0.3,
-    borderWidth: 1,
-    borderColor: palette.border,
-    borderRadius: 8,
-    paddingHorizontal: spacing.s,
-    paddingVertical: spacing.xs,
-    color: palette.foreground,
-    textAlign: "center",
-  },
-  switchRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-between",
-    height: 40,
-  },
-  searchRow: {
-    paddingTop: spacing.s,
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "flex-end",
-  },
-  helperText: {
-    fontSize: fontSizes.small,
-    color: palette.muted,
-    marginTop: 2,
-  },
-  searchButton: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "center",
-    backgroundColor: palette.foregroundLight,
-    borderRadius: 10,
-    paddingVertical: spacing.s,
-    paddingHorizontal: spacing.m,
-    gap: spacing.s,
-  },
-  searchButtonText: {
-    color: palette.background,
-    fontSize: fontSizes.body,
-    fontWeight: fontWeights.medium,
-  },
-});
+function makeStyles(
+  palette: ThemeContextValue["palette"],
+  fontSizes: ThemeContextValue["fontSizes"],
+) {
+  return StyleSheet.create({
+    container: {
+      flex: 1,
+      backgroundColor: palette.background,
+    },
+    header: {
+      flexDirection: "row",
+      alignItems: "center",
+      justifyContent: "space-between",
+      paddingHorizontal: spacing.m,
+      paddingVertical: spacing.s,
+      borderBottomWidth: 1,
+      borderBottomColor: palette.border,
+      backgroundColor: palette.background,
+    },
+    headerTitle: {
+      fontSize: fontSizes.large,
+      fontWeight: fontWeights.semibold,
+      color: palette.foreground,
+    },
+    headerIconButton: {
+      padding: spacing.xs,
+    },
+    statusRow: {
+      paddingHorizontal: spacing.m,
+      paddingVertical: spacing.s,
+      borderBottomWidth: 1,
+      borderBottomColor: palette.border,
+      backgroundColor: palette.background,
+    },
+    statusText: {
+      fontSize: fontSizes.body,
+      color: palette.muted,
+    },
+    errorText: {
+      color: palette.favHeartRed,
+      paddingHorizontal: spacing.m,
+      paddingBottom: spacing.s,
+    },
+    loadingRow: {
+      flexDirection: "row",
+      alignItems: "center",
+      // paddingHorizontal: spacing.m,
+      paddingTop: spacing.s,
+    },
+    resultText: {
+      fontSize: fontSizes.small,
+      color: palette.foreground,
+      lineHeight: 18,
+    },
+    readMoreText: {
+      fontSize: fontSizes.small,
+      fontWeight: fontWeights.medium,
+      color: palette.foregroundMidLight,
+    },
+    fallbackCard: {
+      padding: spacing.m,
+      borderBottomWidth: 1,
+      borderColor: palette.border,
+      backgroundColor: palette.background,
+    },
+    fallbackHeader: {
+      flexDirection: "row",
+      alignItems: "flex-start",
+      justifyContent: "space-between",
+      marginBottom: spacing.xs,
+    },
+    fallbackTitle: {
+      fontSize: fontSizes.title * 0.9,
+      fontWeight: fontWeights.semibold,
+      color: palette.foreground,
+      flex: 1,
+      marginRight: spacing.s,
+    },
+    fallbackBadge: {
+      paddingHorizontal: spacing.xs,
+      paddingVertical: 2,
+      borderRadius: 6,
+      backgroundColor: palette.backgroundMidLight,
+    },
+    fallbackBadgeText: {
+      fontSize: fontSizes.small,
+      color: palette.muted,
+    },
+    fallbackMeta: {
+      fontSize: fontSizes.small,
+      color: palette.muted,
+    },
+    emptyListContainer: {
+      flexGrow: 1,
+    },
+    emptyState: {
+      flex: 1,
+      alignItems: "center",
+      justifyContent: "center",
+      paddingHorizontal: spacing.l,
+    },
+    emptyTitle: {
+      fontSize: fontSizes.title,
+      fontWeight: fontWeights.semibold,
+      color: palette.foreground,
+      marginBottom: spacing.s,
+    },
+    emptySubtitle: {
+      fontSize: fontSizes.body,
+      color: palette.muted,
+      textAlign: "center",
+      lineHeight: 20,
+    },
+    modalContainer: {
+      flex: 1,
+      justifyContent: "center",
+    },
+    modalBackdrop: {
+      ...StyleSheet.absoluteFillObject,
+      backgroundColor: "rgba(0,0,0,0.45)",
+    },
+    modalCenter: {
+      flex: 1,
+      justifyContent: "center",
+      paddingHorizontal: spacing.l,
+    },
+    modalCard: {
+      backgroundColor: palette.background,
+      borderRadius: 12,
+      padding: spacing.l,
+      borderWidth: 1,
+      borderColor: palette.border,
+      shadowColor: "#000",
+      shadowOffset: { width: 0, height: 6 },
+      shadowOpacity: 0.15,
+      shadowRadius: 12,
+      elevation: 8,
+      gap: spacing.s,
+    },
+    modalHeader: {
+      flexDirection: "row",
+      alignItems: "center",
+      justifyContent: "space-between",
+    },
+    modalTitle: {
+      fontSize: fontSizes.large,
+      fontWeight: fontWeights.semibold,
+      color: palette.foreground,
+    },
+    inputRow: {
+      flexDirection: "row",
+      alignItems: "center",
+      justifyContent: "space-between",
+      gap: spacing.s,
+    },
+    inputLabel: {
+      fontSize: fontSizes.body,
+      color: palette.foreground,
+    },
+    input: {
+      flex: 0.3,
+      borderWidth: 1,
+      borderColor: palette.border,
+      borderRadius: 8,
+      paddingHorizontal: spacing.s,
+      paddingVertical: spacing.xs,
+      color: palette.foreground,
+      textAlign: "center",
+    },
+    switchRow: {
+      flexDirection: "row",
+      alignItems: "center",
+      justifyContent: "space-between",
+      height: 40,
+    },
+    searchRow: {
+      paddingTop: spacing.s,
+      flexDirection: "row",
+      alignItems: "center",
+      justifyContent: "flex-end",
+    },
+    helperText: {
+      fontSize: fontSizes.small,
+      color: palette.muted,
+      marginTop: 2,
+    },
+    searchButton: {
+      flexDirection: "row",
+      alignItems: "center",
+      justifyContent: "center",
+      backgroundColor: palette.foregroundLight,
+      borderRadius: 10,
+      paddingVertical: spacing.s,
+      paddingHorizontal: spacing.m,
+      gap: spacing.s,
+    },
+    searchButtonText: {
+      color: palette.background,
+      fontSize: fontSizes.body,
+      fontWeight: fontWeights.medium,
+    },
+  });
+}

@@ -35,7 +35,12 @@ export interface Post {
   notes?: string;
   rating?: number;       // 1–5 stars (float)
   isRead: boolean;
+  readAt?: Date | null;  // When the post was last marked as read (only updated when transitioning to read)
   isFavorite: boolean;
+  /** When the post was queued (null = not queued) */
+  queuedAt?: Date | null;
+  /** Archive flag */
+  isArchived?: boolean;
   /** Soft delete flag */
   isDeleted?: boolean;
 
@@ -50,6 +55,33 @@ export interface Post {
 
   /** AI-generated summary */
   summary?: string;
+}
+
+/**
+ * Lightweight version of Post for list/card rendering.
+ * Excludes heavy fields: bodyText, bodyMinHash, customBody, extraFields, summary.
+ */
+export interface PostListItem {
+  id: number;
+  redditId: string;
+  url: string;
+  title: string;
+  author: string;
+  subreddit: string;
+  redditCreatedAt: Date;
+  addedAt: Date;
+  updatedAt: Date;
+  customTitle?: string;
+  notes?: string;
+  rating?: number;
+  isRead: boolean;
+  isFavorite: boolean;
+  isArchived?: boolean;
+  readAt?: Date | null;
+  queuedAt?: Date | null;
+  folderIds: number[];
+  /** Pre-computed word count from SQL so we don't need to load bodyText */
+  wordCount: number;
 }
 
 export interface Folder {
@@ -70,4 +102,25 @@ export interface PostFolder {
   postId: number;
   /** Folder ID (FK) */
   folderId: number;
+}
+
+export interface Highlight {
+  /** Internal primary key */
+  id: number;
+  /** Post ID (FK reference to posts table) */
+  postId: number;
+  /** The captured highlight text */
+  text: string;
+  /** Optional note attached to the highlight */
+  note?: string;
+  /** Start offset for highlighting in UI (optional) */
+  startOffset?: number;
+  /** End offset for highlighting in UI (optional) */
+  endOffset?: number;
+  /** When the highlight was created */
+  createdAt: Date;
+  /** When the highlight was last updated */
+  updatedAt: Date;
+  /** Soft delete flag */
+  isDeleted?: boolean;
 }

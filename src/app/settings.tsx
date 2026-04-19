@@ -2,10 +2,11 @@ import SettingsCredentialsManager from "@/components/SettingsCredentialsManager"
 import SettingsDatabaseManager from "@/components/SettingsDatabaseManager";
 import SettingsExportToJson from "@/components/SettingsExportToJson";
 import SettingsSyncConfiguration from "@/components/SettingsSyncConfiguration";
-import { palette } from "@/constants/Colors";
 import { spacing } from "@/constants/spacing";
-import { fontSizes, fontWeights } from "@/constants/typography";
-import React, { useEffect, useState } from "react";
+import { fontWeights } from "@/constants/typography";
+import { useTheme } from "@/contexts/ThemeContext";
+import type { ThemeContextValue } from "@/contexts/ThemeContext";
+import React, { useEffect, useState, useMemo } from "react";
 import {
   ActivityIndicator,
   ScrollView,
@@ -21,6 +22,11 @@ import Icon from "@expo/vector-icons/MaterialIcons";
 import { useRouter } from "expo-router";
 
 export default function SettingsScreen() {
+  const { palette, fontSizes } = useTheme();
+  const styles = useMemo(
+    () => makeStyles(palette, fontSizes),
+    [palette, fontSizes],
+  );
   const [loading, setLoading] = useState(true);
   const [openSections, setOpenSections] = useState({
     sync: true,
@@ -107,7 +113,7 @@ export default function SettingsScreen() {
         >
           <SettingsDatabaseManager />
         </SettingsSection>
-      
+
         <SettingsSection
           title="Sync Server"
           icon="sync"
@@ -148,58 +154,63 @@ export default function SettingsScreen() {
   );
 }
 
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: palette.background,
-    padding: 0,
-  },
-  header: {
-    paddingHorizontal: spacing.m,
-    paddingVertical: spacing.s,
-    borderBottomWidth: 1,
-    borderBottomColor: palette.border,
-    backgroundColor: palette.backgroundMidLight,
-  },
-  headerTitle: {
-    fontSize: fontSizes.xlarge,
-    fontWeight: fontWeights.semibold,
-    color: palette.foreground,
-    paddingLeft: spacing.m,
-  },
-  content: {
-    padding: 0,
-  },
-  section: {
-    // marginBottom: spacing.xs,
-    marginHorizontal: 0,
-    borderColor: palette.border,
-    borderBottomWidth: 1,
-  },
-  sectionHeader: {},
-  sectionHeaderContent: {
-    flexDirection: "row",
-    alignItems: "center",
-    paddingVertical: spacing.l,
-    paddingHorizontal: spacing.m,
-  },
-  iconContainer: {
-    width: 36,
-    alignItems: "center",
-    justifyContent: "center",
-    marginRight: spacing.s,
-  },
-  sectionTitle: {
-    fontSize: fontSizes.large,
-    fontWeight: fontWeights.normal,
-    color: palette.foreground,
-    flex: 1,
-  },
-  expandIcon: {
-    marginLeft: "auto",
-  },
-  sectionContent: {},
-  divider: {
-    height: spacing.s,
-  },
-});
+function makeStyles(
+  palette: ThemeContextValue["palette"],
+  fontSizes: ThemeContextValue["fontSizes"],
+) {
+  return StyleSheet.create({
+    container: {
+      flex: 1,
+      backgroundColor: palette.background,
+      padding: 0,
+    },
+    header: {
+      paddingHorizontal: spacing.m,
+      paddingVertical: spacing.s,
+      borderBottomWidth: 1,
+      borderBottomColor: palette.border,
+      backgroundColor: palette.backgroundMidLight,
+    },
+    headerTitle: {
+      fontSize: fontSizes.xlarge,
+      fontWeight: fontWeights.semibold,
+      color: palette.foreground,
+      paddingLeft: spacing.m,
+    },
+    content: {
+      padding: 0,
+    },
+    section: {
+      // marginBottom: spacing.xs,
+      marginHorizontal: 0,
+      borderColor: palette.border,
+      borderBottomWidth: 1,
+    },
+    sectionHeader: {},
+    sectionHeaderContent: {
+      flexDirection: "row",
+      alignItems: "center",
+      paddingVertical: spacing.l,
+      paddingHorizontal: spacing.m,
+    },
+    iconContainer: {
+      width: 36,
+      alignItems: "center",
+      justifyContent: "center",
+      marginRight: spacing.s,
+    },
+    sectionTitle: {
+      fontSize: fontSizes.large,
+      fontWeight: fontWeights.normal,
+      color: palette.foreground,
+      flex: 1,
+    },
+    expandIcon: {
+      marginLeft: "auto",
+    },
+    sectionContent: {},
+    divider: {
+      height: spacing.s,
+    },
+  });
+}

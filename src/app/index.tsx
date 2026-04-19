@@ -1,18 +1,25 @@
 import { LinearGradient } from "expo-linear-gradient";
 import * as Linking from "expo-linking";
 import { useFocusEffect, useRouter } from "expo-router";
-import React, { useCallback, useEffect, useRef, useState } from "react";
+import React, {
+  useCallback,
+  useEffect,
+  useRef,
+  useState,
+  useMemo,
+} from "react";
+import { OrderByOption } from "@/constants/orderBy";
 import {
   ActivityIndicator,
   Alert,
   Dimensions,
-  FlatList,
   Image,
   StyleSheet,
   Text,
   TouchableOpacity,
   View,
 } from "react-native";
+import { FlashList, FlashListRef } from "@shopify/flash-list";
 
 import {
   SafeAreaView,
@@ -21,33 +28,35 @@ import {
 import Icon from "react-native-vector-icons/MaterialIcons";
 
 import { InputBar } from "@/components/InputBar";
-import { PostCard } from "@/components/PostCard";
-import { palette } from "@/constants/Colors";
+
+import { SwipeablePostCard } from "@/components/SwipeablePostCard";
 import { spacing } from "@/constants/spacing";
-import { fontSizes, fontWeights } from "@/constants/typography";
-import { Post } from "@/models/models";
+import { fontWeights } from "@/constants/typography";
+import { useTheme } from "@/contexts/ThemeContext";
+import type { ThemeContextValue } from "@/contexts/ThemeContext";
+import { PostListItem } from "@/models/models";
+import { scrollToTopWithHeader } from "@/utils/scrollAnimationHelpers";
 
 import { MenuSidebar } from "@/components/MenuSidebar";
 import { SearchBar } from "@/components/SearchBar";
 import { useFolders } from "@/hooks/useFolders";
+import { useFilteredPosts } from "@/hooks/useFilteredPosts";
 import { usePosts } from "@/hooks/usePosts";
 import { usePostSync } from "@/hooks/usePostSync";
 import { useRedditApi } from "@/hooks/useRedditApi";
-import { filterPosts, sortPosts } from "@/utils/postsHelpers";
 
 type TripleFilter = "all" | "yes" | "no";
 
 const LIST_HEADER_HEIGHT = 44 + 2 * spacing.m; //
 
 export default function HomeScreen() {
+  const { palette, fontSizes, isDarkMode } = useTheme();
+  const styles = useMemo(
+    () => makeStyles(palette, fontSizes),
+    [palette, fontSizes],
+  );
   const router = useRouter();
-  const {
-    posts,
-    loading: postsLoading,
-    addPost,
-    refreshPosts,
-    checkForSimilarPosts,
-  } = usePosts();
+  const { handleAddPost: addPostFromUrl, toggleQueue } = usePosts();
   const { folders, deleteFolder, refreshFolders } = useFolders();
   const { getPostData, loading: redditApiLoading } = useRedditApi();
   const { syncSinglePost } = usePostSync({ autoStart: false });
@@ -58,39 +67,55 @@ export default function HomeScreen() {
 
   const [favouritesFilter, setFavouritesFilter] = useState<TripleFilter>("all");
   const [readFilter, setReadFilter] = useState<TripleFilter>("all");
+  const [archivedFilter, setArchivedFilter] = useState<TripleFilter>("no");
+  const [queuedFilter, setQueuedFilter] = useState<TripleFilter>("all");
   const [search, setSearch] = useState("");
   // Track selected folders
   const [selectedFolders, setSelectedFolders] = useState<number[]>([]);
 
   // Add state for orderBy and orderDirection
-  const [orderBy, setOrderBy] = useState<string>("addedAt");
+  const [orderBy, setOrderBy] = useState<OrderByOption>(OrderByOption.AddedAt);
   const [orderDirection, setOrderDirection] = useState<"asc" | "desc">("desc");
+  const [randomSeed, setRandomSeed] = useState<number>(() => Date.now());
 
   const insets = useSafeAreaInsets();
 
-  // Filter posts by search string and selected folders
-  const filteredPosts = sortPosts(
-    filterPosts(posts, {
-      search,
-      selectedFolders,
-      favouritesFilter,
-      readFilter,
-    }),
+  // Filter and sort posts in SQL so body text is searchable
+  // When a search query is active, include archived posts so they appear in results
+  const { posts: filteredPosts, setPostsAt } = useFilteredPosts({
+    search,
+    selectedFolders,
+    favouritesFilter,
+    readFilter,
+    archivedFilter: search.trim() ? "all" : archivedFilter,
+    queuedFilter,
     orderBy,
-    orderDirection
-  );
+    orderDirection,
+    randomSeed,
+  });
 
-  const postsListRef = useRef<FlatList<Post>>(null);
+  const postsListRef = useRef<FlashListRef<PostListItem>>(null);
+  const perfDataReadyRef = useRef<number>(0);
+  const perfFirstRenderRef = useRef(false);
+
+  // Perf: log when filtered posts data arrives (measures React reconciliation gap from setPosts → effect)
+  useEffect(() => {
+    if (filteredPosts.length > 0) {
+      const now = Date.now();
+      perfDataReadyRef.current = now;
+      const reactGap = setPostsAt.current > 0 ? now - setPostsAt.current : -1;
+      console.log(
+        `[PERF] HomeScreen: filteredPosts ready — ${filteredPosts.length} posts, react reconcile=${reactGap}ms`,
+      );
+    }
+  }, [filteredPosts, setPostsAt]);
 
   // Hide header on first render. Using this over InteractionManager because this only runs once.
   // InteractionManager would run every time the screen is focused, making searching ui glitch.
   useEffect(() => {
     // wait a tick for FlatList to mount.
     requestAnimationFrame(() => {
-      postsListRef.current?.scrollToOffset({
-        offset: LIST_HEADER_HEIGHT,
-        animated: true,
-      });
+      scrollToTopWithHeader(postsListRef, LIST_HEADER_HEIGHT);
     });
   }, []);
 
@@ -98,16 +123,16 @@ export default function HomeScreen() {
   const [read, setRead] = useState(0);
 
   useEffect(() => {
-    setTotal(filteredPosts.length);
-    setRead(total - filteredPosts.filter((p) => !p.isRead).length);
+    const newTotal = filteredPosts.length;
+    setTotal(newTotal);
+    setRead(newTotal - filteredPosts.filter((p) => !p.isRead).length);
   }, [filteredPosts]);
 
-  // Every time HomeScreen comes into focus, reload posts
+  // Posts are updated optimistically via shared state so no reload is needed here.
   useFocusEffect(
     useCallback(() => {
-      refreshPosts();
       refreshFolders();
-    }, [refreshPosts, refreshFolders])
+    }, [refreshFolders]),
   );
 
   const handleAddPost = useCallback(
@@ -115,105 +140,42 @@ export default function HomeScreen() {
       if (isAdding) return;
       setIsAdding(true);
       try {
-        const postData = await getPostData(url);
-        const addAndSync = async () => {
-          const created = await addPost(postData);
-          await syncSinglePost(created.id);
-          setIsInputVisible(false);
-        };
-        const safeAddAndSync = () =>
-          addAndSync().catch((err) => {
-            console.error("Failed to add post:", err);
-            Alert.alert(
-              "Error",
-              `Failed to add post: ${(err as Error).message}`
-            );
-          });
-
-        // Check for exact duplicates (existing logic)
-        const exactDuplicates = posts.filter(
-          (p) => p.redditId === postData.redditId
-        );
-
-        // Check for similar content using MinHash
-        const similarPosts = await checkForSimilarPosts(
-          postData.bodyText || "",
-          0.8
-        );
-
-        if (exactDuplicates.length > 0) {
-          Alert.alert(
-            "Duplicate Post",
-            "This post appears to already exist. Add anyway?",
-            [
-              { text: "Cancel", style: "cancel" },
-              {
-                text: "Add Anyway",
-                onPress: () => safeAddAndSync(),
-              },
-            ]
-          );
-        } else if (similarPosts.length > 0) {
-          const similarTitles = similarPosts
-            .slice(0, 2)
-            .map((p) => `"${p.title}"`)
-            .join("\n");
-          Alert.alert(
-            "Similar Content Found",
-            `Found ${
-              similarPosts.length
-            } post(s) with similar content:\n\n${similarTitles}${
-              similarPosts.length > 3 ? "\n...and more" : ""
-            }\n\nAdd anyway?`,
-            [
-              { text: "Cancel", style: "cancel" },
-              {
-                text: "Add Anyway",
-                onPress: () => safeAddAndSync(),
-              },
-            ]
-          );
-        } else {
-          await addAndSync();
-        }
-      } catch (e) {
-        console.error("Failed to add post:", e);
-        Alert.alert("Error", `Failed to add post: ${(e as Error).message}`);
+        await addPostFromUrl(url, {
+          getPostData,
+          syncSinglePost,
+          onBeforeAdd: () => setIsAdding(false),
+          onSuccess: () => setIsInputVisible(false),
+        });
       } finally {
         setIsAdding(false);
       }
     },
-    [
-      isAdding,
-      getPostData,
-      posts,
-      checkForSimilarPosts,
-      addPost,
-      syncSinglePost,
-    ]
+    [isAdding, addPostFromUrl, getPostData, syncSinglePost],
   );
 
   const handleSelect = (key: string | number | (number | string)[]) => {
-    // key can be "home" | "search" | "favorites" | "unread" | "settings" | folder.id | array of folder ids
+    // key can be "home" | "search" | "favorites" | "unread" | "settings" | "highlights" | folder.id | array of folder ids
     console.log("Selected:", key);
     if (key === "home") {
       setSearch("");
       setFavouritesFilter("all");
       setReadFilter("all");
+      setArchivedFilter("no");
+      setQueuedFilter("all");
       setSelectedFolders([]);
-      postsListRef.current?.scrollToOffset({
-        offset: LIST_HEADER_HEIGHT,
-        animated: true,
-      });
+      setOrderBy(OrderByOption.AddedAt);
+      setOrderDirection("desc");
+      scrollToTopWithHeader(postsListRef, LIST_HEADER_HEIGHT);
     } else if (key === "semantic-search") {
       router.push("/semantic-search" as any);
+    } else if (key === "highlights") {
+      router.push("/highlights" as any);
+    } else if (key === "authors") {
+      router.push("/author/authors" as any);
     } else if (key === "settings") {
       router.push("/settings" as any);
     } else if (key === "search") {
-      postsListRef.current?.scrollToOffset({
-        offset: 0,
-        animated: true,
-      });
+      scrollToTopWithHeader(postsListRef, 0);
     } else if (Array.isArray(key)) {
       setSelectedFolders(key as number[]);
       return;
@@ -224,7 +186,33 @@ export default function HomeScreen() {
     setSidebarOpen(false);
   };
 
-  const renderPost = ({ item }: { item: Post }) => <PostCard post={item} />;
+  const renderPost = useCallback(
+    ({ item }: { item: PostListItem }) => (
+      <SwipeablePostCard post={item} onToggleQueue={toggleQueue} />
+    ),
+    [toggleQueue],
+  );
+
+  const onViewableItemsChangedRef = useRef(
+    ({ viewableItems }: { viewableItems: any[] }) => {
+      if (
+        !perfFirstRenderRef.current &&
+        viewableItems.length > 0 &&
+        perfDataReadyRef.current > 0
+      ) {
+        perfFirstRenderRef.current = true;
+        console.log(
+          `[PERF] HomeScreen: first ${viewableItems.length} items visible — ${Date.now() - perfDataReadyRef.current}ms after data ready`,
+        );
+      }
+    },
+  );
+
+  const onSetOrderBy = useCallback((option: OrderByOption) => {
+    scrollToTopWithHeader(postsListRef, LIST_HEADER_HEIGHT);
+    setSidebarOpen(false);
+    setOrderBy(option);
+  }, []);
 
   useEffect(() => {
     async function handleIncoming() {
@@ -268,7 +256,7 @@ export default function HomeScreen() {
     return () => sub.remove();
   }, [router, handleAddPost]);
 
-  const isLoading = redditApiLoading || isAdding; // || postsLoading;
+  const isLoading = redditApiLoading || isAdding;
 
   // Add this callback to open a random post
   const handleOpenRandomPost = useCallback(() => {
@@ -289,15 +277,20 @@ export default function HomeScreen() {
         folders={folders}
         favouritesFilter={favouritesFilter}
         readFilter={readFilter}
+        archivedFilter={archivedFilter}
+        queuedFilter={queuedFilter}
         onFavouritesFilterChange={setFavouritesFilter}
         onReadFilterChange={setReadFilter}
+        onArchivedFilterChange={setArchivedFilter}
+        onQueuedFilterChange={setQueuedFilter}
         selectedFolders={selectedFolders}
         onSelectedFoldersChange={setSelectedFolders}
         onDeleteFolder={deleteFolder}
         orderBy={orderBy}
         orderDirection={orderDirection}
-        onOrderByChange={setOrderBy}
+        onOrderByChange={onSetOrderBy}
         onOrderDirectionChange={setOrderDirection}
+        onRandomReseed={() => setRandomSeed(Date.now())}
       />
 
       <View style={styles.header}>
@@ -326,7 +319,12 @@ export default function HomeScreen() {
             </View>
             <Image
               source={require("@/assets/images/custom-splash-icon.png")}
-              style={{ width: 46, height: 46, marginLeft: 4 }}
+              style={{
+                width: 46,
+                height: 46,
+                marginLeft: 4,
+                ...(isDarkMode ? { tintColor: palette.foreground } : {}),
+              }}
               resizeMode="contain"
             />
           </View>
@@ -354,8 +352,8 @@ export default function HomeScreen() {
               {isAdding
                 ? "Adding post..."
                 : redditApiLoading
-                ? "Fetching from Reddit..."
-                : "Loading posts..."}
+                  ? "Fetching from Reddit..."
+                  : "Loading posts..."}
             </Text>
           </View>
         )}
@@ -364,13 +362,14 @@ export default function HomeScreen() {
       {/* Mask the shadow of the top bar from bleeding into the system status bar */}
       <View style={[styles.topBarMask, { height: insets.top }]} />
 
-      <FlatList
+      <FlashList
         ref={postsListRef}
         style={{ flex: 1 }}
         data={filteredPosts}
         keyExtractor={(item) => item.id.toString()}
         renderItem={renderPost}
         showsVerticalScrollIndicator={true}
+        onViewableItemsChanged={onViewableItemsChangedRef.current}
         snapToOffsets={[LIST_HEADER_HEIGHT]} // snap to posts start and hide search header
         snapToStart={false}
         snapToEnd={false}
@@ -399,12 +398,11 @@ export default function HomeScreen() {
                 // setSearch(""); // Done in SearchBar
                 setFavouritesFilter("all");
                 setReadFilter("all");
-                setOrderBy("addedAt");
+                setOrderBy(OrderByOption.AddedAt);
                 setOrderDirection("desc");
-                postsListRef.current?.scrollToOffset({
-                  offset: LIST_HEADER_HEIGHT,
-                  animated: true,
-                });
+                setArchivedFilter("no");
+                setSelectedFolders([]);
+                scrollToTopWithHeader(postsListRef, LIST_HEADER_HEIGHT);
               }}
             />
             <LinearGradient
@@ -425,94 +423,99 @@ export default function HomeScreen() {
   );
 }
 
-const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: palette.background },
-  header: {
-    padding: spacing.m,
-    borderBottomWidth: 1.5,
-    borderColor: palette.border,
-    backgroundColor: palette.background,
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.8,
-    shadowRadius: 6,
-    elevation: 3,
-    zIndex: 20,
-  },
-  headerText: { marginLeft: spacing.s },
-  title: {
-    fontSize: fontSizes.xlarge,
-    fontWeight: fontWeights.bold,
-    color: palette.foreground,
-  },
-  subtitle: {
-    fontSize: fontSizes.body,
-    color: palette.muted,
-  },
-  list: { flex: 1 },
-  listContent: { paddingBottom: spacing.l },
-  listContentCentered: {
-    // flexGrow: 1,
-    justifyContent: "flex-start", // align top
-    paddingBottom: spacing.l,
-  },
-  emptyState: { alignItems: "center", paddingHorizontal: spacing.l },
-  emptyTitle: {
-    fontSize: fontSizes.title,
-    fontWeight: fontWeights.semibold,
-    color: palette.foreground,
-    marginBottom: spacing.s,
-  },
-  emptySubtitle: {
-    fontSize: fontSizes.body,
-    color: palette.muted,
-    textAlign: "center",
-    lineHeight: 20,
-  },
-  loadingContainer: {
-    flexDirection: "row",
-    justifyContent: "center",
-    alignItems: "center",
-    marginTop: spacing.l,
-    height: 30,
-  },
-  loadingText: {
-    fontSize: fontSizes.body,
-    color: palette.muted,
-    marginLeft: spacing.s,
-  },
-  listHeader: {
-    height: LIST_HEADER_HEIGHT,
-    padding: spacing.m,
-    backgroundColor: palette.backgroundMidLight,
-    borderBottomWidth: 1,
-    borderColor: palette.border,
-    marginBottom: spacing.m,
-    justifyContent: "center",
-    overflow: "hidden", // add this to clip the shadow
-  },
-  headerInnerShadow: {
-    position: "absolute",
-    left: 0,
-    right: 0,
-    bottom: 0,
-    height: 4, // increase for a stronger shadow
-    zIndex: 2,
-    // no border needed for inner shadow
-  },
-  headerOuterShadow: {
-    position: "absolute",
-    left: 0,
-    right: 0,
-    bottom: undefined,
-    height: 4,
-    zIndex: 50,
-  },
-  topBarMask: {
-    position: "absolute",
-    top: 0,
-    zIndex: 50,
-    backgroundColor: palette.background,
-    width: "100%",
-  },
-});
+function makeStyles(
+  palette: ThemeContextValue["palette"],
+  fontSizes: ThemeContextValue["fontSizes"],
+) {
+  return StyleSheet.create({
+    container: { flex: 1, backgroundColor: palette.background },
+    header: {
+      padding: spacing.m,
+      borderBottomWidth: 1.5,
+      borderColor: palette.border,
+      backgroundColor: palette.background,
+      shadowColor: "#000",
+      shadowOffset: { width: 0, height: 2 },
+      shadowOpacity: 0.8,
+      shadowRadius: 6,
+      elevation: 3,
+      zIndex: 20,
+    },
+    headerText: { marginLeft: spacing.s },
+    title: {
+      fontSize: fontSizes.xlarge,
+      fontWeight: fontWeights.bold,
+      color: palette.foreground,
+    },
+    subtitle: {
+      fontSize: fontSizes.body,
+      color: palette.muted,
+    },
+    list: { flex: 1 },
+    listContent: { paddingBottom: spacing.l },
+    listContentCentered: {
+      // flexGrow: 1,
+      justifyContent: "flex-start", // align top
+      paddingBottom: spacing.l,
+    },
+    emptyState: { alignItems: "center", paddingHorizontal: spacing.l },
+    emptyTitle: {
+      fontSize: fontSizes.title,
+      fontWeight: fontWeights.semibold,
+      color: palette.foreground,
+      marginBottom: spacing.s,
+    },
+    emptySubtitle: {
+      fontSize: fontSizes.body,
+      color: palette.muted,
+      textAlign: "center",
+      lineHeight: 20,
+    },
+    loadingContainer: {
+      flexDirection: "row",
+      justifyContent: "center",
+      alignItems: "center",
+      marginTop: spacing.l,
+      height: 30,
+    },
+    loadingText: {
+      fontSize: fontSizes.body,
+      color: palette.muted,
+      marginLeft: spacing.s,
+    },
+    listHeader: {
+      height: LIST_HEADER_HEIGHT,
+      padding: spacing.m,
+      backgroundColor: palette.backgroundMidLight,
+      borderBottomWidth: 1,
+      borderColor: palette.border,
+      marginBottom: spacing.m,
+      justifyContent: "center",
+      overflow: "hidden", // add this to clip the shadow
+    },
+    headerInnerShadow: {
+      position: "absolute",
+      left: 0,
+      right: 0,
+      bottom: 0,
+      height: 4, // increase for a stronger shadow
+      zIndex: 2,
+      // no border needed for inner shadow
+    },
+    headerOuterShadow: {
+      position: "absolute",
+      left: 0,
+      right: 0,
+      bottom: undefined,
+      height: 4,
+      zIndex: 50,
+    },
+    topBarMask: {
+      position: "absolute",
+      top: 0,
+      zIndex: 50,
+      backgroundColor: palette.background,
+      width: "100%",
+    },
+  });
+}

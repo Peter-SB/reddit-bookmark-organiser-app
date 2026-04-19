@@ -2,24 +2,34 @@ import { PostSidebar } from "@/components/PostSidebar";
 import PostSummary from "@/components/PostSummary";
 import { ShareBookmarkButton } from "@/components/ShareBookmarkButton";
 import { StarRating } from "@/components/StarRating";
-import { palette } from "@/constants/Colors";
+import { HighlightActionModal } from "@/components/HighlightActionModal";
 import { spacing } from "@/constants/spacing";
-import { fontSizes, fontWeights } from "@/constants/typography";
+import { fontWeights } from "@/constants/typography";
+import { useTheme } from "@/contexts/ThemeContext";
+import type { ThemeContextValue } from "@/contexts/ThemeContext";
 import { fontOptions } from "@/constants/fontOptions";
 import { usePosts } from "@/hooks/usePosts";
 import { usePostSync } from "@/hooks/usePostSync";
-import { Post } from "@/models/models";
+import { useHighlights } from "@/hooks/useHighlights";
+import { Post, Highlight } from "@/models/models";
 import { SettingsRepository } from "@/repository/SettingsRepository";
-import { Ionicons, MaterialCommunityIcons } from "@expo/vector-icons";
+import { Ionicons } from "@expo/vector-icons";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { useLocalSearchParams, useRouter } from "expo-router";
-import React, { useCallback, useEffect, useState } from "react";
+import React, {
+  useCallback,
+  useEffect,
+  useState,
+  useRef,
+  useMemo,
+} from "react";
 import {
   ActivityIndicator,
   Alert,
   Animated,
   BackHandler,
   Dimensions,
+  Keyboard,
   Modal,
   KeyboardAvoidingView,
   Platform,
@@ -34,26 +44,36 @@ import {
   SafeAreaView,
   useSafeAreaInsets,
 } from "react-native-safe-area-context";
+import { Palette } from "@/constants/Colors";
 
 const FONT_INDEX_KEY = "preferredFontOptionIdx";
 
 const { width: screenWidth } = Dimensions.get("window");
 
 export default function PostScreen() {
+  const { palette, fontSizes } = useTheme();
+  const styles = useMemo(
+    () => makeStyles(palette, fontSizes),
+    [palette, fontSizes],
+  );
   const insets = useSafeAreaInsets();
   const { id } = useLocalSearchParams<{ id: string }>();
   const router = useRouter();
 
   const {
-    posts,
     loading,
     updatePost: savePost,
     deletePost,
     setFolders,
     toggleRead,
     toggleFavorite,
+    toggleArchive,
+    toggleQueue,
+    getPostById,
   } = usePosts();
   const { syncSinglePost } = usePostSync({ autoStart: false });
+  const { highlights, addHighlight, updateHighlight, removeHighlight } =
+    useHighlights(id ? parseInt(id) : undefined);
 
   const [post, setPost] = useState<Post | null>(null);
 
@@ -79,6 +99,20 @@ export default function PostScreen() {
 
   const [fontOptionIdx, setFontOptionIdx] = useState(0);
   const [showAiSummary, setShowAiSummary] = useState(true);
+
+  // Highlight-related state
+  const [textSelection, setTextSelection] = useState<{
+    start: number;
+    end: number;
+  } | null>(null);
+  const [selectedHighlight, setSelectedHighlight] = useState<Highlight | null>(
+    null,
+  );
+  const [highlightModalVisible, setHighlightModalVisible] = useState(false);
+  const bodyInputRef = useRef<TextInput>(null);
+  // Ref to track which post ID has been initialised into the edit fields.
+  // Prevents re-initialisation while the user is actively editing.
+  const initialisedPostIdRef = useRef<number | null>(null);
 
   const hasUnsavedChanges = useCallback(() => {
     if (!post) return false;
@@ -127,6 +161,7 @@ export default function PostScreen() {
       updatedAt: new Date(),
     };
     const saved = await savePost(updated);
+    setPost(saved); // keep local post in sync so hasUnsavedChanges reads correctly
     await syncSinglePost(saved.id);
   }, [
     post,
@@ -169,44 +204,74 @@ export default function PostScreen() {
             },
           },
         ],
-        { cancelable: true }
+        { cancelable: true },
       );
     } else {
       animateAndGoBack();
     }
   }, [hasUnsavedChanges, animateAndGoBack, handleSave, post]);
 
+  // Saves only the summary field - used by PostSummary auto-save to avoid overwriting unsaved edits in other fields.
+  const handleAutoSaveSummary = useCallback(
+    async (summary: string) => {
+      if (!post) return;
+      const updated: Post = {
+        ...post,
+        summary,
+        updatedAt: new Date(),
+      };
+      const saved = await savePost(updated);
+      setPost(saved);
+    },
+    [post, savePost],
+  );
+
+  // Keep a ref to the latest handleBack so the BackHandler never needs to
+  // re-register when editing state changes (avoids the gap where Android's
+  // system back is unhandled and causes a blank-screen navigation).
+  const handleBackRef = useRef(handleBack);
+  useEffect(() => {
+    handleBackRef.current = handleBack;
+  }, [handleBack]);
+
   useEffect(() => {
     const onBackPress = () => {
-      handleBack();
+      handleBackRef.current();
       return true;
     };
     const subscription = BackHandler.addEventListener(
       "hardwareBackPress",
-      onBackPress
+      onBackPress,
     );
     return () => subscription.remove();
-  }, [editedTitle, editedBody, editedNotes, post, handleBack]);
+  }, []); // register once – handleBackRef always holds the latest version
 
-  // when posts load (or ID changes), find our post
   useEffect(() => {
-    if (id && !loading) {
-      const found = posts.find((p) => p.id === parseInt(id, 10));
-      if (!found) return;
+    if (!id) return;
+    const numericId = parseInt(id, 10);
+    let cancelled = false;
+    (async () => {
+      const found = await getPostById(numericId);
+      if (cancelled || !found) return;
 
       setPost(found);
 
-      if (!hasUnsavedChanges()) {
+      // Only initialise edit fields the first time this post ID is loaded.
+      if (initialisedPostIdRef.current !== numericId) {
+        initialisedPostIdRef.current = numericId;
         setEditedTitle(found.customTitle ?? found.title);
         setEditedBody(found.customBody ?? found.bodyText);
         setEditedNotes(found.notes ?? "");
         setEditedRating(found.rating ?? null);
         setEditedSummary(found.summary || "");
+        setEditedIsRead(found.isRead);
+        setEditedIsFavorite(found.isFavorite);
       }
-      setEditedIsRead(found.isRead);
-      setEditedIsFavorite(found.isFavorite);
-    }
-  }, [id, posts, loading, hasUnsavedChanges]);
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [id, getPostById]);
 
   const currentFont = fontOptions[fontOptionIdx];
 
@@ -222,7 +287,7 @@ export default function PostScreen() {
         if (settings["SHOW_AI_SUMMARY"] !== undefined) {
           setShowAiSummary(settings["SHOW_AI_SUMMARY"] === "true");
         }
-      } catch (err) {
+      } catch {
         // fallback to true if error
         setShowAiSummary(true);
       }
@@ -277,7 +342,7 @@ export default function PostScreen() {
           },
         },
       ],
-      { cancelable: true }
+      { cancelable: true },
     );
   };
 
@@ -289,13 +354,39 @@ export default function PostScreen() {
   const handleToggleRead = async () => {
     if (!post) return;
     await toggleRead(post.id);
-    await syncSinglePost(post.id);
+    const newIsRead = !post.isRead;
+    const newReadAt = newIsRead ? new Date() : post.readAt;
+    setPost((prev) =>
+      prev ? { ...prev, isRead: newIsRead, readAt: newReadAt } : prev,
+    );
+    setEditedIsRead(newIsRead);
+    // syncSinglePost(post.id); Removed for now to avoid over syncing unnecessarily
+  };
+
+  const handleToggleArchive = async () => {
+    if (!post) return;
+    await toggleArchive(post.id);
+    const newIsArchived = !post.isArchived;
+    setPost((prev) => (prev ? { ...prev, isArchived: newIsArchived } : prev));
+  };
+
+  const handleToggleQueue = async () => {
+    if (!post) return;
+    await toggleQueue(post.id);
+    const newQueuedAt = post.queuedAt == null ? new Date() : null;
+    setPost((prev) => (prev ? { ...prev, queuedAt: newQueuedAt } : prev));
   };
 
   const handleToggleFavorite = async () => {
     if (!post) return;
     await toggleFavorite(post.id);
-    await syncSinglePost(post.id);
+    const newIsFavorite = !post.isFavorite;
+    const queuedAt =
+      newIsFavorite && !post.queuedAt ? new Date() : post.queuedAt;
+    setPost((prev) =>
+      prev ? { ...prev, isFavorite: newIsFavorite, queuedAt } : prev,
+    );
+    setEditedIsFavorite(newIsFavorite);
   };
 
   const handleSetRating = async (rating: number | null) => {
@@ -344,6 +435,82 @@ export default function PostScreen() {
     });
 
   const formatRedditUser = (u: string) => (u.startsWith("u/") ? u : `u/${u}`);
+
+  // Highlight handlers
+  const handleAddHighlight = async () => {
+    if (!post || !textSelection) return;
+    const { start, end } = textSelection;
+    if (start === end) {
+      Alert.alert("No text selected", "Please select text to highlight");
+      return;
+    }
+
+    const selectedText = editedBody.substring(start, end);
+    if (selectedText.trim().length === 0) {
+      Alert.alert("Invalid selection", "Please select valid text");
+      return;
+    }
+
+    try {
+      const newHighlight = await addHighlight(post.id, {
+        text: selectedText,
+        startOffset: start,
+        endOffset: end,
+      });
+
+      // Clear selection by resetting the TextInput selection
+      console.log("Clearing text selection");
+      setTextSelection(null);
+      Keyboard.dismiss();
+      if (bodyInputRef.current) {
+        bodyInputRef.current.setNativeProps({
+          selection: { start: 0, end: 0 },
+        });
+        bodyInputRef.current.blur();
+      }
+      // Hack: Deselect by toggling edit mode quickly
+      setIsEditing(false);
+      setTimeout(() => setIsEditing(true), 2);
+
+      // Open the edit modal for the newly created highlight
+      setSelectedHighlight(newHighlight);
+      setHighlightModalVisible(true);
+    } catch (error) {
+      console.error("Error adding highlight:", error);
+      Alert.alert("Error", "Failed to add highlight");
+    }
+  };
+
+  const handleHighlightPress = (highlight: Highlight) => {
+    setSelectedHighlight(highlight);
+    setHighlightModalVisible(true);
+  };
+
+  const handleUpdateHighlight = async (
+    id: number,
+    changes: { text?: string; note?: string },
+  ) => {
+    try {
+      await updateHighlight(id, changes);
+    } catch (error) {
+      console.error("Error updating highlight:", error);
+      Alert.alert("Error", "Failed to update highlight");
+    }
+  };
+
+  const handleDeleteHighlight = async (id: number) => {
+    try {
+      await removeHighlight(id);
+    } catch (error) {
+      console.error("Error deleting highlight:", error);
+      Alert.alert("Error", "Failed to delete highlight");
+    }
+  };
+
+  const handleSelectionChange = (event: any) => {
+    const { selection } = event.nativeEvent;
+    setTextSelection(selection);
+  };
 
   return (
     <SafeAreaView style={styles.container}>
@@ -394,7 +561,7 @@ export default function PostScreen() {
                         },
                       },
                     ],
-                    { cancelable: true }
+                    { cancelable: true },
                   );
                 }}
                 style={styles.actionButton}
@@ -419,13 +586,24 @@ export default function PostScreen() {
           </View>
           <View style={[styles.headerActions, { alignItems: "center" }]}>
             <TouchableOpacity
-              onPress={toggleFontOption}
-              style={styles.actionButton}
+              onPress={handleAddHighlight}
+              style={[
+                styles.actionButton,
+                {
+                  opacity:
+                    textSelection && textSelection.start !== textSelection.end
+                      ? 1
+                      : 0.4,
+                },
+              ]}
               hitSlop={1}
+              disabled={
+                !textSelection || textSelection.start === textSelection.end
+              }
             >
-              <MaterialCommunityIcons
-                name="format-size"
-                size={22}
+              <Ionicons
+                name="bookmark-outline"
+                size={20}
                 color={palette.foreground}
               />
             </TouchableOpacity>
@@ -482,7 +660,7 @@ export default function PostScreen() {
                 />
                 <TouchableOpacity
                   onPress={handleToggleRead}
-                  style={styles.readToggle}
+                  style={styles.actionToggle}
                 >
                   <Ionicons
                     name={
@@ -499,7 +677,7 @@ export default function PostScreen() {
                 </TouchableOpacity>
                 <TouchableOpacity
                   onPress={handleToggleFavorite}
-                  style={styles.readToggle}
+                  style={[styles.actionToggle, { marginRight: spacing.s }]}
                 >
                   <Ionicons
                     name={editedIsFavorite ? "heart" : "heart-outline"}
@@ -517,6 +695,7 @@ export default function PostScreen() {
                 <PostSummary
                   post={post}
                   onSave={setEditedSummary}
+                  onAutoSave={handleAutoSaveSummary}
                   currentFont={currentFont}
                   editedSummary={editedSummary}
                   setEditedSummary={setEditedSummary}
@@ -526,18 +705,18 @@ export default function PostScreen() {
 
             {/* Body */}
             <View style={styles.bodySection}>
-              {isEditing ? (
-                <TextInput
-                  style={[styles.body, currentFont]}
-                  value={editedBody}
-                  onChangeText={setEditedBody}
-                  multiline
-                  placeholder="Post content..."
-                  textAlignVertical="top"
-                />
-              ) : (
-                <Text style={[styles.body, currentFont]}>{editedBody}</Text>
-              )}
+              <TextInput
+                ref={bodyInputRef}
+                style={[styles.body, currentFont]}
+                value={editedBody}
+                onChangeText={setEditedBody}
+                onSelectionChange={handleSelectionChange}
+                multiline
+                placeholder="Post content..."
+                textAlignVertical="top"
+                editable={isEditing}
+                selectTextOnFocus={false}
+              />
             </View>
 
             {/* Notes */}
@@ -577,7 +756,7 @@ export default function PostScreen() {
                     <Ionicons
                       name="trash"
                       size={24}
-                      color="#FF3B30"
+                      color={palette.favHeartRed}
                       style={{ marginRight: spacing.xs }}
                     />
                     <Text style={styles.deleteButtonText}></Text>
@@ -628,6 +807,19 @@ export default function PostScreen() {
         setEditedNotes={setEditedNotes}
         formatDate={formatDate}
         setFolders={setFolders}
+        highlights={highlights}
+        onHighlightPress={handleHighlightPress}
+        toggleFontOption={toggleFontOption}
+        onToggleArchive={handleToggleArchive}
+        onToggleQueue={handleToggleQueue}
+      />
+      <HighlightActionModal
+        visible={highlightModalVisible}
+        highlight={selectedHighlight}
+        onClose={() => setHighlightModalVisible(false)}
+        onUpdate={handleUpdateHighlight}
+        onDelete={handleDeleteHighlight}
+        fontOptionIdx={fontOptionIdx}
       />
       <Modal
         transparent
@@ -659,7 +851,7 @@ export default function PostScreen() {
                   if (isNaN(v) || v < 0 || v > 5) {
                     Alert.alert(
                       "Invalid",
-                      "Enter a number between 0.0 and 5.0"
+                      "Enter a number between 0.0 and 5.0",
                     );
                     return;
                   }
@@ -688,185 +880,201 @@ export default function PostScreen() {
   );
 }
 
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: palette.background,
-  },
-  mainContent: {
-    flex: 1,
-    zIndex: 1,
-  },
-  header: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "center",
-    paddingHorizontal: spacing.m,
-    paddingVertical: spacing.s,
-    borderBottomWidth: 1,
-    borderBottomColor: palette.border,
-  },
-  backButton: {
-    padding: spacing.s,
-    marginRight: spacing.s,
-  },
-  headerActions: {
-    flexDirection: "row",
-  },
-  actionButton: {
-    padding: spacing.xs,
-  },
-  content: {
-    flex: 1,
-  },
-  contentWrapper: {
-    flex: 1,
-  },
-  titleSection: {
-    padding: spacing.m,
-    borderBottomWidth: 1,
-    borderBottomColor: palette.border,
-  },
-  summarySection: {
-    padding: spacing.s,
-    borderBottomWidth: 1,
-    borderBottomColor: palette.border,
-  },
-  title: {
-    fontSize: fontSizes.xlarge,
-    fontWeight: fontWeights.bold,
-    color: palette.foreground,
-    marginBottom: spacing.s,
-    padding: 0,
-  },
-  metadata: {
-    flexDirection: "row",
-    alignItems: "center",
-    marginBottom: spacing.m,
-  },
-  metadataText: {
-    fontSize: fontSizes.body * 0.9,
-    color: palette.muted,
-  },
-  separator: {
-    fontSize: fontSizes.body,
-    color: palette.muted,
-    marginHorizontal: spacing.xs,
-  },
-  ratingSection: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-between",
-  },
-  readToggle: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: spacing.xs,
-  },
-  readText: {
-    fontSize: fontSizes.body,
-    color: palette.muted,
-  },
-  bodySection: {
-    padding: spacing.m - 4,
-    paddingBottom: spacing.xxl,
-  },
-  body: {
-    fontSize: fontSizes.small,
-    lineHeight: 16,
-    color: palette.foreground,
-    padding: 0,
-  },
-  notesSection: {
-    padding: spacing.m,
-    borderTopWidth: 1,
-    borderTopColor: palette.border,
-  },
-  sectionTitle: {
-    fontSize: fontSizes.large,
-    fontWeight: fontWeights.semibold,
-    color: palette.foreground,
-    marginBottom: spacing.s,
-  },
-  notesInput: {
-    fontSize: fontSizes.body,
-    color: palette.foreground,
-    backgroundColor: palette.background,
-    minHeight: 50,
-    padding: 0,
-  },
-  actionSection: {
-    padding: spacing.m,
-    gap: spacing.m,
-  },
-  saveButton: {
-    backgroundColor: "transparent",
-    paddingVertical: spacing.m,
-    paddingHorizontal: spacing.l,
-    // borderWidth: 1,
-    alignItems: "center",
-  },
-  saveButtonText: {
-    color: palette.accent,
-    fontSize: fontSizes.body,
-    fontWeight: fontWeights.semibold,
-  },
-  deleteButton: {
-    backgroundColor: "transparent",
-    paddingVertical: spacing.m,
-    paddingHorizontal: spacing.l,
-    alignItems: "center",
-    // borderWidth: 1,
-    borderColor: "#FF3B30",
-  },
-  deleteButtonText: {
-    color: "#FF3B30",
-    fontSize: fontSizes.body,
-    fontWeight: fontWeights.semibold,
-  },
-  errorText: {
-    fontSize: fontSizes.body,
-    color: palette.muted,
-    textAlign: "center",
-    marginTop: spacing.xl,
-  },
-  modalOverlay: {
-    flex: 1,
-    backgroundColor: "rgba(0,0,0,0.3)",
-    justifyContent: "center",
-    alignItems: "center",
-  },
-  modalContent: {
-    width: "80%",
-    backgroundColor: palette.background,
-    padding: spacing.m,
-    borderRadius: 8,
-    elevation: 5,
-  },
-  modalTitle: {
-    fontSize: fontSizes.large,
-    fontWeight: fontWeights.semibold,
-    marginBottom: spacing.s,
-    color: palette.foreground,
-  },
-  modalInput: {
-    borderWidth: 1,
-    borderColor: palette.border,
-    borderRadius: 6,
-    padding: spacing.s,
-    fontSize: fontSizes.body,
-    marginBottom: spacing.m,
-    color: palette.foreground,
-  },
-  modalButtons: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-  },
-  modalButton: {
-    padding: spacing.s,
-  },
-  border: {
-    borderTopWidth: 1,
-    borderTopColor: palette.border,
-  },
-});
+function makeStyles(
+  palette: ThemeContextValue["palette"],
+  fontSizes: ThemeContextValue["fontSizes"],
+) {
+  return StyleSheet.create({
+    container: {
+      flex: 1,
+      backgroundColor: palette.background,
+    },
+    mainContent: {
+      flex: 1,
+      zIndex: 1,
+    },
+    header: {
+      flexDirection: "row",
+      justifyContent: "space-between",
+      alignItems: "center",
+      paddingHorizontal: spacing.m,
+      paddingVertical: spacing.s,
+      borderBottomWidth: 1,
+      borderBottomColor: palette.border,
+    },
+    backButton: {
+      padding: spacing.s,
+      marginRight: spacing.s,
+    },
+    headerActions: {
+      flexDirection: "row",
+    },
+    actionButton: {
+      padding: spacing.xs,
+    },
+    content: {
+      flex: 1,
+    },
+    contentWrapper: {
+      flex: 1,
+    },
+    titleSection: {
+      padding: spacing.m,
+      borderBottomWidth: 1,
+      borderBottomColor: palette.border,
+    },
+    summarySection: {
+      padding: spacing.s,
+      borderBottomWidth: 1,
+      borderBottomColor: palette.border,
+    },
+    title: {
+      fontSize: fontSizes.xlarge,
+      fontWeight: fontWeights.bold,
+      color: palette.foreground,
+      marginBottom: spacing.s,
+      padding: 0,
+    },
+    metadata: {
+      flexDirection: "row",
+      alignItems: "center",
+      marginBottom: spacing.m,
+    },
+    metadataText: {
+      fontSize: fontSizes.body * 0.9,
+      color: palette.muted,
+    },
+    separator: {
+      fontSize: fontSizes.body,
+      color: palette.muted,
+      marginHorizontal: spacing.xs,
+    },
+    ratingSection: {
+      flexDirection: "row",
+      alignItems: "center",
+      justifyContent: "space-between",
+    },
+    actionToggle: {
+      flexDirection: "row",
+      alignItems: "center",
+      gap: spacing.xs,
+    },
+    readText: {
+      fontSize: fontSizes.body,
+      color: palette.muted,
+    },
+    bodySection: {
+      padding: spacing.m - 4,
+      paddingBottom: spacing.xxl,
+    },
+    body: {
+      fontSize: fontSizes.small,
+      lineHeight: 16,
+      color: palette.foreground,
+      padding: 0,
+    },
+    notesSection: {
+      padding: spacing.m,
+      borderTopWidth: 1,
+      borderTopColor: palette.border,
+    },
+    sectionTitle: {
+      fontSize: fontSizes.large,
+      fontWeight: fontWeights.semibold,
+      color: palette.foreground,
+      marginBottom: spacing.s,
+    },
+    notesInput: {
+      fontSize: fontSizes.body,
+      color: palette.foreground,
+      backgroundColor: palette.background,
+      minHeight: 50,
+      padding: 0,
+    },
+    actionSection: {
+      padding: spacing.m,
+      gap: spacing.m,
+    },
+    saveButton: {
+      backgroundColor: "transparent",
+      paddingVertical: spacing.m,
+      paddingHorizontal: spacing.l,
+      // borderWidth: 1,
+      alignItems: "center",
+    },
+    saveButtonText: {
+      color: palette.accent,
+      fontSize: fontSizes.body,
+      fontWeight: fontWeights.semibold,
+    },
+    deleteButton: {
+      backgroundColor: "transparent",
+      paddingVertical: spacing.m,
+      paddingHorizontal: spacing.l,
+      alignItems: "center",
+      // borderWidth: 1,
+      borderColor: palette.favHeartRed,
+    },
+    deleteButtonText: {
+      color: palette.favHeartRed,
+      fontSize: fontSizes.body,
+      fontWeight: fontWeights.semibold,
+    },
+    errorText: {
+      fontSize: fontSizes.body,
+      color: palette.muted,
+      textAlign: "center",
+      marginTop: spacing.xl,
+    },
+    modalOverlay: {
+      flex: 1,
+      backgroundColor: "rgba(0,0,0,0.3)",
+      justifyContent: "center",
+      alignItems: "center",
+    },
+    modalContent: {
+      width: "80%",
+      backgroundColor: palette.background,
+      padding: spacing.m,
+      borderRadius: 8,
+      elevation: 5,
+    },
+    modalTitle: {
+      fontSize: fontSizes.large,
+      fontWeight: fontWeights.semibold,
+      marginBottom: spacing.s,
+      color: palette.foreground,
+    },
+    modalInput: {
+      borderWidth: 1,
+      borderColor: palette.border,
+      borderRadius: 6,
+      padding: spacing.s,
+      fontSize: fontSizes.body,
+      marginBottom: spacing.m,
+      color: palette.foreground,
+    },
+    modalButtons: {
+      flexDirection: "row",
+      justifyContent: "space-between",
+    },
+    modalButton: {
+      padding: spacing.s,
+    },
+    border: {
+      borderTopWidth: 1,
+      borderTopColor: palette.border,
+    },
+    archiveButton: {
+      backgroundColor: "transparent",
+      paddingVertical: spacing.m,
+      paddingHorizontal: spacing.l,
+      alignItems: "center",
+    },
+    archiveButtonText: {
+      color: palette.archiveOrange,
+      fontSize: fontSizes.body,
+      fontWeight: fontWeights.semibold,
+    },
+  });
+}

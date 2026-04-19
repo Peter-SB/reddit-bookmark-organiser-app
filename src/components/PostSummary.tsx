@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useMemo } from "react";
 import {
   View,
   Text,
@@ -8,14 +8,14 @@ import {
   StyleSheet,
 } from "react-native";
 import type { Post } from "@/models/models";
-import { fontSizes } from "@/constants/typography";
-import { palette } from "@/constants/Colors";
 import { SettingsRepository } from "@/repository/SettingsRepository";
 import { Ionicons } from "@expo/vector-icons";
 import Entypo from "@expo/vector-icons/Entypo";
 import EventSource from "react-native-sse";
 import { startSSEChat } from "@/services/SSEChatService";
 import { spacing } from "@/constants/spacing";
+import { useTheme } from "@/contexts/ThemeContext";
+import type { ThemeContextValue } from "@/contexts/ThemeContext";
 
 // This is a post summary section. This goes just below the title section and above the main text in the post #[id].tsx.
 
@@ -24,6 +24,7 @@ import { spacing } from "@/constants/spacing";
 interface PostSummaryProps {
   post: Post;
   onSave: (summary: string) => void;
+  onAutoSave?: (summary: string) => void;
   currentFont: {
     fontSize: number;
     lineHeight: number;
@@ -33,7 +34,7 @@ interface PostSummaryProps {
 }
 
 const AI_ENDPOINT_URL = "AI_ENDPOINT_URL";
-const AI_API_KEY = "AI_API_KEY"
+const AI_API_KEY = "AI_API_KEY";
 const AI_MODEL_ID = "AI_MODEL_ID";
 const AI_SYSTEM_PROMPT = "AI_SYSTEM_PROMPT";
 const AI_ATTRIB_REFERER = "AI_ATTRIB_REFERER";
@@ -43,10 +44,17 @@ const AI_MAX_TOKENS = "AI_MAX_TOKENS";
 export default function PostSummary({
   post,
   onSave,
+  onAutoSave,
   currentFont,
   editedSummary,
   setEditedSummary,
 }: PostSummaryProps) {
+  const { palette, fontSizes } = useTheme();
+  const styles = useMemo(
+    () => makeStyles(palette, fontSizes),
+    [palette, fontSizes],
+  );
+  const originalSummaryWasNull = React.useRef(!post.summary);
   const [status, setStatus] = useState(post.summary ? "success" : "idle");
   const [summary, setSummary] = useState(post.summary || "");
   const [error, setError] = useState<string | null>(null);
@@ -60,7 +68,7 @@ export default function PostSummary({
     () => () => {
       if (streamHandle) streamHandle.close();
     },
-    [streamHandle]
+    [streamHandle],
   );
 
   useEffect(() => {
@@ -93,7 +101,7 @@ export default function PostSummary({
       .split(";")
       .map((e) => e.trim())
       .filter(Boolean);
-    const apiKey = (settings[AI_API_KEY]?.trim() || "");
+    const apiKey = settings[AI_API_KEY]?.trim() || "";
     const referer = settings[AI_ATTRIB_REFERER]?.trim() || "";
     const appTitle = settings[AI_ATTRIB_TITLE]?.trim() || "Reddit-Bookmark-App";
     const maxTokens = (() => {
@@ -164,6 +172,9 @@ export default function PostSummary({
               setStatus("success");
               setStreamHandle(null);
               setEditedSummary(summaryRef.current);
+              if (originalSummaryWasNull.current && summaryRef.current) {
+                onAutoSave?.(summaryRef.current);
+              }
             });
           },
           onError: (err) => {
@@ -198,6 +209,9 @@ export default function PostSummary({
       setIsStreaming(false);
       setStatus("success");
       setStreamHandle(null);
+      if (originalSummaryWasNull.current && summaryRef.current) {
+        onAutoSave?.(summaryRef.current);
+      }
       setEditedSummary(summaryRef.current); // ensure parent gets the last buffered text
     }
   };
@@ -302,92 +316,97 @@ export default function PostSummary({
   );
 }
 
-const styles = StyleSheet.create({
-  container: {},
-  centered: {
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  infoText: {
-    fontSize: 16,
-    // marginBottom: 8,
-    color: "#555",
-  },
-  errorText: {
-    color: palette.favHeartRed,
-    flexShrink: 1,
-    marginRight: 8,
-  },
-  label: {
-    fontWeight: "bold",
-    marginBottom: 4,
-    fontSize: 16,
-    marginRight: 8,
-  },
-  input: {
-    borderWidth: 1,
-    borderColor: "#ccc",
-    borderRadius: 6,
-    padding: 8,
-    minHeight: 60,
-    backgroundColor: "#fff",
-    marginBottom: 8,
-  },
-  row: {
-    flexDirection: "row",
-    justifyContent: "flex-end",
-  },
-  button: {
-    backgroundColor: "#007AFF",
-    paddingVertical: 8,
-    paddingHorizontal: 16,
-    borderRadius: 6,
-    marginLeft: 8,
-  },
-  buttonDisabled: {
-    opacity: 0.5,
-  },
-  buttonText: {
-    color: "#fff",
-    fontWeight: "bold",
-  },
-  body: {
-    fontSize: fontSizes.small,
-    lineHeight: 16,
-    color: palette.foreground,
-    padding: spacing.xs,
-  },
-  idleRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "center",
-    maxWidth: "100%",
-    width: "100%",
-  },
-  summariseButton: {
-    paddingVertical: 4,
-    paddingHorizontal: 0,
-    marginLeft: 12,
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  summaryRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-between",
-    paddingHorizontal: 8,
-    width: "100%",
-  },
-  stopButton: {
-    flexDirection: "row",
-    alignItems: "center",
-    paddingTop: 1,
-  },
-  stopButtonText: {
-    color: "#fff",
-    fontWeight: "bold",
-  },
-  stopButtonIcon: {
-    marginLeft: 6,
-  },
-});
+function makeStyles(
+  palette: ThemeContextValue["palette"],
+  fontSizes: ThemeContextValue["fontSizes"],
+) {
+  return StyleSheet.create({
+    container: {},
+    centered: {
+      alignItems: "center",
+      justifyContent: "center",
+    },
+    infoText: {
+      fontSize: 16,
+      // marginBottom: 8,
+      color: "#555",
+    },
+    errorText: {
+      color: palette.favHeartRed,
+      flexShrink: 1,
+      marginRight: 8,
+    },
+    label: {
+      fontWeight: "bold",
+      marginBottom: 4,
+      fontSize: 16,
+      marginRight: 8,
+    },
+    input: {
+      borderWidth: 1,
+      borderColor: "#ccc",
+      borderRadius: 6,
+      padding: 8,
+      minHeight: 60,
+      backgroundColor: "#fff",
+      marginBottom: 8,
+    },
+    row: {
+      flexDirection: "row",
+      justifyContent: "flex-end",
+    },
+    button: {
+      backgroundColor: "#007AFF",
+      paddingVertical: 8,
+      paddingHorizontal: 16,
+      borderRadius: 6,
+      marginLeft: 8,
+    },
+    buttonDisabled: {
+      opacity: 0.5,
+    },
+    buttonText: {
+      color: "#fff",
+      fontWeight: "bold",
+    },
+    body: {
+      fontSize: fontSizes.small,
+      lineHeight: 16,
+      color: palette.foreground,
+      padding: spacing.xs,
+    },
+    idleRow: {
+      flexDirection: "row",
+      alignItems: "center",
+      justifyContent: "center",
+      maxWidth: "100%",
+      width: "100%",
+    },
+    summariseButton: {
+      paddingVertical: 4,
+      paddingHorizontal: 0,
+      marginLeft: 12,
+      alignItems: "center",
+      justifyContent: "center",
+    },
+    summaryRow: {
+      flexDirection: "row",
+      alignItems: "center",
+      justifyContent: "space-between",
+      paddingHorizontal: 8,
+      width: "100%",
+    },
+    stopButton: {
+      flexDirection: "row",
+      alignItems: "center",
+      paddingTop: 1,
+    },
+    stopButtonText: {
+      color: "#fff",
+      fontWeight: "bold",
+    },
+    stopButtonIcon: {
+      marginLeft: 6,
+    },
+  });
+}

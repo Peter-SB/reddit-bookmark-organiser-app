@@ -1,29 +1,40 @@
-import { PostCard } from "@/components/PostCard";
-import { palette } from "@/constants/Colors";
+import { OrderByRow } from "@/components/OrderByRow";
+import { SearchBar } from "@/components/SearchBar";
+import { SwipeablePostCard } from "@/components/SwipeablePostCard";
+import { OrderByOption, AUTHOR_POST_ORDER_OPTIONS } from "@/constants/orderBy";
 import { spacing } from "@/constants/spacing";
-import { fontSizes, fontWeights } from "@/constants/typography";
+import { fontWeights } from "@/constants/typography";
+import { useTheme } from "@/contexts/ThemeContext";
+import type { ThemeContextValue } from "@/contexts/ThemeContext";
+import { useFilteredPosts } from "@/hooks/useFilteredPosts";
 import { usePosts } from "@/hooks/usePosts";
+import { PostListItem } from "@/models/models";
 import { openRedditUser } from "@/utils/redditLinks";
 import { useFocusEffect, useLocalSearchParams, useRouter } from "expo-router";
 import React, { useCallback, useEffect, useMemo, useState } from "react";
 import {
-  ActivityIndicator,
   BackHandler,
-  FlatList,
+  RefreshControl,
   StyleSheet,
   Text,
   TouchableOpacity,
   View,
 } from "react-native";
+import { FlashList } from "@shopify/flash-list";
 import { SafeAreaView } from "react-native-safe-area-context";
 import Icon from "react-native-vector-icons/MaterialIcons";
 
 export default function AuthorPostsScreen() {
+  const { palette, fontSizes } = useTheme();
+  const styles = useMemo(
+    () => makeStyles(palette, fontSizes),
+    [palette, fontSizes],
+  );
   const router = useRouter();
   const { author } = useLocalSearchParams<{ author?: string | string[] }>();
   const authorParam = useMemo(() => {
     if (!author) return "";
-    return Array.isArray(author) ? author[0] ?? "" : author;
+    return Array.isArray(author) ? (author[0] ?? "") : author;
   }, [author]);
 
   const authorName = useMemo(() => {
@@ -35,15 +46,21 @@ export default function AuthorPostsScreen() {
     }
   }, [authorParam]);
 
-  const { posts, refreshPosts, loading } = usePosts();
-  const [refreshing, setRefreshing] = useState(false);
+  const [orderBy, setOrderBy] = useState<OrderByOption>(OrderByOption.PostedAt);
+  const [orderDirection, setOrderDirection] = useState<"asc" | "desc">("desc");
   const [hasLoaded, setHasLoaded] = useState(false);
+  const [refreshing, setRefreshing] = useState(false);
+  const [search, setSearch] = useState("");
 
-  useFocusEffect(
-    useCallback(() => {
-      refreshPosts();
-    }, [refreshPosts])
-  );
+  const { toggleQueue } = usePosts();
+
+  const { posts: authorPosts, loading } = useFilteredPosts({
+    authorFilter: authorName || undefined,
+    orderBy,
+    orderDirection,
+    archivedFilter: "all",
+    search: search || undefined,
+  });
 
   useEffect(() => {
     if (!loading) {
@@ -59,24 +76,20 @@ export default function AuthorPostsScreen() {
       };
       const sub = BackHandler.addEventListener("hardwareBackPress", onBack);
       return () => sub.remove();
-    }, [router])
+    }, [router]),
   );
-
-  const authorPosts = useMemo(() => {
-    if (!authorName) return [];
-    const target = authorName.toLowerCase();
-    return posts.filter((p) => (p.author || "").toLowerCase() === target);
-  }, [posts, authorName]);
 
   const handleRefresh = useCallback(async () => {
     setRefreshing(true);
-    await refreshPosts();
-    setRefreshing(false);
-  }, [refreshPosts]);
+    // useFilteredPosts auto-refreshes via subscribeToPostChanges
+    setTimeout(() => setRefreshing(false), 300);
+  }, []);
 
   const renderItem = useCallback(
-    ({ item }: { item: (typeof posts)[number] }) => <PostCard post={item} />,
-    []
+    ({ item }: { item: PostListItem }) => (
+      <SwipeablePostCard post={item} onToggleQueue={toggleQueue} />
+    ),
+    [toggleQueue],
   );
 
   const statusText =
@@ -107,25 +120,42 @@ export default function AuthorPostsScreen() {
         </Text>
       </View>
 
-      {(loading || refreshing) && (
-        <View style={styles.loadingRow}>
-          <ActivityIndicator size="small" color={palette.accent} />
-          <Text style={[styles.statusText, { marginLeft: spacing.s }]}>
-            Getting posts...
-          </Text>
-        </View>
-      )}
+      {/* Sort controls */}
+      <View style={styles.sortRow}>
+        <OrderByRow
+          orderOptions={AUTHOR_POST_ORDER_OPTIONS}
+          localOrderBy={orderBy}
+          localOrderDirection={orderDirection}
+          onOrderByChange={setOrderBy}
+          onOrderDirectionChange={setOrderDirection}
+        />
+      </View>
+
+      {/* Search */}
+      <View style={styles.searchContainer}>
+        <SearchBar
+          value={search}
+          onChangeText={setSearch}
+          placeholder="Search saved posts..."
+          cancelButtonCallback={() => setSearch("")}
+        />
+      </View>
 
       {statusText ? <Text style={styles.errorText}>{statusText}</Text> : null}
 
-      <FlatList
+      <FlashList
         data={authorPosts}
         keyExtractor={(item) => `${item.id}`}
         renderItem={renderItem}
-        refreshing={refreshing}
-        onRefresh={handleRefresh}
         contentContainerStyle={
           authorPosts.length === 0 ? styles.emptyListContainer : undefined
+        }
+        refreshControl={
+          <RefreshControl
+            refreshing={refreshing}
+            onRefresh={handleRefresh}
+            tintColor={palette.foreground}
+          />
         }
         ListEmptyComponent={
           hasLoaded && authorName ? (
@@ -137,73 +167,131 @@ export default function AuthorPostsScreen() {
             </View>
           ) : null
         }
+        ListFooterComponent={
+          authorPosts.length > 0 && authorName ? (
+            <View style={styles.footerContainer}>
+              <TouchableOpacity
+                style={styles.importButton}
+                onPress={() =>
+                  router.push(
+                    `/author/import?author=${encodeURIComponent(authorName)}`,
+                  )
+                }
+              >
+                <Icon
+                  name="cloud-download"
+                  size={24}
+                  color={palette.foregroundLight}
+                />
+                <Text style={styles.importButtonText}>
+                  Find More Posts by {authorName}
+                </Text>
+              </TouchableOpacity>
+            </View>
+          ) : null
+        }
       />
     </SafeAreaView>
   );
 }
 
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: palette.background,
-  },
-  header: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-between",
-    paddingHorizontal: spacing.m,
-    paddingVertical: spacing.s,
-    borderBottomWidth: 1,
-    borderBottomColor: palette.border,
-    backgroundColor: palette.background,
-  },
-  headerTitle: {
-    fontSize: fontSizes.large,
-    fontWeight: fontWeights.semibold,
-    color: palette.foreground,
-    flex: 1,
-    marginHorizontal: spacing.m,
-  },
-  headerLink: {
-    // textDecorationLine: "underline",
-  },
-  headerIconButton: {
-    padding: spacing.xs,
-  },
-  statusText: {
-    fontSize: fontSizes.body,
-    color: palette.muted,
-  },
-  errorText: {
-    color: palette.favHeartRed,
-    paddingHorizontal: spacing.m,
-    paddingBottom: spacing.s,
-  },
-  loadingRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    paddingHorizontal: spacing.m,
-    paddingBottom: spacing.s,
-  },
-  emptyListContainer: {
-    flexGrow: 1,
-  },
-  emptyState: {
-    flex: 1,
-    alignItems: "center",
-    justifyContent: "center",
-    paddingHorizontal: spacing.l,
-  },
-  emptyTitle: {
-    fontSize: fontSizes.title,
-    fontWeight: fontWeights.semibold,
-    color: palette.foreground,
-    marginBottom: spacing.s,
-  },
-  emptySubtitle: {
-    fontSize: fontSizes.body,
-    color: palette.muted,
-    textAlign: "center",
-    lineHeight: 20,
-  },
-});
+function makeStyles(
+  palette: ThemeContextValue["palette"],
+  fontSizes: ThemeContextValue["fontSizes"],
+) {
+  return StyleSheet.create({
+    container: {
+      flex: 1,
+      backgroundColor: palette.background,
+    },
+    header: {
+      flexDirection: "row",
+      alignItems: "center",
+      justifyContent: "space-between",
+      paddingHorizontal: spacing.m,
+      paddingVertical: spacing.s,
+      borderBottomWidth: 1,
+      borderBottomColor: palette.border,
+      backgroundColor: palette.background,
+    },
+    headerTitle: {
+      fontSize: fontSizes.large,
+      fontWeight: fontWeights.semibold,
+      color: palette.foreground,
+      flex: 1,
+      marginHorizontal: spacing.m,
+    },
+    headerLink: {
+      // textDecorationLine: "underline",
+    },
+    sortRow: {
+      paddingHorizontal: spacing.s,
+      paddingVertical: spacing.xs,
+      borderBottomWidth: 1,
+      borderBottomColor: palette.border,
+    },
+    searchContainer: {
+      paddingHorizontal: spacing.m,
+      paddingTop: spacing.s,
+      paddingBottom: spacing.xs,
+      borderBottomWidth: 1,
+      borderBottomColor: palette.border,
+    },
+    statusText: {
+      fontSize: fontSizes.body,
+      color: palette.muted,
+    },
+    errorText: {
+      color: palette.favHeartRed,
+      paddingHorizontal: spacing.m,
+      paddingBottom: spacing.s,
+    },
+    emptyListContainer: {
+      flexGrow: 1,
+    },
+    emptyState: {
+      flex: 1,
+      alignItems: "center",
+      justifyContent: "center",
+      paddingHorizontal: spacing.l,
+    },
+    emptyTitle: {
+      fontSize: fontSizes.title,
+      fontWeight: fontWeights.semibold,
+      color: palette.foreground,
+      marginBottom: spacing.s,
+    },
+    emptySubtitle: {
+      fontSize: fontSizes.body,
+      color: palette.muted,
+      textAlign: "center",
+      lineHeight: 20,
+    },
+    footerContainer: {
+      padding: spacing.m,
+      alignItems: "center",
+      borderTopWidth: 1,
+      borderTopColor: palette.border,
+      // marginTop: spacing.m,
+    },
+    importButton: {
+      flexDirection: "row",
+      alignItems: "center",
+      justifyContent: "center",
+      marginTop: spacing.s,
+      marginBottom: spacing.m,
+      paddingVertical: spacing.m,
+      paddingHorizontal: spacing.l,
+      backgroundColor: palette.backgroundMidLight,
+      borderRadius: 8,
+      borderWidth: 1,
+      borderColor: palette.border,
+      gap: spacing.s,
+    },
+    importButtonText: {
+      fontSize: fontSizes.body,
+      fontWeight: fontWeights.semibold,
+      color: palette.foregroundLight,
+    },
+  });
+}
