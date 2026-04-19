@@ -36,7 +36,6 @@ export default function SettingsDatabaseManager() {
   const [modalVisible, setModalVisible] = useState<boolean>(false);
   const [newDbName, setNewDbName] = useState<string>("");
   const [customLocation, setCustomLocation] = useState<string | null>(null);
-
   const router = useRouter();
 
   // Load available DBs and current selection

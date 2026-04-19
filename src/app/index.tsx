@@ -13,13 +13,13 @@ import {
   ActivityIndicator,
   Alert,
   Dimensions,
-  FlatList,
   Image,
   StyleSheet,
   Text,
   TouchableOpacity,
   View,
 } from "react-native";
+import { FlashList, FlashListRef } from "@shopify/flash-list";
 
 import {
   SafeAreaView,
@@ -81,7 +81,7 @@ export default function HomeScreen() {
 
   // Filter and sort posts in SQL so body text is searchable
   // When a search query is active, include archived posts so they appear in results
-  const { posts: filteredPosts } = useFilteredPosts({
+  const { posts: filteredPosts, setPostsAt } = useFilteredPosts({
     search,
     selectedFolders,
     favouritesFilter,
@@ -93,7 +93,21 @@ export default function HomeScreen() {
     randomSeed,
   });
 
-  const postsListRef = useRef<FlatList<PostListItem>>(null);
+  const postsListRef = useRef<FlashListRef<PostListItem>>(null);
+  const perfDataReadyRef = useRef<number>(0);
+  const perfFirstRenderRef = useRef(false);
+
+  // Perf: log when filtered posts data arrives (measures React reconciliation gap from setPosts → effect)
+  useEffect(() => {
+    if (filteredPosts.length > 0) {
+      const now = Date.now();
+      perfDataReadyRef.current = now;
+      const reactGap = setPostsAt.current > 0 ? now - setPostsAt.current : -1;
+      console.log(
+        `[PERF] HomeScreen: filteredPosts ready — ${filteredPosts.length} posts, react reconcile=${reactGap}ms`,
+      );
+    }
+  }, [filteredPosts, setPostsAt]);
 
   // Hide header on first render. Using this over InteractionManager because this only runs once.
   // InteractionManager would run every time the screen is focused, making searching ui glitch.
@@ -180,8 +194,26 @@ export default function HomeScreen() {
     setSidebarOpen(false);
   };
 
-  const renderPost = ({ item }: { item: PostListItem }) => (
-    <SwipeablePostCard post={item} onToggleQueue={toggleQueue} />
+  const renderPost = useCallback(
+    ({ item }: { item: PostListItem }) => (
+      <SwipeablePostCard post={item} onToggleQueue={toggleQueue} />
+    ),
+    [toggleQueue],
+  );
+
+  const onViewableItemsChangedRef = useRef(
+    ({ viewableItems }: { viewableItems: any[] }) => {
+      if (
+        !perfFirstRenderRef.current &&
+        viewableItems.length > 0 &&
+        perfDataReadyRef.current > 0
+      ) {
+        perfFirstRenderRef.current = true;
+        console.log(
+          `[PERF] HomeScreen: first ${viewableItems.length} items visible — ${Date.now() - perfDataReadyRef.current}ms after data ready`,
+        );
+      }
+    },
   );
 
   useEffect(() => {
@@ -332,13 +364,14 @@ export default function HomeScreen() {
       {/* Mask the shadow of the top bar from bleeding into the system status bar */}
       <View style={[styles.topBarMask, { height: insets.top }]} />
 
-      <FlatList
+      <FlashList
         ref={postsListRef}
         style={{ flex: 1 }}
         data={filteredPosts}
         keyExtractor={(item) => item.id.toString()}
         renderItem={renderPost}
         showsVerticalScrollIndicator={true}
+        onViewableItemsChanged={onViewableItemsChangedRef.current}
         snapToOffsets={[LIST_HEADER_HEIGHT]} // snap to posts start and hide search header
         snapToStart={false}
         snapToEnd={false}

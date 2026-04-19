@@ -36,44 +36,67 @@ function LeftAction({
   );
 }
 
-export const SwipeablePostCard: React.FC<SwipeablePostCardProps> = ({
-  post,
-  onToggleQueue,
-}) => {
-  const { palette } = useTheme();
-  const swipeableRef = useRef<SwipeableMethods>(null);
-
-  const handleSwipeOpen = useCallback(
-    (direction: "left" | "right") => {
-      console.log("Swipe opened in direction:", direction);
-      if (direction === "right") {
-        // Swiped left-to-right → toggle queue
-
-        onToggleQueue(post.id);
-      }
-      swipeableRef.current?.close();
-    },
-    [onToggleQueue, post.id],
-  );
-
-  const renderLeftActions = useCallback(() => {
-    return <LeftAction isQueued={!!post.queuedAt} palette={palette} />;
-  }, [post.queuedAt, palette]);
-
+function areSwipeablePropsEqual(
+  prev: SwipeablePostCardProps,
+  next: SwipeablePostCardProps,
+): boolean {
+  const p = prev.post;
+  const n = next.post;
   return (
-    <ReanimatedSwipeable
-      ref={swipeableRef}
-      friction={2}
-      leftThreshold={ACTION_WIDTH}
-      overshootLeft={true}
-      overshootFriction={2}
-      renderLeftActions={renderLeftActions}
-      onSwipeableOpen={handleSwipeOpen}
-    >
-      <PostCard post={post} />
-    </ReanimatedSwipeable>
+    p.id === n.id &&
+    p.title === n.title &&
+    p.customTitle === n.customTitle &&
+    p.isRead === n.isRead &&
+    p.isFavorite === n.isFavorite &&
+    p.isArchived === n.isArchived &&
+    p.queuedAt === n.queuedAt &&
+    p.rating === n.rating &&
+    p.author === n.author &&
+    p.subreddit === n.subreddit &&
+    p.wordCount === n.wordCount &&
+    prev.onToggleQueue === next.onToggleQueue
   );
-};
+}
+
+export const SwipeablePostCard: React.FC<SwipeablePostCardProps> = React.memo(
+  ({ post, onToggleQueue }) => {
+    const { palette } = useTheme();
+    const swipeableRef = useRef<SwipeableMethods>(null);
+
+    const handleSwipeOpen = useCallback(
+      (direction: "left" | "right") => {
+        console.log("Swipe opened in direction:", direction);
+        if (direction === "right") {
+          // Swiped left-to-right → toggle queue
+
+          onToggleQueue(post.id);
+        }
+        swipeableRef.current?.close();
+      },
+      [onToggleQueue, post.id],
+    );
+
+    const renderLeftActions = useCallback(() => {
+      return <LeftAction isQueued={!!post.queuedAt} palette={palette} />;
+    }, [post.queuedAt, palette]);
+
+    return (
+      <ReanimatedSwipeable
+        ref={swipeableRef}
+        friction={2}
+        leftThreshold={ACTION_WIDTH}
+        overshootLeft={true}
+        overshootFriction={2}
+        renderLeftActions={renderLeftActions}
+        onSwipeableOpen={handleSwipeOpen}
+      >
+        <PostCard post={post} />
+      </ReanimatedSwipeable>
+    );
+  },
+  areSwipeablePropsEqual,
+);
+SwipeablePostCard.displayName = "SwipeablePostCard";
 
 const styles = StyleSheet.create({
   leftAction: {

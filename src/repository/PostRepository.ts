@@ -62,6 +62,21 @@ export class PostRepository {
     this.db = db;
   }
 
+  /**
+   * Computes the word count for a post body at write time so list queries
+   * never need to touch the large bodyText / customBody overflow pages.
+   * Uses the same space-counting heuristic as the old SQL expression.
+   */
+  private static computeWordCount(
+    bodyText: string | null | undefined,
+    customBody: string | null | undefined,
+  ): number {
+    const text = (customBody ?? bodyText ?? '').trim();
+    if (!text) return 0;
+    // Count runs of spaces (matches original SQL: LENGTH - LENGTH(REPLACE spaces) + 1)
+    return (text.match(/ /g)?.length ?? 0) + 1;
+  }
+
   private mapRowToPost(row: PostRow, folderIds: number[] = []): Post {
     let extraFields: Record<string, any> | undefined;
     if (row.extraFields) {
@@ -179,10 +194,7 @@ export class PostRepository {
          id, redditId, url, title, author, subreddit,
          redditCreatedAt, addedAt, updatedAt,
          customTitle, notes, rating, isRead, isFavorite, isArchived, readAt, queuedAt,
-         CASE
-           WHEN COALESCE(customBody, bodyText) IS NULL OR COALESCE(customBody, bodyText) = '' THEN 0
-           ELSE LENGTH(TRIM(COALESCE(customBody, bodyText))) - LENGTH(REPLACE(TRIM(COALESCE(customBody, bodyText)), ' ', '')) + 1
-         END AS wordCount
+         wordCount
        FROM posts
        WHERE isDeleted = 0
        ORDER BY addedAt DESC`
@@ -234,9 +246,10 @@ export class PostRepository {
     const conditions: string[] = ['isDeleted = 0'];
     const params: (string | number)[] = [];
 
-    // Author filter (case-insensitive exact match)
+    // Author filter (case-insensitive exact match).
+    // COLLATE NOCASE avoids calling LOWER() on the column, which would prevent index use.
     if (authorFilter) {
-      conditions.push('LOWER(author) = LOWER(?)');
+      conditions.push('author = ? COLLATE NOCASE');
       params.push(authorFilter);
     }
 
@@ -295,11 +308,12 @@ export class PostRepository {
         break;
       }
       case OrderByOption.ReadAt:
-        // NULL readAt always sorts last regardless of direction
-        orderClause = `ORDER BY CASE WHEN readAt IS NULL THEN 1 ELSE 0 END ASC, readAt ${dir}`;
+        // NULL readAt always sorts last regardless of direction; NULLS LAST is supported in SQLite 3.30+
+        orderClause = `ORDER BY readAt ${dir} NULLS LAST`;
         break;
       case OrderByOption.Rating:
-        orderClause = `ORDER BY COALESCE(rating, 0) ${dir}`;
+        // NULLS LAST puts unrated posts at the bottom (DESC) / top (ASC), consistent with prior COALESCE(rating,0) semantics
+        orderClause = `ORDER BY rating ${dir} NULLS LAST`;
         break;
       case OrderByOption.QueuedAt:
         // When sorting by queue order, only show queued posts and sort by queuedAt
@@ -327,11 +341,7 @@ export class PostRepository {
         id, redditId, url, title, author, subreddit,
         redditCreatedAt, addedAt, updatedAt,
         customTitle, notes, rating, isRead, isFavorite, isArchived, readAt, queuedAt,
-        CASE
-          WHEN COALESCE(customBody, bodyText) IS NULL OR COALESCE(customBody, bodyText) = '' THEN 0
-          ELSE LENGTH(TRIM(COALESCE(customBody, bodyText)))
-               - LENGTH(REPLACE(TRIM(COALESCE(customBody, bodyText)), ' ', '')) + 1
-        END AS wordCount
+        wordCount
       FROM posts
       WHERE ${where}
       ${orderClause}`;
@@ -446,8 +456,8 @@ export class PostRepository {
          redditId, url, title, bodyText, bodyMinHash, author, subreddit,
          redditCreatedAt, addedAt, updatedAt, syncedAt, lastSyncStatus, lastSyncError,
          customTitle, customBody, notes, rating,
-         isRead, isFavorite, isDeleted, isArchived, extraFields, summary, readAt
-       ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+         isRead, isFavorite, isDeleted, isArchived, extraFields, summary, readAt, wordCount
+       ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
       post.redditId,
       post.url,
       post.title,
@@ -472,6 +482,7 @@ export class PostRepository {
       post.extraFields ? JSON.stringify(post.extraFields) : null,
       post.summary ?? null,
       post.readAt instanceof Date ? post.readAt.toISOString() : post.readAt ?? null,
+      PostRepository.computeWordCount(post.bodyText, post.customBody),
     );
     const newId = result.lastInsertRowId;
     return newId;
@@ -593,6 +604,7 @@ export class PostRepository {
          summary       = ?,
          readAt        = ?,
          queuedAt      = ?,
+         wordCount     = ?,
          updatedAt     = CURRENT_TIMESTAMP
        WHERE id = ?`,
       post.title,
@@ -609,6 +621,7 @@ export class PostRepository {
       post.summary ?? null,
       post.readAt instanceof Date ? post.readAt.toISOString() : post.readAt ?? null,
       post.queuedAt instanceof Date ? post.queuedAt.toISOString() : post.queuedAt ?? null,
+      PostRepository.computeWordCount(post.bodyText, post.customBody),
       post.id
     );
 

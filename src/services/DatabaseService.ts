@@ -80,6 +80,8 @@ export class DatabaseService {
     await this.db.execAsync(`
       PRAGMA foreign_keys = ON;
       PRAGMA journal_mode = WAL;
+      PRAGMA synchronous = NORMAL;
+      PRAGMA temp_store = MEMORY;
 
       CREATE TABLE IF NOT EXISTS folders (
         id          INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -113,7 +115,9 @@ export class DatabaseService {
         extraFields       TEXT,
         bodyMinHash       TEXT,
         summary           TEXT,
-        readAt            TEXT
+        readAt            TEXT,
+        wordCount         INTEGER NOT NULL DEFAULT 0,
+        queuedAt          TEXT
       );
 
       CREATE TABLE IF NOT EXISTS post_folders (
@@ -140,6 +144,25 @@ export class DatabaseService {
       );
 
       CREATE INDEX IF NOT EXISTS idx_highlights_post_id ON highlights(post_id);
+
+      -- Every list query filters isDeleted=0 first, isArchived=0 second, so it leads all compound indexes.
+      -- Pair with the most common ORDER BY column so SQLite can satisfy both
+      -- the filter and the sort from a single index scan with no filesort.
+      
+      CREATE INDEX IF NOT EXISTS idx_posts_deleted_archived_added          ON posts(isDeleted, isArchived, addedAt);
+      CREATE INDEX IF NOT EXISTS idx_posts_deleted_archived_updated        ON posts(isDeleted, isArchived, updatedAt);
+      CREATE INDEX IF NOT EXISTS idx_posts_deleted_archived_rating         ON posts(isDeleted, isArchived, rating);
+      -- NOTE: idx_posts_deleted_archived_queued is intentionally absent here.
+      -- queuedAt and readAt are migrated columns; their indexes are created post-migration below.
+
+      CREATE INDEX IF NOT EXISTS idx_posts_deleted_archived_read_added     ON posts(isDeleted, isArchived, isRead, addedAt);
+      CREATE INDEX IF NOT EXISTS idx_posts_deleted_archived_read_updated   ON posts(isDeleted, isArchived, isRead, updatedAt);
+      -- NOTE: idx_posts_deleted_archived_read_queued is absent here (queuedAt is a migrated column).
+
+      CREATE INDEX IF NOT EXISTS idx_posts_deleted_archived_favorite ON posts(isDeleted, isArchived, isFavorite, updatedAt);
+
+      -- Covering index for findSimilarPosts(): avoids a table scan for the IS NOT NULL filter
+      CREATE INDEX IF NOT EXISTS idx_posts_deleted_minhash        ON posts(isDeleted, bodyMinHash);
     `);
 
     // Migration: add minHash column if it doesn't exist
@@ -186,6 +209,32 @@ export class DatabaseService {
     const hasQueuedAt = columns.some((col: any) => col.name === 'queuedAt');
     if (!hasQueuedAt) {
       await this.db.execAsync(`ALTER TABLE posts ADD COLUMN queuedAt TEXT;`);
+    }
+    // Migration: create queuedAt and readAt compound indexes after the columns are guaranteed to exist.
+    // These cannot live in the DDL block above because they are migrated columns.
+    await this.db.execAsync(
+      `CREATE INDEX IF NOT EXISTS idx_posts_deleted_archived_queued  ON posts(isDeleted, isArchived, queuedAt);
+       CREATE INDEX IF NOT EXISTS idx_posts_deleted_archived_readat  ON posts(isDeleted, isArchived, readAt);
+       CREATE INDEX IF NOT EXISTS idx_posts_deleted_archived_read_added    ON posts(isDeleted, isArchived, isRead, addedAt);
+       CREATE INDEX IF NOT EXISTS idx_posts_deleted_archived_read_updated  ON posts(isDeleted, isArchived, isRead, updatedAt);
+       CREATE INDEX IF NOT EXISTS idx_posts_deleted_archived_read_queued   ON posts(isDeleted, isArchived, isRead, queuedAt);`
+    );
+
+    // Migration: add pre-computed wordCount column.
+    // Storing this avoids reading large bodyText/customBody overflow pages on every list query.
+    const hasWordCount = columns.some((col: any) => col.name === 'wordCount');
+    if (!hasWordCount) {
+      await this.db.execAsync(`ALTER TABLE posts ADD COLUMN wordCount INTEGER NOT NULL DEFAULT 0;`);
+      // Backfill: space-count heuristic identical to what the SELECT expression used.
+      // Runs once on upgrade; acceptable startup cost.
+      await this.db.execAsync(`
+        UPDATE posts SET wordCount = CASE
+          WHEN COALESCE(customBody, bodyText) IS NULL OR TRIM(COALESCE(customBody, bodyText)) = '' THEN 0
+          ELSE LENGTH(TRIM(COALESCE(customBody, bodyText)))
+               - LENGTH(REPLACE(TRIM(COALESCE(customBody, bodyText)), ' ', '')) + 1
+        END
+        WHERE isDeleted = 0;
+      `);
     }
   }
 

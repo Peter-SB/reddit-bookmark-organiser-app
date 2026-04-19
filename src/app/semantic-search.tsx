@@ -2,7 +2,6 @@ import { useFocusEffect, useRouter } from "expo-router";
 import React, { useCallback, useMemo, useState } from "react";
 import {
   ActivityIndicator,
-  FlatList,
   KeyboardAvoidingView,
   Modal,
   Platform,
@@ -14,6 +13,7 @@ import {
   TouchableWithoutFeedback,
   View,
 } from "react-native";
+import { FlashList } from "@shopify/flash-list";
 import { SafeAreaView } from "react-native-safe-area-context";
 import Icon from "react-native-vector-icons/MaterialIcons";
 
@@ -219,7 +219,7 @@ export default function SemanticSearchScreen() {
 
       {error ? <Text style={styles.errorText}>{error}</Text> : null}
 
-      <FlatList
+      <FlashList
         data={results}
         keyExtractor={(item, idx) => `${item.postId}-${idx}`}
         renderItem={renderResult}

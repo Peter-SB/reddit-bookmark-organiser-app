@@ -43,10 +43,17 @@ let sharedPosts: PostListItem[] = [];
 let sharedLoading = true;
 let sharedRepo: PostRepository | null = null;
 let sharedInitPromise: Promise<void> | null = null;
+/** Listeners notified on full list reloads (add, delete, initial load). */
 const listeners = new Set<() => void>();
+/** Listeners notified on single-item mutations (toggles, field updates). */
+const itemUpdateListeners = new Set<(item: PostListItem) => void>();
 
 function notifyListeners() {
   for (const fn of listeners) fn();
+}
+
+function notifyWithItemUpdate(item: PostListItem) {
+  for (const fn of itemUpdateListeners) fn(item);
 }
 
 export function resetSharedPostsState() {
@@ -56,7 +63,6 @@ export function resetSharedPostsState() {
   sharedLoading = true;
   notifyListeners();
 }
-
 async function initSharedRepo(): Promise<PostRepository> {
   if (sharedRepo) return sharedRepo;
   if (!sharedInitPromise) {
@@ -75,6 +81,15 @@ async function initSharedRepo(): Promise<PostRepository> {
 export function subscribeToPostChanges(fn: () => void): () => void {
   listeners.add(fn);
   return () => listeners.delete(fn);
+}
+
+/**
+ * Subscribe to single-item updates (fav/queue/read/archive toggles).
+ * Allows useFilteredPosts to update in-place without a full DB re-query.
+ */
+export function subscribeToItemUpdates(fn: (item: PostListItem) => void): () => void {
+  itemUpdateListeners.add(fn);
+  return () => itemUpdateListeners.delete(fn);
 }
 
 /** Exposed so sibling hooks can share the same DB connection. */
@@ -295,7 +310,8 @@ export function usePosts(): UsePostsResult {
         ? { ...p, isRead: newIsRead, readAt: newIsRead ? new Date() : p.readAt }
         : p
     );
-    notifyListeners();
+    const updatedRead = sharedPosts.find(p => p.id === id);
+    if (updatedRead) notifyWithItemUpdate(updatedRead);
   }, []);
 
   const toggleFavorite = useCallback(async (id: number) => {
@@ -307,7 +323,8 @@ export function usePosts(): UsePostsResult {
     sharedPosts = sharedPosts.map(p =>
       p.id === id ? { ...p, isFavorite: newIsFavorite } : p
     );
-    notifyListeners();
+    const updatedFav = sharedPosts.find(p => p.id === id);
+    if (updatedFav) notifyWithItemUpdate(updatedFav);
   }, []);
 
   const toggleArchive = useCallback(async (id: number) => {
@@ -319,7 +336,8 @@ export function usePosts(): UsePostsResult {
     sharedPosts = sharedPosts.map(p =>
       p.id === id ? { ...p, isArchived: newIsArchived } : p
     );
-    notifyListeners();
+    const updatedArchive = sharedPosts.find(p => p.id === id);
+    if (updatedArchive) notifyWithItemUpdate(updatedArchive);
   }, []);
 
   const toggleQueue = useCallback(async (id: number) => {
@@ -331,7 +349,8 @@ export function usePosts(): UsePostsResult {
     sharedPosts = sharedPosts.map(p =>
       p.id === id ? { ...p, queuedAt: newQueuedAt } : p
     );
-    notifyListeners();
+    const updatedQueue = sharedPosts.find(p => p.id === id);
+    if (updatedQueue) notifyWithItemUpdate(updatedQueue);
   }, []);
 
   const setFolders = useCallback(
@@ -395,4 +414,10 @@ export function _resetPostsSharedState() {
   sharedRepo = null;
   sharedInitPromise = null;
   listeners.clear();
+  itemUpdateListeners.clear();
+}
+
+/** For testing only: trigger an item-level update notification. */
+export function _notifyWithItemUpdateForTesting(item: PostListItem) {
+  notifyWithItemUpdate(item);
 }

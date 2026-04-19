@@ -1,10 +1,6 @@
 import { OrderByRow } from "@/components/OrderByRow";
 import { PostCard } from "@/components/PostCard";
-import {
-  OrderByOption,
-  ORDER_BY_LABELS,
-  AUTHOR_POST_ORDER_OPTIONS,
-} from "@/constants/orderBy";
+import { OrderByOption, AUTHOR_POST_ORDER_OPTIONS } from "@/constants/orderBy";
 import { spacing } from "@/constants/spacing";
 import { fontWeights } from "@/constants/typography";
 import { useTheme } from "@/contexts/ThemeContext";
@@ -16,12 +12,13 @@ import { useFocusEffect, useLocalSearchParams, useRouter } from "expo-router";
 import React, { useCallback, useEffect, useMemo, useState } from "react";
 import {
   BackHandler,
-  FlatList,
+  RefreshControl,
   StyleSheet,
   Text,
   TouchableOpacity,
   View,
 } from "react-native";
+import { FlashList } from "@shopify/flash-list";
 import { SafeAreaView } from "react-native-safe-area-context";
 import Icon from "react-native-vector-icons/MaterialIcons";
 
@@ -128,14 +125,19 @@ export default function AuthorPostsScreen() {
 
       {statusText ? <Text style={styles.errorText}>{statusText}</Text> : null}
 
-      <FlatList
+      <FlashList
         data={authorPosts}
         keyExtractor={(item) => `${item.id}`}
         renderItem={renderItem}
-        refreshing={refreshing}
-        onRefresh={handleRefresh}
         contentContainerStyle={
           authorPosts.length === 0 ? styles.emptyListContainer : undefined
+        }
+        refreshControl={
+          <RefreshControl
+            refreshing={refreshing}
+            onRefresh={handleRefresh}
+            tintColor={palette.foreground}
+          />
         }
         ListEmptyComponent={
           hasLoaded && authorName ? (

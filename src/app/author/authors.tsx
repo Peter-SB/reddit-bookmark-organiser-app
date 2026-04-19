@@ -12,12 +12,13 @@ import { useFocusEffect, useRouter } from "expo-router";
 import React, { useCallback, useEffect, useState, useMemo } from "react";
 import {
   BackHandler,
-  FlatList,
+  RefreshControl,
   StyleSheet,
   Text,
   TouchableOpacity,
   View,
 } from "react-native";
+import { FlashList } from "@shopify/flash-list";
 import { SafeAreaView } from "react-native-safe-area-context";
 import Icon from "react-native-vector-icons/MaterialIcons";
 
@@ -111,14 +112,19 @@ export default function AuthorsScreen() {
       </View>
 
       {/* Author list */}
-      <FlatList
+      <FlashList
         data={authors}
         keyExtractor={(item) => item.author}
         renderItem={renderItem}
-        refreshing={refreshing}
-        onRefresh={handleRefresh}
         contentContainerStyle={
           authors.length === 0 ? styles.emptyListContainer : undefined
+        }
+        refreshControl={
+          <RefreshControl
+            refreshing={refreshing}
+            onRefresh={handleRefresh}
+            tintColor={palette.foreground}
+          />
         }
         ListEmptyComponent={
           hasLoaded ? (

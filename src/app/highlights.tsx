@@ -10,12 +10,12 @@ import { useRouter, useFocusEffect } from "expo-router";
 import React, { useCallback, useMemo } from "react";
 import {
   ActivityIndicator,
-  FlatList,
   StyleSheet,
   Text,
   TouchableOpacity,
   View,
 } from "react-native";
+import { FlashList } from "@shopify/flash-list";
 import {
   SafeAreaView,
   useSafeAreaInsets,
@@ -115,7 +115,7 @@ export default function HighlightsScreen() {
           </Text>
         </View>
       ) : (
-        <FlatList
+        <FlashList
           data={highlights}
           keyExtractor={(item) => item.id.toString()}
           renderItem={renderHighlight}

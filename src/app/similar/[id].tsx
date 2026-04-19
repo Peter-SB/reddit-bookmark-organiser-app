@@ -14,12 +14,12 @@ import React, { useCallback, useEffect, useMemo, useState } from "react";
 import {
   ActivityIndicator,
   BackHandler,
-  FlatList,
   StyleSheet,
   Text,
   TouchableOpacity,
   View,
 } from "react-native";
+import { FlashList } from "@shopify/flash-list";
 import { SafeAreaView } from "react-native-safe-area-context";
 import Icon from "react-native-vector-icons/MaterialIcons";
 
@@ -153,7 +153,7 @@ export default function SimilarPostsScreen() {
         </View>
       )}
 
-      <FlatList
+      <FlashList
         data={results}
         keyExtractor={(item, idx) => `${item.postId}-${idx}`}
         renderItem={renderResult}

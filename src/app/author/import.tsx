@@ -15,13 +15,13 @@ import {
   ActivityIndicator,
   Alert,
   BackHandler,
-  FlatList,
   StyleSheet,
   Switch,
   Text,
   TouchableOpacity,
   View,
 } from "react-native";
+import { FlashList } from "@shopify/flash-list";
 import { SafeAreaView } from "react-native-safe-area-context";
 import Icon from "react-native-vector-icons/MaterialIcons";
 
@@ -347,7 +347,7 @@ export default function AuthorImportScreen() {
         </View>
       )}
 
-      <FlatList
+      <FlashList
         data={filteredRedditPosts}
         keyExtractor={(item) => item.id}
         renderItem={renderPostItem}
@@ -377,6 +377,7 @@ export default function AuthorImportScreen() {
         }
         ListFooterComponent={renderFooter}
         ListFooterComponentStyle={styles.footerContainer}
+        scrollEventThrottle={16}
         contentContainerStyle={
           filteredRedditPosts.length === 0
             ? styles.emptyListContainer
