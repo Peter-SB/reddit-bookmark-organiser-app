@@ -1,6 +1,7 @@
 import { OrderByRow } from "@/components/OrderByRow";
 import { SearchBar } from "@/components/SearchBar";
 import { SwipeablePostCard } from "@/components/SwipeablePostCard";
+import { AuthorProfileCard } from "@/components/AuthorProfileCard";
 import { OrderByOption, AUTHOR_POST_ORDER_OPTIONS } from "@/constants/orderBy";
 import { spacing } from "@/constants/spacing";
 import { fontWeights } from "@/constants/typography";
@@ -8,6 +9,7 @@ import { useTheme } from "@/contexts/ThemeContext";
 import type { ThemeContextValue } from "@/contexts/ThemeContext";
 import { useFilteredPosts } from "@/hooks/useFilteredPosts";
 import { usePosts } from "@/hooks/usePosts";
+import { useAuthorProfile } from "@/hooks/useAuthorProfile";
 import { PostListItem } from "@/models/models";
 import { openRedditUser } from "@/utils/redditLinks";
 import { useFocusEffect, useLocalSearchParams, useRouter } from "expo-router";
@@ -53,6 +55,9 @@ export default function AuthorPostsScreen() {
   const [search, setSearch] = useState("");
 
   const { toggleQueue } = usePosts();
+
+  const { profile, toggleFavorite, setRating, setNotes } =
+    useAuthorProfile(authorName);
 
   const { posts: authorPosts, loading } = useFilteredPosts({
     authorFilter: authorName || undefined,
@@ -120,27 +125,6 @@ export default function AuthorPostsScreen() {
         </Text>
       </View>
 
-      {/* Sort controls */}
-      <View style={styles.sortRow}>
-        <OrderByRow
-          orderOptions={AUTHOR_POST_ORDER_OPTIONS}
-          localOrderBy={orderBy}
-          localOrderDirection={orderDirection}
-          onOrderByChange={setOrderBy}
-          onOrderDirectionChange={setOrderDirection}
-        />
-      </View>
-
-      {/* Search */}
-      <View style={styles.searchContainer}>
-        <SearchBar
-          value={search}
-          onChangeText={setSearch}
-          placeholder="Search saved posts..."
-          cancelButtonCallback={() => setSearch("")}
-        />
-      </View>
-
       {statusText ? <Text style={styles.errorText}>{statusText}</Text> : null}
 
       <FlashList
@@ -156,6 +140,40 @@ export default function AuthorPostsScreen() {
             onRefresh={handleRefresh}
             tintColor={palette.foreground}
           />
+        }
+        ListHeaderComponent={
+          authorName ? (
+            <>
+              <AuthorProfileCard
+                authorName={authorName}
+                profile={profile}
+                onToggleFavorite={toggleFavorite}
+                onSetRating={setRating}
+                onSetNotes={setNotes}
+              />
+
+              {/* Sort controls */}
+              <View style={styles.sortRow}>
+                <OrderByRow
+                  orderOptions={AUTHOR_POST_ORDER_OPTIONS}
+                  localOrderBy={orderBy}
+                  localOrderDirection={orderDirection}
+                  onOrderByChange={setOrderBy}
+                  onOrderDirectionChange={setOrderDirection}
+                />
+              </View>
+
+              {/* Search */}
+              <View style={styles.searchContainer}>
+                <SearchBar
+                  value={search}
+                  onChangeText={setSearch}
+                  placeholder="Search saved posts..."
+                  cancelButtonCallback={() => setSearch("")}
+                />
+              </View>
+            </>
+          ) : null
         }
         ListEmptyComponent={
           hasLoaded && authorName ? (
@@ -225,16 +243,16 @@ function makeStyles(
       // textDecorationLine: "underline",
     },
     sortRow: {
-      paddingHorizontal: spacing.s,
+      paddingHorizontal: spacing.m,
       paddingVertical: spacing.xs,
-      borderBottomWidth: 1,
+      borderBottomWidth: 0,
       borderBottomColor: palette.border,
     },
     searchContainer: {
+      // backgroundColor: palette.backgroundMidLight,
       paddingHorizontal: spacing.m,
-      paddingTop: spacing.s,
-      paddingBottom: spacing.xs,
-      borderBottomWidth: 1,
+      paddingBottom: spacing.s,
+      borderBottomWidth: 2,
       borderBottomColor: palette.border,
     },
     statusText: {

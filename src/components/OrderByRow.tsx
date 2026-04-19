@@ -103,7 +103,7 @@ export function OrderByRow({
               onPress={toggleDropdown}
               accessibilityLabel="Select order by option"
             >
-              <Text style={[styles.segmentLabel]}>
+              <Text style={[styles.segmentLabel, { paddingLeft: 6 }]}>
                 {orderOptions.find((opt) => opt.key === localOrderBy)?.label}
               </Text>
               <Icon
@@ -176,19 +176,22 @@ function makeStyles(
     orderDropdownContainer: {
       position: "relative",
       marginLeft: 6,
-      marginRight: 7,
+      // marginRight: 7,
     },
     orderDropdownButton: {
       flexDirection: "row",
       alignItems: "center",
       backgroundColor: palette.backgroundMidLight,
       borderRadius: 8,
-      paddingHorizontal: 10,
+      // paddingHorizontal: 10,
       paddingVertical: 4,
+      borderWidth: 0.5,
+      borderColor: palette.border,
     },
     segmentLabel: {
       fontSize: fontSizes.body,
       color: palette.foreground,
+      width: 80,
     },
     segmentLabelActive: {
       fontWeight: "bold",

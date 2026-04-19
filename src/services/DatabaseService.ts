@@ -148,7 +148,7 @@ export class DatabaseService {
       -- Every list query filters isDeleted=0 first, isArchived=0 second, so it leads all compound indexes.
       -- Pair with the most common ORDER BY column so SQLite can satisfy both
       -- the filter and the sort from a single index scan with no filesort.
-      
+
       CREATE INDEX IF NOT EXISTS idx_posts_deleted_archived_added          ON posts(isDeleted, isArchived, addedAt);
       CREATE INDEX IF NOT EXISTS idx_posts_deleted_archived_updated        ON posts(isDeleted, isArchived, updatedAt);
       CREATE INDEX IF NOT EXISTS idx_posts_deleted_archived_rating         ON posts(isDeleted, isArchived, rating);
@@ -163,6 +163,15 @@ export class DatabaseService {
 
       -- Covering index for findSimilarPosts(): avoids a table scan for the IS NOT NULL filter
       CREATE INDEX IF NOT EXISTS idx_posts_deleted_minhash        ON posts(isDeleted, bodyMinHash);
+
+      CREATE TABLE IF NOT EXISTS author_profiles (
+        author      TEXT    PRIMARY KEY COLLATE NOCASE,
+        isFavorite  INTEGER NOT NULL DEFAULT 0,
+        rating      REAL,
+        notes       TEXT,
+        createdAt   TEXT    NOT NULL DEFAULT CURRENT_TIMESTAMP,
+        updatedAt   TEXT    NOT NULL DEFAULT CURRENT_TIMESTAMP
+      );
     `);
 
     // Migration: add minHash column if it doesn't exist

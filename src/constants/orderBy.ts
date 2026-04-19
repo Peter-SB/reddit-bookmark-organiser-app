@@ -14,6 +14,10 @@ export enum OrderByOption {
   Name = "name",
   FavouriteCount = "favouriteCount",
   ReadCount = "readCount",
+  // Author profile sort options
+  AuthorIsFavorite = "authorIsFavorite",
+  AuthorRating = "authorRating",
+  AuthorHasNotes = "authorHasNotes",
 }
 
 /** Labels for post-list sort options */
@@ -37,6 +41,9 @@ export const AUTHOR_ORDER_BY_LABELS: Partial<Record<OrderByOption, string>> = {
   [OrderByOption.AddedAt]: "Added At",
   [OrderByOption.FavouriteCount]: "Favourites",
   [OrderByOption.ReadCount]: "Read Count",
+  [OrderByOption.AuthorIsFavorite]: "Fav Author",
+  [OrderByOption.AuthorRating]: "Author Rating",
+  [OrderByOption.AuthorHasNotes]: "Has Notes",
 };
 
 /** Full label map covering all OrderByOption values */
@@ -47,6 +54,9 @@ export const ORDER_BY_LABELS: Record<OrderByOption, string> = {
 
 /** Order-by options for the Author list screen */
 export const AUTHOR_ORDER_OPTIONS: { key: OrderByOption; label: string }[] = [
+  { key: OrderByOption.AuthorIsFavorite, label: AUTHOR_ORDER_BY_LABELS[OrderByOption.AuthorIsFavorite] ?? "Fav Author" },
+  { key: OrderByOption.AuthorRating, label: AUTHOR_ORDER_BY_LABELS[OrderByOption.AuthorRating] ?? "Author Rating" },
+  { key: OrderByOption.AuthorHasNotes, label: AUTHOR_ORDER_BY_LABELS[OrderByOption.AuthorHasNotes] ?? "Has Notes" },
   { key: OrderByOption.PostCount, label: AUTHOR_ORDER_BY_LABELS[OrderByOption.PostCount] ?? "Post Count" },
   { key: OrderByOption.AvgRating, label: AUTHOR_ORDER_BY_LABELS[OrderByOption.AvgRating] ?? "Avg Rating" },
   { key: OrderByOption.TotalRating, label: AUTHOR_ORDER_BY_LABELS[OrderByOption.TotalRating] ?? "Total Rating" },

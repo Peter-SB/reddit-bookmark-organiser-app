@@ -7,6 +7,7 @@ import type { ThemeContextValue } from "@/contexts/ThemeContext";
 import { spacing } from "../constants/spacing";
 import { fontWeights } from "../constants/typography";
 import { AuthorSummary } from "../models/AuthorSummary";
+import { useAuthorProfile } from "@/hooks/useAuthorProfile";
 
 interface AuthorCardProps {
   author: AuthorSummary;
@@ -19,6 +20,7 @@ export const AuthorCard: React.FC<AuthorCardProps> = ({ author }) => {
     [palette, fontSizes],
   );
   const router = useRouter();
+  const { profile } = useAuthorProfile(author.author);
 
   const handlePress = () => {
     router.push(`/author/${encodeURIComponent(author.author)}` as any);
@@ -42,9 +44,29 @@ export const AuthorCard: React.FC<AuthorCardProps> = ({ author }) => {
       activeOpacity={0.8}
     >
       {/* Author name */}
-      <Text style={styles.authorName} numberOfLines={1}>
-        u/{author.author}
-      </Text>
+      <View style={styles.nameRow}>
+        <Text style={styles.authorName} numberOfLines={1}>
+          u/{author.author}
+        </Text>
+        {profile?.isFavorite && (
+          <Ionicons name="heart" size={15} color={palette.favHeartRed} />
+        )}
+        {profile?.rating != null && profile.rating > 0 && (
+          <View style={styles.profileRatingChip}>
+            <Ionicons name="star" size={12} color={palette.starYellow} />
+            <Text style={styles.profileRatingText}>
+              {profile.rating.toFixed(1)}
+            </Text>
+          </View>
+        )}
+      </View>
+
+      {/* Author notes */}
+      {profile?.notes ? (
+        <Text style={styles.notesText} numberOfLines={2}>
+          {profile.notes}
+        </Text>
+      ) : null}
 
       {/* Stats row */}
       <View style={styles.statsRow}>
@@ -121,11 +143,26 @@ function makeStyles(
       borderBottomWidth: 1,
       borderColor: palette.border,
     },
+    nameRow: {
+      flexDirection: "row",
+      alignItems: "center",
+      gap: spacing.s,
+      marginBottom: spacing.xs,
+    },
     authorName: {
       fontSize: fontSizes.title * 0.9,
       fontWeight: fontWeights.semibold,
       color: palette.foreground,
-      marginBottom: spacing.xs,
+      flexShrink: 1,
+    },
+    profileRatingChip: {
+      flexDirection: "row",
+      alignItems: "center",
+      gap: 2,
+    },
+    profileRatingText: {
+      fontSize: fontSizes.xsmall,
+      color: palette.muted,
     },
     statsRow: {
       flexDirection: "row",
@@ -165,6 +202,12 @@ function makeStyles(
       fontSize: fontSizes.small,
       color: palette.muted,
       marginHorizontal: 2,
+    },
+    notesText: {
+      fontSize: fontSizes.small,
+      color: palette.muted,
+      fontStyle: "italic",
+      marginVertical: spacing.xs,
     },
   });
 }
