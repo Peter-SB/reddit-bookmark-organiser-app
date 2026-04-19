@@ -35,6 +35,7 @@ import { fontWeights } from "@/constants/typography";
 import { useTheme } from "@/contexts/ThemeContext";
 import type { ThemeContextValue } from "@/contexts/ThemeContext";
 import { PostListItem } from "@/models/models";
+import { scrollToTopWithHeader } from "@/utils/scrollAnimationHelpers";
 
 import { MenuSidebar } from "@/components/MenuSidebar";
 import { SearchBar } from "@/components/SearchBar";
@@ -114,10 +115,7 @@ export default function HomeScreen() {
   useEffect(() => {
     // wait a tick for FlatList to mount.
     requestAnimationFrame(() => {
-      postsListRef.current?.scrollToOffset({
-        offset: LIST_HEADER_HEIGHT,
-        animated: true,
-      });
+      scrollToTopWithHeader(postsListRef, LIST_HEADER_HEIGHT);
     });
   }, []);
 
@@ -167,10 +165,7 @@ export default function HomeScreen() {
       setSelectedFolders([]);
       setOrderBy(OrderByOption.AddedAt);
       setOrderDirection("desc");
-      postsListRef.current?.scrollToOffset({
-        offset: LIST_HEADER_HEIGHT,
-        animated: true,
-      });
+      scrollToTopWithHeader(postsListRef, LIST_HEADER_HEIGHT);
     } else if (key === "semantic-search") {
       router.push("/semantic-search" as any);
     } else if (key === "highlights") {
@@ -180,10 +175,7 @@ export default function HomeScreen() {
     } else if (key === "settings") {
       router.push("/settings" as any);
     } else if (key === "search") {
-      postsListRef.current?.scrollToOffset({
-        offset: 0,
-        animated: true,
-      });
+      scrollToTopWithHeader(postsListRef, 0);
     } else if (Array.isArray(key)) {
       setSelectedFolders(key as number[]);
       return;
@@ -215,6 +207,12 @@ export default function HomeScreen() {
       }
     },
   );
+
+  const onSetOrderBy = useCallback((option: OrderByOption) => {
+    scrollToTopWithHeader(postsListRef, LIST_HEADER_HEIGHT);
+    setSidebarOpen(false);
+    setOrderBy(option);
+  }, []);
 
   useEffect(() => {
     async function handleIncoming() {
@@ -290,7 +288,7 @@ export default function HomeScreen() {
         onDeleteFolder={deleteFolder}
         orderBy={orderBy}
         orderDirection={orderDirection}
-        onOrderByChange={setOrderBy}
+        onOrderByChange={onSetOrderBy}
         onOrderDirectionChange={setOrderDirection}
         onRandomReseed={() => setRandomSeed(Date.now())}
       />
@@ -404,10 +402,7 @@ export default function HomeScreen() {
                 setOrderDirection("desc");
                 setArchivedFilter("no");
                 setSelectedFolders([]);
-                postsListRef.current?.scrollToOffset({
-                  offset: LIST_HEADER_HEIGHT,
-                  animated: true,
-                });
+                scrollToTopWithHeader(postsListRef, LIST_HEADER_HEIGHT);
               }}
             />
             <LinearGradient

@@ -58,6 +58,11 @@ export function applyItemUpdate(
 
   if (existingIndex === -1 && stillPasses) {
     // Not in list but now qualifies: insert and sort.
+    // For random order, append at end — the seeded shuffle must not be re-run on
+    // every toggle (random is only re-rolled on app start or explicit reroll).
+    if ((opts.orderBy ?? OrderByOption.AddedAt) === OrderByOption.Random) {
+      return [...currentPosts, updatedItem];
+    }
     return sortPosts(
       [...currentPosts, updatedItem],
       opts.orderBy ?? OrderByOption.AddedAt,
@@ -68,6 +73,11 @@ export function applyItemUpdate(
 
   // Item is in list and still qualifies: replace and re-sort so order-relevant
   // field changes (e.g. queuedAt, updatedAt) are reflected immediately.
+  // For random order, only update the item in-place — re-shuffling would change
+  // the positions of every post on every toggle, which is not desired.
+  if ((opts.orderBy ?? OrderByOption.AddedAt) === OrderByOption.Random) {
+    return currentPosts.map((p, i) => (i === existingIndex ? updatedItem : p));
+  }
   return sortPosts(
     currentPosts.map((p, i) => (i === existingIndex ? updatedItem : p)),
     opts.orderBy ?? OrderByOption.AddedAt,

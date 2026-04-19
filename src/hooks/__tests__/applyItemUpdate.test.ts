@@ -192,4 +192,83 @@ describe('applyItemUpdate', () => {
       expect(result).toHaveLength(2);
     });
   });
+
+  // ── random order scenarios ────────────────────────────────────────────────
+
+  describe('random order — no re-shuffle on item update', () => {
+    it('updates item data in-place without changing relative order of other posts', () => {
+      const a = makePost(1);
+      const b = makePost(2);
+      const c = makePost(3);
+      // A specific shuffled order that would not be produced by addedAt sorting
+      const posts = [b, c, a];
+      const updatedB = { ...b, isFavorite: true };
+
+      const result = applyItemUpdate(posts, updatedB, {
+        orderBy: OrderByOption.Random,
+        randomSeed: 42,
+      });
+
+      // Data should be updated
+      expect(result.find((p) => p.id === 2)?.isFavorite).toBe(true);
+      // Order of all three posts must be unchanged: [2, 3, 1]
+      expect(result.map((p) => p.id)).toEqual([2, 3, 1]);
+    });
+
+    it('does not re-shuffle when queuedAt changes under random order', () => {
+      const a = makePost(1, { queuedAt: null });
+      const b = makePost(2, { queuedAt: null });
+      const posts = [b, a]; // shuffled order
+
+      const updatedA = { ...a, queuedAt: new Date() };
+
+      const result = applyItemUpdate(posts, updatedA, {
+        orderBy: OrderByOption.Random,
+        randomSeed: 99,
+      });
+
+      // queuedAt update should be reflected
+      expect(result.find((p) => p.id === 1)?.queuedAt).not.toBeNull();
+      // Order must not change: still [2, 1]
+      expect(result.map((p) => p.id)).toEqual([2, 1]);
+    });
+
+    it('does not re-shuffle when updatedAt changes under random order', () => {
+      const a = makePost(1);
+      const b = makePost(2);
+      const c = makePost(3);
+      const posts = [c, a, b]; // shuffled order
+
+      const updatedA = { ...a, updatedAt: new Date() };
+
+      const result = applyItemUpdate(posts, updatedA, {
+        orderBy: OrderByOption.Random,
+        randomSeed: 7,
+      });
+
+      // Order must not change: still [3, 1, 2]
+      expect(result.map((p) => p.id)).toEqual([3, 1, 2]);
+    });
+
+    it('appends newly qualifying item at end instead of reshuffling', () => {
+      const a = makePost(1);
+      const b = makePost(2);
+      const posts = [b, a]; // shuffled [2, 1]
+
+      // Post 99 was not a favourite; now it is (favouritesFilter: 'yes')
+      const newFav = makePost(99, { isFavorite: true });
+
+      const result = applyItemUpdate(posts, newFav, {
+        orderBy: OrderByOption.Random,
+        favouritesFilter: 'yes',
+        randomSeed: 42,
+      });
+
+      expect(result).toHaveLength(3);
+      // Existing order preserved; new item at the end
+      expect(result[0].id).toBe(2);
+      expect(result[1].id).toBe(1);
+      expect(result[2].id).toBe(99);
+    });
+  });
 });

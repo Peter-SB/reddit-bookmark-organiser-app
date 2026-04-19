@@ -307,7 +307,7 @@ export function usePosts(): UsePostsResult {
     // Optimistic: update local state without reloading
     sharedPosts = sharedPosts.map(p =>
       p.id === id
-        ? { ...p, isRead: newIsRead, readAt: newIsRead ? new Date() : p.readAt }
+        ? { ...p, isRead: newIsRead, readAt: newIsRead ? new Date() : p.readAt, updatedAt: new Date() }
         : p
     );
     const updatedRead = sharedPosts.find(p => p.id === id);
@@ -317,11 +317,11 @@ export function usePosts(): UsePostsResult {
   const toggleFavorite = useCallback(async (id: number) => {
     console.debug('Toggling favorite status for post:', id);
     const repo = await initSharedRepo();
-    const newIsFavorite = await repo.toggleFavoriteById(id);
+    const { isFavorite: newIsFavorite, queuedAt: newQueuedAt } = await repo.toggleFavoriteById(id);
 
-    // Optimistic: update local state without reloading
+    // Optimistic: update isFavorite, queuedAt (set when favoriting ON), and updatedAt without reloading
     sharedPosts = sharedPosts.map(p =>
-      p.id === id ? { ...p, isFavorite: newIsFavorite } : p
+      p.id === id ? { ...p, isFavorite: newIsFavorite, queuedAt: newQueuedAt, updatedAt: new Date() } : p
     );
     const updatedFav = sharedPosts.find(p => p.id === id);
     if (updatedFav) notifyWithItemUpdate(updatedFav);
@@ -329,12 +329,12 @@ export function usePosts(): UsePostsResult {
 
   const toggleArchive = useCallback(async (id: number) => {
     console.debug('Toggling archive status for post:', id);
-    const repo = await initSharedRepo();
+    const repo = await initSharedRepo();    
     const newIsArchived = await repo.toggleArchivedById(id);
 
     // Optimistic: update local state without reloading
     sharedPosts = sharedPosts.map(p =>
-      p.id === id ? { ...p, isArchived: newIsArchived } : p
+      p.id === id ? { ...p, isArchived: newIsArchived, updatedAt: new Date() } : p
     );
     const updatedArchive = sharedPosts.find(p => p.id === id);
     if (updatedArchive) notifyWithItemUpdate(updatedArchive);

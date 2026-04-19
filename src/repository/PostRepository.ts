@@ -649,10 +649,10 @@ export class PostRepository {
 
   /**
    * Toggle isFavorite directly in DB without loading the full post.
-   * When setting favorite ON, also updates queuedAt.
-   * Returns the new isFavorite value.
+   * When setting favorite ON, also updates queuedAt to now.
+   * Returns the new isFavorite value and the current queuedAt.
    */
-  public async toggleFavoriteById(id: number): Promise<boolean> {
+  public async toggleFavoriteById(id: number): Promise<{ isFavorite: boolean; queuedAt: Date | null }> {
     const result = await this.db.runAsync(
       `UPDATE posts SET 
         isFavorite = CASE WHEN isFavorite = 1 THEN 0 ELSE 1 END,
@@ -661,11 +661,14 @@ export class PostRepository {
         WHERE id = ?`,
       id
     );
-    if (result.changes === 0) return false;
-    const row = await this.db.getFirstAsync<{ isFavorite: number }>(
-      `SELECT isFavorite FROM posts WHERE id = ?`, id
+    if (result.changes === 0) return { isFavorite: false, queuedAt: null };
+    const row = await this.db.getFirstAsync<{ isFavorite: number; queuedAt: string | null }>(
+      `SELECT isFavorite, queuedAt FROM posts WHERE id = ?`, id
     );
-    return row?.isFavorite === 1;
+    return {
+      isFavorite: row?.isFavorite === 1,
+      queuedAt: row?.queuedAt ? parseDbDate(row.queuedAt) : null,
+    };
   }
 
   /**

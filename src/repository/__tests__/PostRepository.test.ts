@@ -225,11 +225,11 @@ describe("PostRepository getAll (N+1 fix)", () => {
 });
 
 describe("PostRepository toggleFavoriteById", () => {
-  it("toggles favorite in DB and returns new value", async () => {
+  it("toggles favorite in DB and returns new isFavorite and queuedAt", async () => {
     // Arrange
     const mockDb = {
       runAsync: jest.fn().mockResolvedValue({ changes: 1 }),
-      getFirstAsync: jest.fn().mockResolvedValue({ isFavorite: 1 }),
+      getFirstAsync: jest.fn().mockResolvedValue({ isFavorite: 1, queuedAt: '2024-01-01T00:00:00Z' }),
     };
     const repo = new (PostRepository as any)(mockDb);
 
@@ -237,7 +237,8 @@ describe("PostRepository toggleFavoriteById", () => {
     const result = await repo.toggleFavoriteById(42);
 
     // Assert
-    expect(result).toBe(true);
+    expect(result.isFavorite).toBe(true);
+    expect(result.queuedAt).toBeInstanceOf(Date);
     expect(mockDb.runAsync).toHaveBeenCalledTimes(1);
     const sql = mockDb.runAsync.mock.calls[0][0] as string;
     expect(sql).toContain("isFavorite");

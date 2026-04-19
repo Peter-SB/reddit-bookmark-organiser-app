@@ -373,16 +373,20 @@ export default function PostScreen() {
   const handleToggleQueue = async () => {
     if (!post) return;
     await toggleQueue(post.id);
-    setPost((prev) => (prev ? { ...prev, queuedAt: new Date() } : prev));
+    const newQueuedAt = post.queuedAt == null ? new Date() : null;
+    setPost((prev) => (prev ? { ...prev, queuedAt: newQueuedAt } : prev));
   };
 
   const handleToggleFavorite = async () => {
     if (!post) return;
     await toggleFavorite(post.id);
     const newIsFavorite = !post.isFavorite;
-    setPost((prev) => (prev ? { ...prev, isFavorite: newIsFavorite } : prev));
+    const queuedAt =
+      newIsFavorite && !post.queuedAt ? new Date() : post.queuedAt;
+    setPost((prev) =>
+      prev ? { ...prev, isFavorite: newIsFavorite, queuedAt } : prev,
+    );
     setEditedIsFavorite(newIsFavorite);
-    // syncSinglePost(post.id); Removed for now to avoid over syncing unnecessarily
   };
 
   const handleSetRating = async (rating: number | null) => {

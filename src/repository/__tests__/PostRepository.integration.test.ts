@@ -140,7 +140,7 @@ describe('PostRepository.toggleFavoriteById (integration)', () => {
   it('toggles from false → true and persists to DB', async () => {
     const id = await seedPost(db, { isFavorite: false });
 
-    const newValue = await repo.toggleFavoriteById(id);
+    const { isFavorite: newValue } = await repo.toggleFavoriteById(id);
 
     expect(newValue).toBe(true);
     const row = await db.getFirstAsync<{ isFavorite: number }>(`SELECT isFavorite FROM posts WHERE id=?`, id);
@@ -150,11 +150,47 @@ describe('PostRepository.toggleFavoriteById (integration)', () => {
   it('toggles from true → false', async () => {
     const id = await seedPost(db, { isFavorite: true });
 
-    const newValue = await repo.toggleFavoriteById(id);
+    const { isFavorite: newValue } = await repo.toggleFavoriteById(id);
 
     expect(newValue).toBe(false);
     const row = await db.getFirstAsync<{ isFavorite: number }>(`SELECT isFavorite FROM posts WHERE id=?`, id);
     expect(row!.isFavorite).toBe(0);
+  });
+
+  it('sets queuedAt to now when favoriting ON (false → true)', async () => {
+    const id = await seedPost(db, { isFavorite: false, queuedAt: null });
+
+    const { isFavorite, queuedAt } = await repo.toggleFavoriteById(id);
+
+    expect(isFavorite).toBe(true);
+    expect(queuedAt).toBeInstanceOf(Date);
+    expect(queuedAt!.getTime()).toBeGreaterThan(Date.now() - 5000);
+
+    const row = await db.getFirstAsync<{ queuedAt: string | null }>(`SELECT queuedAt FROM posts WHERE id=?`, id);
+    expect(row!.queuedAt).not.toBeNull();
+  });
+
+  it('preserves existing queuedAt when favoriting OFF (true → false)', async () => {
+    const existingQueuedAt = new Date(Date.now() - 60_000).toISOString();
+    const id = await seedPost(db, { isFavorite: true, queuedAt: existingQueuedAt });
+
+    const { isFavorite, queuedAt } = await repo.toggleFavoriteById(id);
+
+    expect(isFavorite).toBe(false);
+    // queuedAt is preserved (not cleared) when unfavoriting
+    expect(queuedAt).toBeInstanceOf(Date);
+    expect(Math.abs(queuedAt!.getTime() - new Date(existingQueuedAt).getTime())).toBeLessThan(1000);
+  });
+
+  it('overwrites a stale queuedAt with a newer timestamp when favoriting ON again', async () => {
+    const oldQueuedAt = new Date(Date.now() - 120_000).toISOString();
+    // Start unfavorited but already had a queuedAt from a previous favorite
+    const id = await seedPost(db, { isFavorite: false, queuedAt: oldQueuedAt });
+
+    const { isFavorite, queuedAt } = await repo.toggleFavoriteById(id);
+
+    expect(isFavorite).toBe(true);
+    expect(queuedAt!.getTime()).toBeGreaterThan(new Date(oldQueuedAt).getTime());
   });
 });
 
