@@ -153,6 +153,8 @@ export function sortPosts<T extends PostLike>(
         aValue = 'wordCount' in a ? a.wordCount : ((a as any).customBody ?? (a as any).bodyText ?? "").length;
         bValue = 'wordCount' in b ? b.wordCount : ((b as any).customBody ?? (b as any).bodyText ?? "").length;
         break;
+      // PlaceMarkerAt is sorted in SQL via JOIN; client-side fallback uses addedAt
+      case OrderByOption.PlaceMarkerAt:
       default:
         aValue = new Date(a.addedAt).getTime();
         bValue = new Date(b.addedAt).getTime();

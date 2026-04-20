@@ -30,6 +30,9 @@ export function passesStateFilters(item: PostListItem, opts: UseFilteredPostsOpt
   if (opts.queuedFilter === 'no' && item.queuedAt) return false;
   // Mirror the SQL implicit filter: ORDER BY QueuedAt only includes queued posts.
   if (opts.orderBy === OrderByOption.QueuedAt && !item.queuedAt) return false;
+  // PlaceMarkerAt only includes posts with a marker; we can't check client-side
+  // without the field on PostListItem, so defer to a full re-query.
+  if (opts.orderBy === OrderByOption.PlaceMarkerAt) return false;
   return true;
 }
 

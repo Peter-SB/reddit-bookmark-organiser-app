@@ -84,6 +84,18 @@ const SCHEMA_SQL = `
 
   CREATE INDEX IF NOT EXISTS idx_highlights_post_id ON highlights(post_id);
 
+  CREATE TABLE IF NOT EXISTS place_markers (
+    id              INTEGER PRIMARY KEY AUTOINCREMENT,
+    post_id         INTEGER NOT NULL UNIQUE REFERENCES posts(id) ON DELETE CASCADE,
+    char_index      INTEGER NOT NULL DEFAULT 0,
+    context_before  TEXT    NOT NULL DEFAULT '',
+    context_after   TEXT    NOT NULL DEFAULT '',
+    created_at      TEXT    NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at      TEXT    NOT NULL DEFAULT CURRENT_TIMESTAMP
+  );
+
+  CREATE INDEX IF NOT EXISTS idx_place_markers_updated_at ON place_markers(updated_at DESC);
+
   CREATE INDEX IF NOT EXISTS idx_posts_deleted_archived_added         ON posts(isDeleted, isArchived, addedAt);
   CREATE INDEX IF NOT EXISTS idx_posts_deleted_archived_updated       ON posts(isDeleted, isArchived, updatedAt);
   CREATE INDEX IF NOT EXISTS idx_posts_deleted_archived_queued        ON posts(isDeleted, isArchived, queuedAt);

@@ -75,6 +75,15 @@ async function initSharedRepo(): Promise<PostRepository> {
 }
 
 /**
+ * Trigger a full list re-query in all subscribed useFilteredPosts instances.
+ * Use after mutations that affect list membership but aren't tracked via notifyWithItemUpdate
+ * (e.g. place marker changes that affect PlaceMarkerAt ordering).
+ */
+export function notifyPostChanges(): void {
+  notifyListeners();
+}
+
+/**
  * Subscribe to shared post-list change notifications (loads, mutations).
  * Returns an unsubscribe function. Used by useFilteredPosts.
  */

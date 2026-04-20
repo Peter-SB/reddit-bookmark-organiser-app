@@ -7,6 +7,7 @@ export enum OrderByOption {
   Length = "length",
   Random = "random",
   PostedAt = "postedAt",
+  PlaceMarkerAt = "placeMarkerAt",
   // Author-list sort options
   PostCount = "postCount",
   AvgRating = "avgRating",
@@ -30,6 +31,7 @@ export const POST_ORDER_BY_LABELS: Partial<Record<OrderByOption, string>> = {
   [OrderByOption.Rating]: "Rating",
   [OrderByOption.Length]: "Length",
   [OrderByOption.Random]: "Random",
+  [OrderByOption.PlaceMarkerAt]: "Place Marker",
 };
 
 /** Labels for author-list sort options */

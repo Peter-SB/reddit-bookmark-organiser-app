@@ -145,6 +145,18 @@ export class DatabaseService {
 
       CREATE INDEX IF NOT EXISTS idx_highlights_post_id ON highlights(post_id);
 
+      CREATE TABLE IF NOT EXISTS place_markers (
+        id              INTEGER PRIMARY KEY AUTOINCREMENT,
+        post_id         INTEGER NOT NULL UNIQUE REFERENCES posts(id) ON DELETE CASCADE,
+        char_index      INTEGER NOT NULL DEFAULT 0,
+        context_before  TEXT    NOT NULL DEFAULT '',
+        context_after   TEXT    NOT NULL DEFAULT '',
+        created_at      TEXT    NOT NULL DEFAULT CURRENT_TIMESTAMP,
+        updated_at      TEXT    NOT NULL DEFAULT CURRENT_TIMESTAMP
+      );
+
+      CREATE INDEX IF NOT EXISTS idx_place_markers_updated_at ON place_markers(updated_at DESC);
+
       -- Every list query filters isDeleted=0 first, isArchived=0 second, so it leads all compound indexes.
       -- Pair with the most common ORDER BY column so SQLite can satisfy both
       -- the filter and the sort from a single index scan with no filesort.
@@ -245,6 +257,19 @@ export class DatabaseService {
         WHERE isDeleted = 0;
       `);
     }
+    // Migration: create place_markers table if it doesn't exist (handles databases created before this feature).
+    await this.db.execAsync(`
+      CREATE TABLE IF NOT EXISTS place_markers (
+        id              INTEGER PRIMARY KEY AUTOINCREMENT,
+        post_id         INTEGER NOT NULL UNIQUE REFERENCES posts(id) ON DELETE CASCADE,
+        char_index      INTEGER NOT NULL DEFAULT 0,
+        context_before  TEXT    NOT NULL DEFAULT '',
+        context_after   TEXT    NOT NULL DEFAULT '',
+        created_at      TEXT    NOT NULL DEFAULT CURRENT_TIMESTAMP,
+        updated_at      TEXT    NOT NULL DEFAULT CURRENT_TIMESTAMP
+      );
+      CREATE INDEX IF NOT EXISTS idx_place_markers_updated_at ON place_markers(updated_at DESC);
+    `);
   }
 
   public getDb(): SQLiteDatabase {

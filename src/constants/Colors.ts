@@ -55,7 +55,7 @@ export const darkPalette = {
   foregroundMidLight: '#A0A0A0',
   accent: '#3e9bff',
   accentOrange: "#FF5700",
-  muted: '#a1a1a1',
+  muted: '#818181',
   cardShadow: '#00000040',
   border: '#4a4a4a',
 

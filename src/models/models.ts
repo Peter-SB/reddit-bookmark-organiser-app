@@ -104,6 +104,23 @@ export interface PostFolder {
   folderId: number;
 }
 
+export interface PlaceMarker {
+  /** Internal primary key */
+  id: number;
+  /** Post ID (FK reference to posts table) */
+  postId: number;
+  /** Character offset in the (custom) body text at time of save */
+  charIndex: number;
+  /** Up to 30 chars immediately before charIndex — used to recover position after edits */
+  contextBefore: string;
+  /** Up to 30 chars immediately after charIndex — used to recover position after edits */
+  contextAfter: string;
+  /** When the marker was created */
+  createdAt: Date;
+  /** When the marker was last updated */
+  updatedAt: Date;
+}
+
 export interface Highlight {
   /** Internal primary key */
   id: number;

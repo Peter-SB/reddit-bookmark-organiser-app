@@ -229,6 +229,10 @@ export class PostRepository {
    *
    * For orderBy === 'random', the rows are returned in database order;
    * the caller is responsible for client-side seeded shuffling.
+   *
+   * For orderBy === 'placeMarkerAt', a two-query strategy is used: fetch
+   * post IDs from place_markers first, then query posts filtered to those IDs.
+   * This avoids a LEFT JOIN on every other query path.
    */
   public async getFilteredListItems(options: PostFilterOptions = {}): Promise<PostListItem[]> {
     const {
@@ -242,6 +246,14 @@ export class PostRepository {
       orderDirection = 'desc',
       authorFilter,
     } = options;
+
+    // PlaceMarkerAt uses a separate two-query path — no JOIN on main queries.
+    if (orderBy === OrderByOption.PlaceMarkerAt) {
+      return this.getFilteredListItemsByPlaceMarker(
+        { search, selectedFolders, favouritesFilter, readFilter, archivedFilter, authorFilter },
+        orderDirection
+      );
+    }
 
     const conditions: string[] = ['isDeleted = 0'];
     const params: (string | number)[] = [];
@@ -348,6 +360,125 @@ export class PostRepository {
 
     const rows = await this.db.getAllAsync<ListRow>(sql, ...params);
     console.debug(`getFilteredListItems: ${rows.length} rows (orderBy=${orderBy} ${dir})`);
+
+    const postIds = rows.map(r => r.id);
+    const folderMap = postIds.length > 0
+      ? await this.loadAllFolderIds(postIds)
+      : new Map<number, number[]>();
+
+    return rows.map(r => ({
+      id: r.id,
+      redditId: r.redditId,
+      url: r.url,
+      title: r.title,
+      author: r.author,
+      subreddit: r.subreddit,
+      redditCreatedAt: new Date(r.redditCreatedAt),
+      addedAt: new Date(r.addedAt),
+      updatedAt: parseDbDate(r.updatedAt),
+      customTitle: r.customTitle ?? undefined,
+      notes: r.notes ?? undefined,
+      rating: r.rating ?? undefined,
+      isRead: r.isRead === 1,
+      isFavorite: r.isFavorite === 1,
+      isArchived: r.isArchived === 1,
+      readAt: r.readAt ? parseDbDate(r.readAt) : null,
+      queuedAt: r.queuedAt ? parseDbDate(r.queuedAt) : null,
+      folderIds: folderMap.get(r.id) ?? [],
+      wordCount: r.wordCount,
+    }));
+  }
+
+  /**
+   * Two-query path for PlaceMarkerAt sorting.
+   * Step 1: fetch post_ids from place_markers ordered by updated_at.
+   * Step 2: query posts filtered to those IDs with all standard filters applied.
+   * Client-side re-sort restores the marker order (IN clause doesn't guarantee order).
+   */
+  private async getFilteredListItemsByPlaceMarker(
+    filterOptions: Omit<PostFilterOptions, 'orderBy' | 'orderDirection' | 'queuedFilter'>,
+    orderDirection: 'asc' | 'desc'
+  ): Promise<PostListItem[]> {
+    const dir = orderDirection.toUpperCase() as 'ASC' | 'DESC';
+
+    // Step 1: all marker IDs from place_markers, sorted by recency
+    const markerRows = await this.db.getAllAsync<{ post_id: number }>(
+      `SELECT post_id FROM place_markers ORDER BY updated_at ${dir}`
+    );
+    const markedPostIds = markerRows.map(r => r.post_id);
+    if (markedPostIds.length === 0) return [];
+
+    // Step 2: query those posts with filters applied
+    const conditions: string[] = ['isDeleted = 0'];
+    const params: (string | number)[] = [];
+
+    const idPlaceholders = markedPostIds.map(() => '?').join(',');
+    conditions.push(`id IN (${idPlaceholders})`);
+    params.push(...markedPostIds);
+
+    const {
+      search, selectedFolders,
+      favouritesFilter = 'all', readFilter = 'all',
+      archivedFilter = 'no', authorFilter,
+    } = filterOptions;
+
+    if (authorFilter) {
+      conditions.push('author = ? COLLATE NOCASE');
+      params.push(authorFilter);
+    }
+
+    const q = search?.trim();
+    if (q) {
+      const pattern = `%${q}%`;
+      conditions.push(
+        `(title LIKE ? OR COALESCE(customTitle,'') LIKE ? OR ` +
+        `COALESCE(bodyText,'') LIKE ? OR COALESCE(customBody,'') LIKE ? OR ` +
+        `COALESCE(notes,'') LIKE ? OR author LIKE ? OR subreddit LIKE ?)`
+      );
+      params.push(pattern, pattern, pattern, pattern, pattern, pattern, pattern);
+    }
+
+    if (selectedFolders && selectedFolders.length > 0) {
+      const folderPlaceholders = selectedFolders.map(() => '?').join(',');
+      conditions.push(
+        `EXISTS (SELECT 1 FROM post_folders WHERE post_id = posts.id AND folder_id IN (${folderPlaceholders}))`
+      );
+      params.push(...selectedFolders);
+    }
+
+    if (favouritesFilter === 'yes') conditions.push('isFavorite = 1');
+    else if (favouritesFilter === 'no') conditions.push('isFavorite = 0');
+
+    if (readFilter === 'yes') conditions.push('isRead = 1');
+    else if (readFilter === 'no') conditions.push('isRead = 0');
+
+    if (archivedFilter === 'yes') conditions.push('isArchived = 1');
+    else if (archivedFilter === 'no') conditions.push('isArchived = 0');
+
+    type ListRow = {
+      id: number; redditId: string; url: string; title: string;
+      author: string; subreddit: string; redditCreatedAt: string;
+      addedAt: string; updatedAt: string; customTitle: string | null;
+      notes: string | null; rating: number | null; isRead: number;
+      isFavorite: number; isArchived: number; readAt: string | null; queuedAt: string | null; wordCount: number;
+    };
+
+    const sql = `
+      SELECT
+        id, redditId, url, title, author, subreddit,
+        redditCreatedAt, addedAt, updatedAt,
+        customTitle, notes, rating, isRead, isFavorite, isArchived, readAt, queuedAt,
+        wordCount
+      FROM posts
+      WHERE ${conditions.join(' AND ')}`;
+
+    const rows = await this.db.getAllAsync<ListRow>(sql, ...params);
+
+    // Restore marker order from Step 1 (SQLite IN clause does not guarantee order)
+    const markerOrder = new Map(markedPostIds.map((id, idx) => [id, idx]));
+    rows.sort((a, b) => (markerOrder.get(a.id) ?? 99999) - (markerOrder.get(b.id) ?? 99999));
+
+    console.debug(`getFilteredListItems (PlaceMarkerAt): ${rows.length} rows`);
 
     const postIds = rows.map(r => r.id);
     const folderMap = postIds.length > 0

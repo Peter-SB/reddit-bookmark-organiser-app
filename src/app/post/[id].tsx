@@ -11,9 +11,10 @@ import { fontOptions } from "@/constants/fontOptions";
 import { usePosts } from "@/hooks/usePosts";
 import { usePostSync } from "@/hooks/usePostSync";
 import { useHighlights } from "@/hooks/useHighlights";
+import { usePlaceMarker } from "@/hooks/usePlaceMarker";
 import { Post, Highlight } from "@/models/models";
 import { SettingsRepository } from "@/repository/SettingsRepository";
-import { Ionicons } from "@expo/vector-icons";
+import { Ionicons, MaterialIcons } from "@expo/vector-icons";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import React, {
@@ -74,6 +75,9 @@ export default function PostScreen() {
   const { syncSinglePost } = usePostSync({ autoStart: false });
   const { highlights, addHighlight, updateHighlight, removeHighlight } =
     useHighlights(id ? parseInt(id) : undefined);
+  const postIdNum = id ? parseInt(id) : undefined;
+  const { placeMarker, togglePlaceMarker, clearPlaceMarker } =
+    usePlaceMarker(postIdNum);
 
   const [post, setPost] = useState<Post | null>(null);
 
@@ -110,6 +114,7 @@ export default function PostScreen() {
   );
   const [highlightModalVisible, setHighlightModalVisible] = useState(false);
   const bodyInputRef = useRef<TextInput>(null);
+  const scrollViewRef = useRef<ScrollView>(null);
   // Ref to track which post ID has been initialised into the edit fields.
   // Prevents re-initialisation while the user is actively editing.
   const initialisedPostIdRef = useRef<number | null>(null);
@@ -275,6 +280,13 @@ export default function PostScreen() {
 
   const currentFont = fontOptions[fontOptionIdx];
 
+  // Measured height of the text-before-marker via a hidden Text sibling.
+  // Updated by onLayout whenever the marker position or body text changes.
+  const [markerMeasuredTop, setMarkerMeasuredTop] = useState(0);
+  // Y offset of the body section within the ScrollView content — set by onLayout.
+  // Accounts for varying title/summary heights above the body.
+  const [bodySectionOffsetY, setBodySectionOffsetY] = useState(0);
+
   const toggleFontOption = () => {
     setFontOptionIdx((idx) => (idx + 1) % fontOptions.length);
   };
@@ -360,7 +372,10 @@ export default function PostScreen() {
       prev ? { ...prev, isRead: newIsRead, readAt: newReadAt } : prev,
     );
     setEditedIsRead(newIsRead);
-    // syncSinglePost(post.id); Removed for now to avoid over syncing unnecessarily
+    // When marking as read, remove any place marker — the reader has finished the post.
+    if (newIsRead) {
+      await clearPlaceMarker();
+    }
   };
 
   const handleToggleArchive = async () => {
@@ -512,6 +527,27 @@ export default function PostScreen() {
     setTextSelection(selection);
   };
 
+  const handleTogglePlaceMarker = async () => {
+    if (!post) return;
+    const charIndex = textSelection?.start ?? 0;
+    await togglePlaceMarker(charIndex, editedBody);
+  };
+
+  const handleScrollToPlaceMarker = async () => {
+    if (!post || !placeMarker || !scrollViewRef.current) return;
+
+    // Absolute Y of the marker within the ScrollView content:
+    //   bodySectionOffsetY  — top of the body section (accounts for title, summary, etc)
+    //   + markerMeasuredTop — pixels of text above the marker line (word-wrap aware)
+    const markerAbsoluteY = bodySectionOffsetY + markerMeasuredTop;
+
+    // Scroll so the marker sits at 1/5th from the top of the visible area.
+    const screenHeight = Dimensions.get("window").height;
+    const targetY = Math.max(0, markerAbsoluteY - screenHeight / 5);
+
+    scrollViewRef.current.scrollTo({ y: targetY, animated: true });
+  };
+
   return (
     <SafeAreaView style={styles.container}>
       <Animated.View
@@ -585,6 +621,20 @@ export default function PostScreen() {
             </TouchableOpacity>
           </View>
           <View style={[styles.headerActions, { alignItems: "center" }]}>
+            {/* Place Marker button */}
+            <TouchableOpacity
+              onPress={handleTogglePlaceMarker}
+              onLongPress={placeMarker ? handleScrollToPlaceMarker : undefined}
+              style={styles.actionButton}
+              hitSlop={1}
+            >
+              <Ionicons
+                name={placeMarker ? "bookmark" : "bookmark-outline"}
+                size={20}
+                color={placeMarker ? palette.accentOrange : palette.foreground}
+              />
+            </TouchableOpacity>
+            {/* Highlight button */}
             <TouchableOpacity
               onPress={handleAddHighlight}
               style={[
@@ -601,11 +651,7 @@ export default function PostScreen() {
                 !textSelection || textSelection.start === textSelection.end
               }
             >
-              <Ionicons
-                name="bookmark-outline"
-                size={20}
-                color={palette.foreground}
-              />
+              <MaterialIcons name="crop" size={20} color={palette.foreground} />
             </TouchableOpacity>
             <TouchableOpacity
               onPress={toggleSidebar}
@@ -622,6 +668,7 @@ export default function PostScreen() {
           behavior={Platform.OS === "ios" ? "padding" : "height"}
         >
           <ScrollView
+            ref={scrollViewRef}
             style={styles.content}
             showsVerticalScrollIndicator={true}
             keyboardShouldPersistTaps="handled"
@@ -704,19 +751,53 @@ export default function PostScreen() {
             )}
 
             {/* Body */}
-            <View style={styles.bodySection}>
-              <TextInput
-                ref={bodyInputRef}
-                style={[styles.body, currentFont]}
-                value={editedBody}
-                onChangeText={setEditedBody}
-                onSelectionChange={handleSelectionChange}
-                multiline
-                placeholder="Post content..."
-                textAlignVertical="top"
-                editable={isEditing}
-                selectTextOnFocus={false}
-              />
+            <View
+              style={styles.bodySection}
+              onLayout={(e) => setBodySectionOffsetY(e.nativeEvent.layout.y)}
+            >
+              <View style={styles.bodyWrapper}>
+                {/* Hidden measurement Text: same font + width as TextInput.
+                    Its rendered height = Y offset of the marker line,
+                    accounting for word-wrap that a newline-count cannot. */}
+                {placeMarker && (
+                  <Text
+                    pointerEvents="none"
+                    style={[
+                      styles.body,
+                      currentFont,
+                      styles.placeMarkerMeasure,
+                    ]}
+                    onLayout={(e) =>
+                      setMarkerMeasuredTop(e.nativeEvent.layout.height)
+                    }
+                  >
+                    {editedBody.slice(0, placeMarker.charIndex) + "\u200B"}
+                  </Text>
+                )}
+                {placeMarker && (
+                  <View
+                    pointerEvents="none"
+                    style={[
+                      styles.placeMarkerDot,
+                      {
+                        top: markerMeasuredTop - currentFont.lineHeight / 2 - 3,
+                      },
+                    ]}
+                  />
+                )}
+                <TextInput
+                  ref={bodyInputRef}
+                  style={[styles.body, currentFont]}
+                  value={editedBody}
+                  onChangeText={setEditedBody}
+                  onSelectionChange={handleSelectionChange}
+                  multiline
+                  placeholder="Post content..."
+                  textAlignVertical="top"
+                  editable={isEditing}
+                  selectTextOnFocus={false}
+                />
+              </View>
             </View>
 
             {/* Notes */}
@@ -966,6 +1047,25 @@ function makeStyles(
     bodySection: {
       padding: spacing.m - 4,
       paddingBottom: spacing.xxl,
+    },
+    bodyWrapper: {
+      position: "relative",
+      overflow: "visible",
+    },
+    placeMarkerMeasure: {
+      position: "absolute",
+      width: "100%",
+      opacity: 0,
+      zIndex: -1,
+    },
+    placeMarkerDot: {
+      position: "absolute",
+      left: -10,
+      width: 7,
+      height: 7,
+      borderRadius: 4,
+      backgroundColor: palette.accentOrange,
+      zIndex: 2,
     },
     body: {
       fontSize: fontSizes.small,
