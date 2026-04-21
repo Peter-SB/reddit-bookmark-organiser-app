@@ -566,6 +566,28 @@ export class PostRepository {
     return this.mapRowToPost(r, folderIds);
   }
 
+  /** Like getById but also returns deleted posts. Used for viewing/restoring deleted posts. */
+  public async getByIdAny(id: number): Promise<Post | null> {
+    const r = await this.db.getFirstAsync<PostRow>(
+      `SELECT * FROM posts WHERE id = ?`,
+      id
+    );
+    if (!r) return null;
+    const folderIds = await this.loadFolderIds(r.id);
+    return this.mapRowToPost(r, folderIds);
+  }
+
+  /** Finds a post by redditId regardless of deleted/archived status. Used for dedup checks. */
+  public async getByRedditIdAny(redditId: string): Promise<Post | null> {
+    const r = await this.db.getFirstAsync<PostRow>(
+      `SELECT * FROM posts WHERE redditId = ?`,
+      redditId
+    );
+    if (!r) return null;
+    const folderIds = await this.loadFolderIds(r.id);
+    return this.mapRowToPost(r, folderIds);
+  }
+
   public async create(post: Omit<Post,'id'>): Promise<number> {
     const addedAt = post.addedAt ?? new Date();
     const updatedAt = post.updatedAt ?? addedAt ?? new Date();
@@ -635,14 +657,13 @@ export class PostRepository {
     let elapsed = Date.now() - start;
     console.debug(`generating data took ${elapsed}ms`);
 
-    // Get all posts with minhash - todo: optimise this query
+    // Include all posts (deleted and archived) so minhash catches reposts of previously removed content
     const rows = await this.db.getAllAsync<{
       id: number;
       bodyMinHash: string | null;
     }>(`SELECT id, bodyMinHash
         FROM posts
-        WHERE isDeleted = 0
-          AND bodyMinHash IS NOT NULL
+        WHERE bodyMinHash IS NOT NULL
           AND bodyMinHash != ''`);
 
     const similarPosts: Post[] = [];
@@ -650,17 +671,27 @@ export class PostRepository {
     elapsed = Date.now() - start;
     console.debug(`querying data took ${elapsed}ms`);
 
+    const similarIds: number[] = [];
     for (const row of rows) {
       if (row.bodyMinHash) {
         const similarity = MinHashService.similarity(inputHash, JSON.parse(row.bodyMinHash));
         console.debug(`Comparing with post ${row.id}: similarity = ${similarity}`);
         if (similarity >= threshold) {
-          // Load full post data for similar posts
-          const fullPost = await this.getById(row.id);
-          if (fullPost) {
-            similarPosts.push(fullPost);
-          }
+          similarIds.push(row.id);
         }
+      }
+    }
+
+    if (similarIds.length > 0) {
+      // Batch load all similar posts in a single query instead of N individual getById calls
+      const placeholders = similarIds.map(() => '?').join(',');
+      const fullRows = await this.db.getAllAsync<PostRow>(
+        `SELECT * FROM posts WHERE id IN (${placeholders})`,
+        ...similarIds
+      );
+      const folderMap = await this.loadAllFolderIds(similarIds);
+      for (const r of fullRows) {
+        similarPosts.push(this.mapRowToPost(r, folderMap.get(r.id) ?? []));
       }
     }
 
@@ -776,6 +807,69 @@ export class PostRepository {
       id
     );
     return result.changes;
+  }
+
+  /**
+   * Toggle isDeleted directly in DB without loading the full post.
+   * Returns the new isDeleted value.
+   */
+  public async toggleDeletedById(id: number): Promise<boolean> {
+    const result = await this.db.runAsync(
+      `UPDATE posts SET isDeleted = CASE WHEN isDeleted = 1 THEN 0 ELSE 1 END, updatedAt = CURRENT_TIMESTAMP WHERE id = ?`,
+      id
+    );
+    if (result.changes === 0) return false;
+    const row = await this.db.getFirstAsync<{ isDeleted: number }>(
+      `SELECT isDeleted FROM posts WHERE id = ?`, id
+    );
+    return row?.isDeleted === 1;
+  }
+
+  /** Returns lightweight list items for all soft-deleted posts, ordered by most recently deleted. */
+  public async getDeletedListItems(): Promise<PostListItem[]> {
+    type ListRow = {
+      id: number; redditId: string; url: string; title: string;
+      author: string; subreddit: string; redditCreatedAt: string;
+      addedAt: string; updatedAt: string; customTitle: string | null;
+      notes: string | null; rating: number | null; isRead: number;
+      isFavorite: number; isArchived: number; readAt: string | null;
+      queuedAt: string | null; wordCount: number;
+    };
+    const rows = await this.db.getAllAsync<ListRow>(
+      `SELECT id, redditId, url, title, author, subreddit,
+              redditCreatedAt, addedAt, updatedAt,
+              customTitle, notes, rating, isRead, isFavorite, isArchived,
+              readAt, queuedAt, wordCount
+         FROM posts
+        WHERE isDeleted = 1
+        ORDER BY updatedAt DESC`
+    );
+    const postIds = rows.map(r => r.id);
+    const folderMap = postIds.length > 0
+      ? await this.loadAllFolderIds(postIds)
+      : new Map<number, number[]>();
+    return rows.map(r => ({
+      id: r.id,
+      redditId: r.redditId,
+      url: r.url,
+      title: r.title,
+      author: r.author,
+      subreddit: r.subreddit,
+      redditCreatedAt: new Date(r.redditCreatedAt),
+      addedAt: new Date(r.addedAt),
+      updatedAt: parseDbDate(r.updatedAt),
+      customTitle: r.customTitle ?? undefined,
+      notes: r.notes ?? undefined,
+      rating: r.rating ?? undefined,
+      isRead: r.isRead === 1,
+      isFavorite: r.isFavorite === 1,
+      isArchived: r.isArchived === 1,
+      isDeleted: true,
+      readAt: r.readAt ? parseDbDate(r.readAt) : null,
+      queuedAt: r.queuedAt ? parseDbDate(r.queuedAt) : null,
+      folderIds: folderMap.get(r.id) ?? [],
+      wordCount: r.wordCount,
+    }));
   }
 
   /**

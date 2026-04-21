@@ -56,7 +56,6 @@ export default function AuthorImportScreen() {
   } = useAuthorImport(authorName);
   const {
     posts: savedPosts,
-    addPost,
     handleAddPost: addPostFromUrl,
     refreshPosts,
   } = usePosts();
@@ -185,16 +184,24 @@ export default function AuthorImportScreen() {
 
       try {
         const fullUrl = `https://www.reddit.com${redditPost.permalink}`;
-        const postData = await getPostData(fullUrl);
-        const created = await addPost({ ...postData, isArchived: true });
-        await syncSinglePost(created.id);
-        await refreshPosts();
-        Alert.alert("Archived", "Post added to archive!");
-      } catch (err) {
-        Alert.alert(
-          "Error",
-          `Failed to archive post: ${(err as Error).message}`,
-        );
+
+        await addPostFromUrl(fullUrl, {
+          getPostData,
+          syncSinglePost,
+          addToArchive: true,
+          skipDuplicateCheck: false,
+          skipSimilarCheck: false,
+          onSuccess: async () => {
+            await refreshPosts();
+            Alert.alert("Archived", "Post added to archive!");
+          },
+          onError: (err) => {
+            Alert.alert(
+              "Error",
+              `Failed to archive post: ${err.message}`,
+            );
+          },
+        });
       } finally {
         setArchivingPostIds((prev) => {
           const newSet = new Set(prev);
@@ -206,7 +213,7 @@ export default function AuthorImportScreen() {
     [
       addingPostIds,
       archivingPostIds,
-      addPost,
+      addPostFromUrl,
       getPostData,
       refreshPosts,
       savedRedditIds,

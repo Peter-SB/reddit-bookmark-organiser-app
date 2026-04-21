@@ -149,6 +149,26 @@ export default function SettingsScreen() {
         >
           <SettingsExportToJson />
         </SettingsSection>
+        <TouchableOpacity
+          style={styles.navRow}
+          onPress={() => router.push("/deleted" as any)}
+        >
+          <View style={styles.navRowContent}>
+            <View style={styles.iconContainer}>
+              <Icon
+                name="delete-outline"
+                size={24}
+                color={palette.foreground}
+              />
+            </View>
+            <Text style={styles.navRowTitle}>Deleted Posts</Text>
+            <Icon
+              name="chevron-right"
+              size={24}
+              color={palette.foregroundMidLight}
+            />
+          </View>
+        </TouchableOpacity>
       </ScrollView>
     </SafeAreaView>
   );
@@ -179,6 +199,22 @@ function makeStyles(
     },
     content: {
       padding: 0,
+    },
+    navRow: {
+      borderColor: palette.border,
+      borderBottomWidth: 1,
+    },
+    navRowContent: {
+      flexDirection: "row",
+      alignItems: "center",
+      paddingVertical: spacing.l,
+      paddingHorizontal: spacing.m,
+    },
+    navRowTitle: {
+      fontSize: fontSizes.large,
+      fontWeight: fontWeights.normal,
+      color: palette.foreground,
+      flex: 1,
     },
     section: {
       // marginBottom: spacing.xs,

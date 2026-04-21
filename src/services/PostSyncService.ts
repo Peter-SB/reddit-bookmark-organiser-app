@@ -1,9 +1,6 @@
 import {
-  DEFAULT_EMBED_MODEL,
   DEFAULT_SYNC_TABLE,
-  SYNC_SEMANTIC_EMBED_MODEL_KEY,
   SYNC_SERVER_URL_KEY,
-  SYNC_SIMILAR_EMBED_MODEL_KEY,
   SYNC_TABLE_NAME_KEY,
 } from '@/constants/sync';
 import { Post } from '@/models/models';
@@ -18,7 +15,6 @@ const DEFAULT_SYNC_BATCH_SIZE = 10;
 export type SyncSettings = {
   serverUrl: string;
   tableName: string;
-  embeddingProfiles: string[];
 };
 
 export type SyncResult = {
@@ -47,8 +43,6 @@ export class PostSyncService {
     const settings = await SettingsRepository.getSettings([
       SYNC_SERVER_URL_KEY,
       SYNC_TABLE_NAME_KEY,
-      SYNC_SEMANTIC_EMBED_MODEL_KEY,
-      SYNC_SIMILAR_EMBED_MODEL_KEY,
     ]);
 
     const serverUrl = (settings[SYNC_SERVER_URL_KEY] || '').trim();
@@ -58,18 +52,10 @@ export class PostSyncService {
     }
 
     const tableName = (settings[SYNC_TABLE_NAME_KEY] || DEFAULT_SYNC_TABLE).trim() || DEFAULT_SYNC_TABLE;
-    const semanticEmbed =
-      (settings[SYNC_SEMANTIC_EMBED_MODEL_KEY] || DEFAULT_EMBED_MODEL).trim() || DEFAULT_EMBED_MODEL;
-    const similarEmbed =
-      (settings[SYNC_SIMILAR_EMBED_MODEL_KEY] || DEFAULT_EMBED_MODEL).trim() || DEFAULT_EMBED_MODEL;
-    const embeddingProfiles = Array.from(
-      new Set([semanticEmbed, similarEmbed].filter((p) => p && p.trim()))
-    );
 
     return {
       serverUrl: this.normaliseServerUrl(serverUrl),
       tableName,
-      embeddingProfiles,
     };
   }
 
@@ -92,6 +78,10 @@ export class PostSyncService {
       isRead: post.isRead,
       isFavorite: post.isFavorite,
       isDeleted: Boolean(post.isDeleted),
+      isArchived: Boolean(post.isArchived),
+      readAt: post.readAt ?? undefined,
+      queuedAt: post.queuedAt ?? undefined,
+      folderIds: post.folderIds ?? [],
       extraFields: post.extraFields ?? undefined,
       bodyMinHash: post.bodyMinHash ?? undefined,
       summary: post.summary ?? undefined,
@@ -102,7 +92,6 @@ export class PostSyncService {
     const payload: any = {
       posts: posts.map((p) => this.mapPostToPayload(p)),
       table_name: config.tableName,
-      embedding_profiles: config.embeddingProfiles,
       force_embed: Boolean(forceEmbed),
     };
     return payload;

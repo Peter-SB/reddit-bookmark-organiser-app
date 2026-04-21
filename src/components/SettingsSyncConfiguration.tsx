@@ -1,11 +1,8 @@
 import { spacing } from "@/constants/spacing";
 import { fontWeights } from "@/constants/typography";
 import {
-  DEFAULT_EMBED_MODEL,
   DEFAULT_SYNC_TABLE,
-  SYNC_SEMANTIC_EMBED_MODEL_KEY,
   SYNC_SERVER_URL_KEY,
-  SYNC_SIMILAR_EMBED_MODEL_KEY,
   SYNC_TABLE_NAME_KEY,
 } from "@/constants/sync";
 import { usePostSync } from "@/hooks/usePostSync";
@@ -20,26 +17,8 @@ import {
   TouchableOpacity,
   View,
 } from "react-native";
-import { Picker } from "@react-native-picker/picker";
 import { useTheme } from "@/contexts/ThemeContext";
 import type { ThemeContextValue } from "@/contexts/ThemeContext";
-
-type EmbeddingProfile = {
-  name: string;
-  model_name: string;
-  vec_dimensions: number;
-  input_tokens: number;
-  chunk_overlap: number;
-  chunk_strategy: string;
-};
-
-const normaliseServerUrl = (raw: string) => {
-  const trimmed = raw.trim();
-  const withProtocol = /^https?:\/\//i.test(trimmed)
-    ? trimmed
-    : `http://${trimmed}`;
-  return withProtocol.replace(/\/+$/, "");
-};
 
 export default function SettingsSyncConfiguration() {
   const { palette, fontSizes } = useTheme();
@@ -49,13 +28,6 @@ export default function SettingsSyncConfiguration() {
   );
   const [serverUrl, setServerUrl] = useState("");
   const [tableName, setTableName] = useState(DEFAULT_SYNC_TABLE);
-  const [semanticEmbeddingModel, setSemanticEmbeddingModel] =
-    useState(DEFAULT_EMBED_MODEL);
-  const [similarEmbeddingModel, setSimilarEmbeddingModel] =
-    useState(DEFAULT_EMBED_MODEL);
-  const [profiles, setProfiles] = useState<EmbeddingProfile[]>([]);
-  const [profilesLoading, setProfilesLoading] = useState(false);
-  const [profilesError, setProfilesError] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [statusMessage, setStatusMessage] = useState<string | null>(null);
@@ -70,17 +42,11 @@ export default function SettingsSyncConfiguration() {
         const settings = await SettingsRepository.getSettings([
           SYNC_SERVER_URL_KEY,
           SYNC_TABLE_NAME_KEY,
-          SYNC_SEMANTIC_EMBED_MODEL_KEY,
-          SYNC_SIMILAR_EMBED_MODEL_KEY,
         ]);
         if (settings[SYNC_SERVER_URL_KEY])
           setServerUrl(settings[SYNC_SERVER_URL_KEY]);
         if (settings[SYNC_TABLE_NAME_KEY])
           setTableName(settings[SYNC_TABLE_NAME_KEY]);
-        if (settings[SYNC_SEMANTIC_EMBED_MODEL_KEY])
-          setSemanticEmbeddingModel(settings[SYNC_SEMANTIC_EMBED_MODEL_KEY]);
-        if (settings[SYNC_SIMILAR_EMBED_MODEL_KEY])
-          setSimilarEmbeddingModel(settings[SYNC_SIMILAR_EMBED_MODEL_KEY]);
       } catch (err) {
         console.warn("Failed to load sync settings:", err);
       } finally {
@@ -88,48 +54,6 @@ export default function SettingsSyncConfiguration() {
       }
     })();
   }, []);
-
-  useEffect(() => {
-    const fetchProfiles = async () => {
-      const url = serverUrl.trim();
-      if (!url) {
-        setProfiles([]);
-        setProfilesError(null);
-        return;
-      }
-      setProfilesLoading(true);
-      setProfilesError(null);
-      try {
-        const res = await fetch(
-          `${normaliseServerUrl(url)}/embedding-profiles`,
-        );
-        if (!res.ok) {
-          throw new Error(`HTTP ${res.status}`);
-        }
-        const data: any = await res.json();
-        const list: EmbeddingProfile[] = Array.isArray(data?.profiles)
-          ? data.profiles
-          : [];
-        setProfiles(list);
-        const names = list.map((p) => p.name);
-        if (names.length > 0) {
-          if (!names.includes(semanticEmbeddingModel)) {
-            setSemanticEmbeddingModel(names[0]);
-          }
-          if (!names.includes(similarEmbeddingModel)) {
-            setSimilarEmbeddingModel(names[0]);
-          }
-        }
-      } catch (err: any) {
-        setProfiles([]);
-        setProfilesError(err?.message || "Failed to load embedding profiles.");
-      } finally {
-        setProfilesLoading(false);
-      }
-    };
-    fetchProfiles();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [serverUrl]);
 
   const save = async () => {
     setSaving(true);
@@ -140,14 +64,6 @@ export default function SettingsSyncConfiguration() {
         SettingsRepository.setSetting(
           SYNC_TABLE_NAME_KEY,
           tableName.trim() || DEFAULT_SYNC_TABLE,
-        ),
-        SettingsRepository.setSetting(
-          SYNC_SEMANTIC_EMBED_MODEL_KEY,
-          semanticEmbeddingModel.trim() || DEFAULT_EMBED_MODEL,
-        ),
-        SettingsRepository.setSetting(
-          SYNC_SIMILAR_EMBED_MODEL_KEY,
-          similarEmbeddingModel.trim() || DEFAULT_EMBED_MODEL,
         ),
       ]);
       setStatusMessage("Sync settings saved.");
@@ -228,62 +144,6 @@ export default function SettingsSyncConfiguration() {
         autoCapitalize="none"
         autoCorrect={false}
       />
-
-      <Text style={styles.label}>Semantic Search Embedding</Text>
-      <View style={styles.pickerContainer}>
-        {profilesLoading ? (
-          <ActivityIndicator
-            size="small"
-            color={palette.accent}
-            style={{ paddingVertical: spacing.s }}
-          />
-        ) : (
-          <Picker
-            selectedValue={semanticEmbeddingModel}
-            onValueChange={(v) => setSemanticEmbeddingModel(String(v))}
-          >
-            {profiles.map((p) => (
-              <Picker.Item key={p.name} label={p.name} value={p.name} />
-            ))}
-            {profiles.length === 0 ? (
-              <Picker.Item
-                label="Enter server URL to load profiles"
-                value={semanticEmbeddingModel}
-              />
-            ) : null}
-          </Picker>
-        )}
-      </View>
-
-      <Text style={styles.label}>Similar Posts Embedding</Text>
-      <View style={styles.pickerContainer}>
-        {profilesLoading ? (
-          <ActivityIndicator
-            size="small"
-            color={palette.accent}
-            style={{ paddingVertical: spacing.s }}
-          />
-        ) : (
-          <Picker
-            selectedValue={similarEmbeddingModel}
-            onValueChange={(v) => setSimilarEmbeddingModel(String(v))}
-          >
-            {profiles.map((p) => (
-              <Picker.Item key={p.name} label={p.name} value={p.name} />
-            ))}
-            {profiles.length === 0 ? (
-              <Picker.Item
-                label="Enter server URL to load profiles"
-                value={similarEmbeddingModel}
-              />
-            ) : null}
-          </Picker>
-        )}
-      </View>
-
-      {profilesError ? (
-        <Text style={styles.statusError}>{profilesError}</Text>
-      ) : null}
 
       <View style={styles.buttonRow}>
         <TouchableOpacity
@@ -378,21 +238,10 @@ function makeStyles(
       fontSize: fontSizes.body,
       fontWeight: fontWeights.medium,
     },
-    pickerContainer: {
-      borderWidth: 1,
-      borderColor: palette.border,
-      borderRadius: 6,
-      backgroundColor: palette.backgroundMidLight,
-    },
     status: {
       marginTop: spacing.s,
       fontSize: fontSizes.small,
       color: palette.muted,
-    },
-    statusError: {
-      marginTop: spacing.s,
-      fontSize: fontSizes.small,
-      color: palette.favHeartRed,
     },
   });
 }

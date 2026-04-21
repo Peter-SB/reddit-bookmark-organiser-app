@@ -65,6 +65,7 @@ export default function PostScreen() {
     loading,
     updatePost: savePost,
     deletePost,
+    toggleDelete,
     setFolders,
     toggleRead,
     toggleFavorite,
@@ -340,22 +341,41 @@ export default function PostScreen() {
   }
 
   const handleDelete = async () => {
-    Alert.alert(
-      "Delete Post",
-      "Are you sure you want to delete this post?",
-      [
-        { text: "Cancel", style: "cancel" },
-        {
-          text: "Delete",
-          style: "destructive",
-          onPress: async () => {
-            await deletePost(post!.id);
-            handleBack();
+    if (post?.isDeleted) {
+      // Restore the post
+      Alert.alert(
+        "Restore Post",
+        "Restore this post and move it back to your collection?",
+        [
+          { text: "Cancel", style: "cancel" },
+          {
+            text: "Restore",
+            onPress: async () => {
+              await toggleDelete(post!.id);
+              setPost((prev) => (prev ? { ...prev, isDeleted: false } : prev));
+            },
           },
-        },
-      ],
-      { cancelable: true },
-    );
+        ],
+        { cancelable: true },
+      );
+    } else {
+      Alert.alert(
+        "Delete Post",
+        "Are you sure you want to delete this post?",
+        [
+          { text: "Cancel", style: "cancel" },
+          {
+            text: "Delete",
+            style: "destructive",
+            onPress: async () => {
+              await deletePost(post!.id);
+              handleBack();
+            },
+          },
+        ],
+        { cancelable: true },
+      );
+    }
   };
 
   const openRatingModal = () => {
@@ -530,6 +550,10 @@ export default function PostScreen() {
   const handleTogglePlaceMarker = async () => {
     if (!post) return;
     const charIndex = textSelection?.start ?? 0;
+    // If a marker already exists and the index is the default (0 / no selection),
+    // ignore the tap to prevent accidentally overwriting the saved position.
+    // When there is no marker yet, index 0 is valid (mark at the start).
+    if (placeMarker && charIndex === 0) return;
     await togglePlaceMarker(charIndex, editedBody);
   };
 
@@ -824,7 +848,11 @@ export default function PostScreen() {
                 }}
               >
                 <TouchableOpacity
-                  style={[styles.deleteButton, { flex: 1 }]}
+                  style={[
+                    styles.deleteButton,
+                    { flex: 1 },
+                    post.isDeleted && { borderColor: palette.accent },
+                  ]}
                   onPress={handleDelete}
                 >
                   <View
@@ -835,12 +863,19 @@ export default function PostScreen() {
                     }}
                   >
                     <Ionicons
-                      name="trash"
+                      name={post.isDeleted ? "refresh" : "trash"}
                       size={24}
                       color={palette.favHeartRed}
                       style={{ marginRight: spacing.xs }}
                     />
-                    <Text style={styles.deleteButtonText}></Text>
+                    <Text
+                      style={[
+                        styles.deleteButtonText,
+                        post.isDeleted && { color: palette.favHeartRed },
+                      ]}
+                    >
+                      {post.isDeleted ? "Restore" : ""}
+                    </Text>
                   </View>
                 </TouchableOpacity>
                 <ShareBookmarkButton title={editedTitle} body={editedBody} />

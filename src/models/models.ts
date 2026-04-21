@@ -77,6 +77,7 @@ export interface PostListItem {
   isRead: boolean;
   isFavorite: boolean;
   isArchived?: boolean;
+  isDeleted?: boolean;
   readAt?: Date | null;
   queuedAt?: Date | null;
   folderIds: number[];

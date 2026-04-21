@@ -14,9 +14,13 @@ export type HandleAddPostOptions = {
   onError?: (error: Error) => void;
   onDuplicateFound?: (duplicates: PostListItem[], proceed: () => void) => void;
   onSimilarFound?: (similarPosts: Post[], proceed: () => void) => void;
+  /** Called when the URL matches a post that was previously soft-deleted. */
+  onFoundDeleted?: (post: Post, proceed: () => void) => void;
   similarityThreshold?: number;
   skipDuplicateCheck?: boolean;
   skipSimilarCheck?: boolean;
+  /** When true, the post is added with isArchived = true after all dedup checks pass. */
+  addToArchive?: boolean;
 };
 
 export interface UsePostsResult {
@@ -27,6 +31,8 @@ export interface UsePostsResult {
   handleAddPost: (url: string, options: HandleAddPostOptions) => Promise<void>;
   updatePost: (post: Post) => Promise<Post>;
   deletePost: (id: number) => Promise<void>;
+  toggleDelete: (id: number) => Promise<boolean>;
+  getDeletedPosts: () => Promise<PostListItem[]>;
   toggleRead: (id: number) => Promise<void>;
   toggleFavorite: (id: number) => Promise<void>;
   toggleArchive: (id: number) => Promise<void>;
@@ -104,6 +110,12 @@ export function subscribeToItemUpdates(fn: (item: PostListItem) => void): () => 
 /** Exposed so sibling hooks can share the same DB connection. */
 export { initSharedRepo };
 
+/** @internal Test-only: inject a pre-built repo so tests don't call PostRepository.create(). */
+export function setSharedRepoForTesting(repo: PostRepository): void {
+  sharedRepo = repo;
+  sharedInitPromise = null;
+}
+
 async function sharedLoadPosts(r?: PostRepository): Promise<void> {
   console.debug('Loading posts...');
   sharedLoading = true;
@@ -151,7 +163,8 @@ export function usePosts(): UsePostsResult {
 
   const getPostById = useCallback(async (id: number): Promise<Post | null> => {
     const repo = await initSharedRepo();
-    return repo.getById(id);
+    // Use getByIdAny so deleted posts can also be viewed (e.g. from the deleted list)
+    return repo.getByIdAny(id);
   }, []);
 
   const checkForSimilarPosts = useCallback(async (bodyText: string, threshold: number = 0.75): Promise<Post[]> => {
@@ -179,9 +192,11 @@ export function usePosts(): UsePostsResult {
       onError,
       onDuplicateFound,
       onSimilarFound,
+      onFoundDeleted,
       similarityThreshold = 0.8,
       skipDuplicateCheck = false,
       skipSimilarCheck = false,
+      addToArchive = false,
     } = options;
 
     const reportError = (err: Error) => {
@@ -201,6 +216,20 @@ export function usePosts(): UsePostsResult {
           {
             text: 'Go To Post',
             onPress: () => router.push(`/post/${duplicates[0].id}` as any),
+          },
+        ],
+      );
+    };
+
+    const defaultFoundDeletedPrompt = (post: Post, _proceed: () => void) => {
+      Alert.alert(
+        'Post Found',
+        'This post was previously deleted. Would you like to go to it?',
+        [
+          { text: 'Cancel', style: 'cancel' },
+          {
+            text: 'Go To Post',
+            onPress: () => router.push(`/post/${post.id}` as any),
           },
         ],
       );
@@ -228,30 +257,39 @@ export function usePosts(): UsePostsResult {
 
     try {
       const postData = await getPostData(url);
+      const repo = await initSharedRepo();
+
       const addAndSync = async () => {
-        const created = await addPost(postData);
+        const created = await addPost(addToArchive ? { ...postData, isArchived: true } : postData);
         onBeforeAdd?.();
         await syncSinglePost(created.id);
         if (onSuccess) {
           await onSuccess(created);
         }
       };
-      const safeAddAndSync = () =>
+      const safeAddAndSync = () => 
         addAndSync().catch((err) => {
           console.error('Failed to add post:', err);
           reportError(err as Error);
         });
 
-      const exactDuplicates = skipDuplicateCheck
-        ? []
-        : sharedPosts.filter((p) => p.redditId === postData.redditId);
+      // Check DB for exact duplicate by redditId — includes deleted and archived posts
+      const dbDuplicate = skipDuplicateCheck
+        ? null
+        : await repo.getByRedditIdAny(postData.redditId);
 
-
-      if (!skipDuplicateCheck && exactDuplicates.length > 0) {
-        (onDuplicateFound ?? defaultDuplicatePrompt)(
-          exactDuplicates,
-          safeAddAndSync,
-        );
+      if (!skipDuplicateCheck && dbDuplicate) {
+        // Deleted duplicate: prompt to view the existing post since it won't appear in the main list
+        if (dbDuplicate.isDeleted) {
+          (onFoundDeleted ?? defaultFoundDeletedPrompt)(dbDuplicate, safeAddAndSync);
+          return;
+        }
+        // Non-deleted duplicate: find the PostListItem for the callback
+        const exactDuplicates = sharedPosts.filter((p) => p.redditId === postData.redditId);
+        const dupeList = exactDuplicates.length > 0
+          ? exactDuplicates
+          : [{ ...dbDuplicate, wordCount: 0 } as PostListItem];
+        (onDuplicateFound ?? defaultDuplicatePrompt)(dupeList, safeAddAndSync);
         return;
       }
 
@@ -306,6 +344,25 @@ export function usePosts(): UsePostsResult {
     // Optimistic: remove from local list
     sharedPosts = sharedPosts.filter(p => p.id !== id);
     notifyListeners();
+  }, []);
+
+  const toggleDelete = useCallback(async (id: number): Promise<boolean> => {
+    const repo = await initSharedRepo();
+    const nowDeleted = await repo.toggleDeletedById(id);
+    if (nowDeleted) {
+      // Optimistic: remove from active list
+      sharedPosts = sharedPosts.filter(p => p.id !== id);
+    } else {
+      // Restored: trigger a full reload so the post re-appears in the main list
+      await sharedLoadPosts();
+    }
+    notifyListeners();
+    return nowDeleted;
+  }, []);
+
+  const getDeletedPosts = useCallback(async (): Promise<PostListItem[]> => {
+    const repo = await initSharedRepo();
+    return repo.getDeletedListItems();
   }, []);
 
   const toggleRead = useCallback(async (id: number) => {
@@ -405,6 +462,8 @@ export function usePosts(): UsePostsResult {
     handleAddPost,
     updatePost,
     deletePost,
+    toggleDelete,
+    getDeletedPosts,
     toggleRead,
     toggleFavorite,
     toggleArchive,
