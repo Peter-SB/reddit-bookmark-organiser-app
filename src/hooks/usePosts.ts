@@ -251,6 +251,10 @@ export function usePosts(): UsePostsResult {
             text: 'Go To Post',
             onPress: () => router.push(`/post/${similarPosts[0].id}` as any),
           },
+          {
+            text: 'Add Anyway',
+            onPress: () => _proceed(),
+          },
         ],
       );
     };
