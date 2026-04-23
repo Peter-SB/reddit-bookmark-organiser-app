@@ -26,6 +26,7 @@ export const scrollToTop = (
 export const scrollToTopWithHeader = (
   listRef: React.RefObject<FlashListRef<PostListItem> | null> | undefined,
   headerHeight: number,
+  useAnimation: boolean = true,
 ) => {
-  scrollToTop(listRef, headerHeight, true);
+  scrollToTop(listRef, headerHeight, useAnimation);
 };

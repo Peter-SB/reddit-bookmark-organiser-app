@@ -209,9 +209,9 @@ export default function HomeScreen() {
   );
 
   const onSetOrderBy = useCallback((option: OrderByOption) => {
-    scrollToTopWithHeader(postsListRef, LIST_HEADER_HEIGHT);
-    setSidebarOpen(false);
     setOrderBy(option);
+    setSidebarOpen(false);
+    scrollToTopWithHeader(postsListRef, LIST_HEADER_HEIGHT);
   }, []);
 
   useEffect(() => {
