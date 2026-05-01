@@ -11,11 +11,13 @@ export const scrollToTop = (
   offset: number = 0,
   useAnimation: boolean = true,
 ) => {
+  requestAnimationFrame(() => {
   if (!listRef?.current) return;
 
-  listRef.current.scrollToOffset({
-    offset,
-    animated: useAnimation,
+    listRef.current.scrollToOffset({
+      offset,
+      animated: useAnimation,
+    });
   });
 };
 

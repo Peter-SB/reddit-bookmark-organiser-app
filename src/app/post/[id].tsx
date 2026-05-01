@@ -555,6 +555,13 @@ export default function PostScreen() {
     // When there is no marker yet, index 0 is valid (mark at the start).
     if (placeMarker && charIndex === 0) return;
     await togglePlaceMarker(charIndex, editedBody);
+
+    // Dismiss keyboard by toggling edit mode quickly
+    if (bodyInputRef.current) {
+      bodyInputRef.current.blur();
+    }
+    setIsEditing(false);
+    setTimeout(() => setIsEditing(true), 1);
   };
 
   const handleScrollToPlaceMarker = async () => {

@@ -98,6 +98,8 @@ export default function HighlightsScreen() {
           <Ionicons name="arrow-back" size={24} color={palette.foreground} />
         </TouchableOpacity>
         <Text style={styles.headerTitle}>Highlights</Text>
+        <Text style={styles.headerSubtitle}>(total: {highlights.length})</Text>
+        <View style={styles.backButton} />
         <View style={styles.backButton} />
       </View>
 
@@ -152,6 +154,10 @@ function makeStyles(
       fontSize: fontSizes.large,
       fontWeight: fontWeights.bold,
       color: palette.foreground,
+    },
+    headerSubtitle: {
+      fontSize: fontSizes.small,
+      color: palette.muted,
     },
     centerContainer: {
       flex: 1,
