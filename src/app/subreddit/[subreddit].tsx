@@ -109,17 +109,23 @@ export default function SubredditImportScreen() {
           (post.bodyText || "").toLowerCase().includes(q),
       );
     }
+    console.debug(
+      `[SubredditScreen] filteredRedditPosts: raw=${redditPosts.length} hideEmpty=${hideEmpty} search="${search}" -> filtered=${posts.length}`,
+    );
     return posts;
   }, [redditPosts, hideEmpty, search]);
 
   // Load initial posts when screen is focused
   useFocusEffect(
     useCallback(() => {
+      console.debug(
+        `[SubredditScreen] focus effect — subredditName="${subredditName}" redditPosts=${redditPosts.length} loading=${loading} error=${error?.message ?? null}`,
+      );
       if (redditPosts.length === 0 && !loading && !error) {
         loadMore();
       }
       refreshPosts();
-    }, [loadMore, redditPosts.length, loading, error, refreshPosts]),
+    }, [loadMore, redditPosts.length, loading, error, refreshPosts, subredditName]),
   );
 
   // Reload immediately when the sort/time-range filter changes

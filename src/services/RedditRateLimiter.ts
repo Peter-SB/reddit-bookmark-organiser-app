@@ -47,16 +47,32 @@ class RedditRateLimiter {
     if (this.timestamps.length >= MAX_REQUESTS) {
       // Oldest timestamp in the window tells us how long to wait
       const retryAfterMs = this.timestamps[0] + WINDOW_MS - now;
+      console.debug(
+        `[RedditRateLimiter] blocked — ${this.timestamps.length}/${MAX_REQUESTS} in window, retry in ${retryAfterMs}ms`,
+      );
       throw new RateLimitError(Math.max(retryAfterMs, 1));
     }
 
     this.timestamps.push(now);
+    console.debug(
+      `[RedditRateLimiter] acquired — ${this.timestamps.length}/${MAX_REQUESTS} in window`,
+    );
   }
 
   /** Drop-in replacement for `fetch` that enforces the rate limit. */
   fetch(url: string, init?: RequestInit): Promise<Response> {
-    this.acquire();
-    return fetch(url, init);
+    this.acquire(); // throws synchronously if the quota is exhausted
+    console.debug(`[RedditRateLimiter] → ${init?.method || 'GET'} ${url}`);
+    return fetch(url, init).then(
+      (resp) => {
+        console.debug(`[RedditRateLimiter] ← ${resp.status} ${url}`);
+        return resp;
+      },
+      (err) => {
+        console.debug(`[RedditRateLimiter] ✗ fetch error for ${url}:`, err);
+        throw err;
+      },
+    );
   }
 
   /** Current number of requests recorded in the active window (for debugging). */

@@ -17,6 +17,7 @@ const API_BASE = 'https://oauth.reddit.com';
 
 const TOKEN_KEY = 'reddit_access_token';
 const EXPIRY_KEY = 'reddit_token_expires_at';
+const GRANT_KEY = 'reddit_token_grant_type';
 
 type TokenResponse = {
   token_type: string;
@@ -110,20 +111,8 @@ export function useSubredditImport(
     const now = Date.now();
 
     if (tokenRef.current && now < expiryRef.current) {
+      console.debug('[useSubredditImport] getToken — using in-memory cached token');
       return tokenRef.current;
-    }
-
-    const [storedToken, storedExpiry] = await Promise.all([
-      SecureStore.getItemAsync(TOKEN_KEY),
-      SecureStore.getItemAsync(EXPIRY_KEY),
-    ]);
-    if (storedToken && storedExpiry) {
-      const exp = parseInt(storedExpiry, 10);
-      if (now < exp) {
-        tokenRef.current = storedToken;
-        expiryRef.current = exp;
-        return storedToken;
-      }
     }
 
     if (credsLoaded.current) {
@@ -133,14 +122,50 @@ export function useSubredditImport(
     if (!creds.clientId || !creds.clientSecret) {
       throw new Error('Reddit client ID/secret not set in SecureStore');
     }
+    const hasPassword = !!(creds.username && creds.password);
+    const desiredGrant = hasPassword ? 'password' : 'client_credentials';
+    console.debug(
+      `[useSubredditImport] getToken — clientId=${!!creds.clientId} hasUsername=${!!creds.username} hasPassword=${!!creds.password} userAgent="${creds.userAgent}" desiredGrant=${desiredGrant}`,
+    );
+
+    const [storedToken, storedExpiry, storedGrant] = await Promise.all([
+      SecureStore.getItemAsync(TOKEN_KEY),
+      SecureStore.getItemAsync(EXPIRY_KEY),
+      SecureStore.getItemAsync(GRANT_KEY),
+    ]);
+    if (storedToken && storedExpiry) {
+      const exp = parseInt(storedExpiry, 10);
+      if (now < exp && storedGrant === desiredGrant) {
+        console.debug(
+          `[useSubredditImport] getToken — using SecureStore cached token (grant=${storedGrant}, expires in ${Math.round((exp - now) / 1000)}s)`,
+        );
+        tokenRef.current = storedToken;
+        expiryRef.current = exp;
+        return storedToken;
+      }
+      console.debug(
+        `[useSubredditImport] getToken — ignoring cached token (storedGrant=${storedGrant}, desiredGrant=${desiredGrant}, expired=${now >= exp})`,
+      );
+    }
 
     const basic = btoa(`${creds.clientId}:${creds.clientSecret}`);
-    const form = new URLSearchParams({
-      grant_type: 'client_credentials',
-      username: '',
-      password: '',
-    });
+    // Password grant (using the logged-in user's own account) is required to
+    // view NSFW/quarantined subreddits; app-only client_credentials tokens
+    // get silently empty listings for that content. Fall back to
+    // client_credentials when no password is configured.
+    const form = hasPassword
+      ? new URLSearchParams({
+          grant_type: 'password',
+          username: creds.username,
+          password: creds.password,
+        })
+      : new URLSearchParams({
+          grant_type: 'client_credentials',
+          username: '',
+          password: '',
+        });
 
+    console.debug(`[useSubredditImport] getToken — requesting new token via grant_type=${desiredGrant}`);
     const resp = await fetch(TOKEN_URL, {
       method: 'POST',
       headers: {
@@ -157,24 +182,34 @@ export function useSubredditImport(
         (data as any).error_description ||
         (data as any).error ||
         resp.statusText;
+      console.debug(`[useSubredditImport] getToken — token request failed HTTP ${resp.status}:`, data);
       throw new Error(`Failed to get token: ${msg} (HTTP ${resp.status})`);
     }
 
     const tr = data as TokenResponse;
     const token = tr.access_token;
     const expiryMs = now + (tr.expires_in - 60) * 1000;
+    console.debug(
+      `[useSubredditImport] getToken — new token acquired, grant=${desiredGrant} scope="${tr.scope}" expiresIn=${tr.expires_in}s`,
+    );
 
     tokenRef.current = token;
     expiryRef.current = expiryMs;
 
     await SecureStore.setItemAsync(TOKEN_KEY, token);
     await SecureStore.setItemAsync(EXPIRY_KEY, expiryMs.toString());
+    await SecureStore.setItemAsync(GRANT_KEY, desiredGrant);
 
     return token;
   }
 
   const loadMore = useCallback(async () => {
-    if (isLoadingRef.current || loading || !hasMore || !subredditName) return;
+    if (isLoadingRef.current || loading || !hasMore || !subredditName) {
+      console.debug(
+        `[useSubredditImport] loadMore skipped — isLoading=${isLoadingRef.current} loading=${loading} hasMore=${hasMore} subredditName="${subredditName}"`,
+      );
+      return;
+    }
     isLoadingRef.current = true;
     setLoading(true);
     setError(null);
@@ -191,6 +226,7 @@ export function useSubredditImport(
       if (after) {
         url += `&after=${after}`;
       }
+      console.debug(`[useSubredditImport] fetching ${url}`);
       const resp = await redditFetch(url, {
         headers: {
           'User-Agent': ua,
@@ -201,9 +237,13 @@ export function useSubredditImport(
       const data = await resp.json();
       if (!resp.ok) {
         const msg = (data as any).message || resp.statusText;
+        console.debug(`[useSubredditImport] non-OK response HTTP ${resp.status}:`, data);
         throw new Error(`Reddit API returned: ${msg} (HTTP ${resp.status})`);
       }
       const children = data?.data?.children || [];
+      console.debug(
+        `[useSubredditImport] response OK — ${children.length} children in data.data.children`,
+      );
       const newPosts: SubredditPostPreview[] = children.map((child: any) => {
         const post = child.data;
         return {
@@ -228,6 +268,9 @@ export function useSubredditImport(
             seen.add(np.id);
           }
         }
+        console.debug(
+          `[useSubredditImport] posts: prev=${prev.length} new=${newPosts.length} deduped total=${deduped.length}`,
+        );
         return deduped;
       });
       setAfter(data?.data?.after || null);
