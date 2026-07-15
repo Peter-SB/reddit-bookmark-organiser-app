@@ -378,6 +378,25 @@ export const MenuSidebar: React.FC<MenuSidebarProps> = ({
               <Text style={styles.label}>Authors</Text>
             </TouchableOpacity>
 
+            {/* Subreddits */}
+            <TouchableOpacity
+              style={styles.item}
+              onPress={() => {
+                onSelect("subreddits");
+                onClose();
+              }}
+            >
+              <View style={styles.iconContainer}>
+                <Icon
+                  name="forum"
+                  size={24}
+                  style={styles.icon}
+                  color={palette.foreground}
+                />
+              </View>
+              <Text style={styles.label}>Subreddits</Text>
+            </TouchableOpacity>
+
             {/* Queue toggle button */}
             <TouchableOpacity
               style={styles.item}

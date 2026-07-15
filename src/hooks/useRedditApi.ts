@@ -1,6 +1,7 @@
 import * as SecureStore from 'expo-secure-store';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import type { Post } from '../models/models';
+import { redditFetch } from '../services/RedditRateLimiter';
 
 // SecureStore keys for Reddit creds (same as in your SettingsCredentialsManager)
 export const STORAGE_KEYS = {
@@ -161,7 +162,7 @@ export function useRedditApi(): UseRedditApiResult {
     if (!SHORT_S_RE.test(input.pathname) && !SHORT_USER_S_RE.test(input.pathname)) {
       return input;
     }
-    const resp = await fetch(input.toString(), {
+    const resp = await redditFetch(input.toString(), {
       method:   'HEAD',
       redirect: 'follow',
       headers:  { 'User-Agent': ua  },
@@ -177,7 +178,7 @@ export function useRedditApi(): UseRedditApiResult {
   async function fetchJson(oauthUrl: string): Promise<any[]> {
     const token = await getToken();
     const ua = credsRef.current?.userAgent || '';
-    const resp  = await fetch(oauthUrl, {
+    const resp  = await redditFetch(oauthUrl, {
       headers: {
         'User-Agent':    ua ,
         'Accept':        'application/json',

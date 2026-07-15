@@ -109,6 +109,14 @@ function AppContent() {
         <Stack.Screen name="author/[author]" options={{ headerShown: false }} />
         <Stack.Screen name="author/import" options={{ headerShown: false }} />
         <Stack.Screen name="author/authors" options={{ headerShown: false }} />
+        <Stack.Screen
+          name="subreddit/subreddits"
+          options={{ headerShown: false }}
+        />
+        <Stack.Screen
+          name="subreddit/[subreddit]"
+          options={{ headerShown: false }}
+        />
         <Stack.Screen name="+not-found" />
       </Stack>
       <StatusBar style={isDarkMode ? "light" : "dark"} />

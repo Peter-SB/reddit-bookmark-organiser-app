@@ -172,6 +172,8 @@ export default function HomeScreen() {
       router.push("/highlights" as any);
     } else if (key === "authors") {
       router.push("/author/authors" as any);
+    } else if (key === "subreddits") {
+      router.push("/subreddit/subreddits" as any);
     } else if (key === "settings") {
       router.push("/settings" as any);
     } else if (key === "search") {

@@ -184,6 +184,15 @@ export class DatabaseService {
         createdAt   TEXT    NOT NULL DEFAULT CURRENT_TIMESTAMP,
         updatedAt   TEXT    NOT NULL DEFAULT CURRENT_TIMESTAMP
       );
+
+      CREATE TABLE IF NOT EXISTS subreddits (
+        name        TEXT    PRIMARY KEY COLLATE NOCASE,
+        isFavorite  INTEGER NOT NULL DEFAULT 0,
+        rating      REAL,
+        notes       TEXT,
+        createdAt   TEXT    NOT NULL DEFAULT CURRENT_TIMESTAMP,
+        updatedAt   TEXT    NOT NULL DEFAULT CURRENT_TIMESTAMP
+      );
     `);
 
     // Migration: add minHash column if it doesn't exist

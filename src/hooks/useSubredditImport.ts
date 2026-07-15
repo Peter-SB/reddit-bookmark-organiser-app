@@ -1,5 +1,6 @@
 import * as SecureStore from 'expo-secure-store';
 import { useCallback, useEffect, useRef, useState } from 'react';
+import type { RedditPostPreview } from './useAuthorImport';
 import { redditFetch } from '../services/RedditRateLimiter';
 
 // Keys for Reddit credentials
@@ -24,20 +25,20 @@ type TokenResponse = {
   scope: string;
 };
 
-export interface RedditPostPreview {
-  id: string;
-  title: string;
-  author: string;
-  subreddit: string;
-  url: string;
-  bodyText: string;
-  created: number;
-  permalink: string;
-  score?: number;
+export type SubredditSort = 'hot' | 'new' | 'top' | 'rising';
+export type SubredditTimeRange = 'hour' | 'day' | 'week' | 'month' | 'year' | 'all';
+
+/**
+ * RedditPostPreview plus the comment count (Reddit API's `num_comments`
+ * field, present on every post listing), used to show engagement in the
+ * subreddit browse screen.
+ */
+export interface SubredditPostPreview extends RedditPostPreview {
+  commentCount: number;
 }
 
-interface UseAuthorImportResult {
-  posts: RedditPostPreview[];
+interface UseSubredditImportResult {
+  posts: SubredditPostPreview[];
   loading: boolean;
   error: Error | null;
   hasMore: boolean;
@@ -45,9 +46,12 @@ interface UseAuthorImportResult {
   reset: () => void;
 }
 
-
-export function useAuthorImport(authorName: string): UseAuthorImportResult {
-  const [posts, setPosts] = useState<RedditPostPreview[]>([]);
+export function useSubredditImport(
+  subredditName: string,
+  sort: SubredditSort,
+  timeRange?: SubredditTimeRange,
+): UseSubredditImportResult {
+  const [posts, setPosts] = useState<SubredditPostPreview[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<Error | null>(null);
   const [after, setAfter] = useState<string | null>(null);
@@ -92,25 +96,23 @@ export function useAuthorImport(authorName: string): UseAuthorImportResult {
     })();
   }, []);
 
-  // Reset state when authorName changes
+  // Reset state when subredditName, sort, or timeRange changes
   useEffect(() => {
     setPosts([]);
     setAfter(null);
     setHasMore(true);
     setError(null);
     isLoadingRef.current = false;
-  }, [authorName]);
+  }, [subredditName, sort, timeRange]);
 
   // Get a valid OAuth token, caching in memory and SecureStore
   async function getToken(): Promise<string> {
     const now = Date.now();
 
-    // In-memory valid?
     if (tokenRef.current && now < expiryRef.current) {
       return tokenRef.current;
     }
 
-    // Secure store valid?
     const [storedToken, storedExpiry] = await Promise.all([
       SecureStore.getItemAsync(TOKEN_KEY),
       SecureStore.getItemAsync(EXPIRY_KEY),
@@ -124,7 +126,6 @@ export function useAuthorImport(authorName: string): UseAuthorImportResult {
       }
     }
 
-    // Ensure creds are loaded
     if (credsLoaded.current) {
       await credsLoaded.current;
     }
@@ -133,7 +134,6 @@ export function useAuthorImport(authorName: string): UseAuthorImportResult {
       throw new Error('Reddit client ID/secret not set in SecureStore');
     }
 
-    // Fetch new token
     const basic = btoa(`${creds.clientId}:${creds.clientSecret}`);
     const form = new URLSearchParams({
       grant_type: 'client_credentials',
@@ -164,7 +164,6 @@ export function useAuthorImport(authorName: string): UseAuthorImportResult {
     const token = tr.access_token;
     const expiryMs = now + (tr.expires_in - 60) * 1000;
 
-    // Cache
     tokenRef.current = token;
     expiryRef.current = expiryMs;
 
@@ -175,19 +174,20 @@ export function useAuthorImport(authorName: string): UseAuthorImportResult {
   }
 
   const loadMore = useCallback(async () => {
-    if (isLoadingRef.current || loading || !hasMore || !authorName) return;
+    if (isLoadingRef.current || loading || !hasMore || !subredditName) return;
     isLoadingRef.current = true;
     setLoading(true);
     setError(null);
     try {
-      // Ensure creds are loaded
       if (credsLoaded.current) {
         await credsLoaded.current;
       }
       const token = await getToken();
       const ua = credsRef.current?.userAgent || '';
-      // Build the URL for fetching user's submitted posts
-      let url = `${API_BASE}/user/${authorName}/submitted?limit=25&raw_json=1`;
+      let url = `${API_BASE}/r/${subredditName}/${sort}?limit=25&raw_json=1`;
+      if (sort === 'top' && timeRange) {
+        url += `&t=${timeRange}`;
+      }
       if (after) {
         url += `&after=${after}`;
       }
@@ -204,9 +204,8 @@ export function useAuthorImport(authorName: string): UseAuthorImportResult {
         throw new Error(`Reddit API returned: ${msg} (HTTP ${resp.status})`);
       }
       const children = data?.data?.children || [];
-      const newPosts: RedditPostPreview[] = children.map((child: any) => {
+      const newPosts: SubredditPostPreview[] = children.map((child: any) => {
         const post = child.data;
-        // console.log('Post id=', post.id);
         return {
           id: post.id,
           title: post.title,
@@ -217,9 +216,9 @@ export function useAuthorImport(authorName: string): UseAuthorImportResult {
           created: post.created_utc || post.created,
           permalink: post.permalink,
           score: typeof post.score === 'number' ? post.score : post.ups,
+          commentCount: typeof post.num_comments === 'number' ? post.num_comments : 0,
         };
       });
-      // Deduplicate by id
       setPosts((prev) => {
         const seen = new Set(prev.map((p) => p.id));
         const deduped = [...prev];
@@ -234,13 +233,13 @@ export function useAuthorImport(authorName: string): UseAuthorImportResult {
       setAfter(data?.data?.after || null);
       setHasMore(!!data?.data?.after);
     } catch (err: any) {
-      console.error('Error loading author posts:', err);
+      console.error('Error loading subreddit posts:', err);
       setError(err);
     } finally {
       setLoading(false);
       isLoadingRef.current = false;
     }
-  }, [authorName, after, loading, hasMore]);
+  }, [subredditName, sort, timeRange, after, loading, hasMore]);
 
   const reset = useCallback(() => {
     setPosts([]);
