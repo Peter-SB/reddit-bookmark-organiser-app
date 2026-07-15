@@ -19,6 +19,7 @@ import {
   View,
 } from "react-native";
 import { DatabaseService, DEFAULT_DB } from "../services/DatabaseService";
+import MediaStoreExport from "../modules/media-store-export";
 import { resetSharedPostsState } from "@/hooks/usePosts";
 import { useTheme } from "@/contexts/ThemeContext";
 import type { ThemeContextValue } from "@/contexts/ThemeContext";
@@ -35,7 +36,6 @@ export default function SettingsDatabaseManager() {
 
   const [modalVisible, setModalVisible] = useState<boolean>(false);
   const [newDbName, setNewDbName] = useState<string>("");
-  const [customLocation, setCustomLocation] = useState<string | null>(null);
   const router = useRouter();
 
   // Load available DBs and current selection
@@ -174,32 +174,27 @@ export default function SettingsDatabaseManager() {
     }
   };
 
+  // No expo-file-system API can stream a write into a SAF/content:// destination
+  // (copyAsync only supports file:// destinations; writeAsStringAsync truncates on
+  // every call, so chunked writes aren't possible either) - the only way to save a
+  // large file into a user-picked folder via expo-file-system is to hold the whole
+  // thing as a base64 JS string, which is exactly what OOMs on large databases.
+  // MediaStoreExport (src/modules/media-store-export) is a small local native module
+  // that streams the file straight into the public Downloads folder natively, so
+  // memory use stays bounded regardless of file size.
   const exportDatabase = async () => {
     if (!selected) return;
     setLoading(true);
     try {
       const src = await checkpointDbAndGetSrc(selected);
-      if (Platform.OS === "android" && FileSystem.StorageAccessFramework) {
-        const permission =
-          await FileSystem.StorageAccessFramework.requestDirectoryPermissionsAsync();
-        if (!permission.granted) {
-          Alert.alert("Permission denied");
-          return;
-        }
-        const base64 = await FileSystem.readAsStringAsync(src, {
-          encoding: FileSystem.EncodingType.Base64,
-        });
-        const fileUri = await FileSystem.StorageAccessFramework.createFileAsync(
-          permission.directoryUri,
+      if (Platform.OS === "android" && MediaStoreExport) {
+        if (!(await ensureStoragePermission())) return;
+        const location = await MediaStoreExport.saveToDownloads(
+          src,
           selected,
           "application/x-sqlite3",
         );
-        await FileSystem.StorageAccessFramework.writeAsStringAsync(
-          fileUri,
-          base64,
-          { encoding: FileSystem.EncodingType.Base64 },
-        );
-        Alert.alert("Success", `Saved to ${fileUri}`);
+        Alert.alert("Success", `Saved to ${location}`);
       } else {
         await shareDatabase();
       }
@@ -261,57 +256,18 @@ export default function SettingsDatabaseManager() {
     setLoading(true);
     try {
       const defaultUri = FileSystem.documentDirectory + "SQLite/" + DEFAULT_DB;
-      const data = await FileSystem.readAsStringAsync(defaultUri, {
-        encoding: FileSystem.EncodingType.Base64,
-      });
-      if (
-        customLocation &&
-        Platform.OS === "android" &&
-        FileSystem.StorageAccessFramework
-      ) {
-        const perm =
-          await FileSystem.StorageAccessFramework.requestDirectoryPermissionsAsync();
-        if (!perm.granted) {
-          Alert.alert("Permission denied");
-          return;
-        }
-        const newFile = await FileSystem.StorageAccessFramework.createFileAsync(
-          perm.directoryUri,
-          filename,
-          "application/x-sqlite3",
-        );
-        await FileSystem.StorageAccessFramework.writeAsStringAsync(
-          newFile,
-          data,
-          { encoding: FileSystem.EncodingType.Base64 },
-        );
-      } else {
-        const dest = FileSystem.documentDirectory + "SQLite/" + filename;
-        await FileSystem.writeAsStringAsync(dest, data, {
-          encoding: FileSystem.EncodingType.Base64,
-        });
-      }
+      const dest = FileSystem.documentDirectory + "SQLite/" + filename;
+      // Native file copy (no base64 round-trip) - avoids loading the DB into a JS string.
+      await FileSystem.copyAsync({ from: defaultUri, to: dest });
       await loadDbs();
       await DatabaseService.switchDatabase(filename);
       setModalVisible(false);
       setNewDbName("");
-      setCustomLocation(null);
     } catch (err) {
       console.error("Create failed:", err);
       Alert.alert("Error", "Failed to create.");
     } finally {
       setLoading(false);
-    }
-  };
-
-  const pickFolder = async () => {
-    if (Platform.OS === "android" && FileSystem.StorageAccessFramework) {
-      const perm =
-        await FileSystem.StorageAccessFramework.requestDirectoryPermissionsAsync();
-      if (perm.granted) setCustomLocation(perm.directoryUri);
-      else Alert.alert("Permission denied");
-    } else {
-      Alert.alert("Unsupported", "Custom folder only on Android.");
     }
   };
 
@@ -386,11 +342,6 @@ export default function SettingsDatabaseManager() {
               onChangeText={setNewDbName}
             />
             <View style={styles.modalButtons}>
-              <TouchableOpacity onPress={pickFolder} style={styles.smallButton}>
-                <Text style={styles.buttonText}>
-                  {customLocation ? "Folder ✓" : "Choose Folder"}
-                </Text>
-              </TouchableOpacity>
               <TouchableOpacity
                 onPress={createDatabase}
                 style={styles.smallButton}
