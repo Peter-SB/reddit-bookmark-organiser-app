@@ -1,6 +1,11 @@
 module.exports = {
     preset: 'ts-jest',
     testEnvironment: 'node',
+    globals: {
+        'ts-jest': {
+            diagnostics: { ignoreCodes: [7016] }, // suppress "no declaration file" errors
+        },
+    },
     setupFiles: ['<rootDir>/jest.setup.js'],
     testMatch: ['**/__tests__/**/*.test.ts', '**/*.test.ts', '**/*.spec.ts'],
     transform: {

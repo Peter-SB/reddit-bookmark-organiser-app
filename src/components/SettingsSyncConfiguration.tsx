@@ -95,22 +95,39 @@ export default function SettingsSyncConfiguration() {
   };
 
   const triggerForceResync = async () => {
-    setStatusMessage(null);
-    try {
-      const results = await forceResyncAll();
-      if (results.length === 0) {
-        setStatusMessage("No posts found to re-sync or server URL not set.");
-        return;
-      }
-      const success = results.filter((r) => r.success).length;
-      const failed = results.length - success;
-      setStatusMessage(
-        `Force re-sync finished: ${success} succeeded${failed ? `, ${failed} failed` : ""}.`,
-      );
-    } catch (err) {
-      console.error("Force re-sync failed:", err);
-      Alert.alert("Force re-sync failed", (err as Error).message);
-    }
+    Alert.alert(
+      "Force Re-sync All Posts",
+      "This will re-sync ALL posts to the server. This is a destructive operation and cannot be undone. Continue?",
+      [
+        {
+          text: "Cancel",
+          onPress: () => {},
+          style: "cancel",
+        },
+        {
+          text: "Continue",
+          onPress: async () => {
+            setStatusMessage(null);
+            try {
+              const results = await forceResyncAll();
+              if (results.length === 0) {
+                setStatusMessage("No posts found to re-sync or server URL not set.");
+                return;
+              }
+              const success = results.filter((r) => r.success).length;
+              const failed = results.length - success;
+              setStatusMessage(
+                `Force re-sync finished: ${success} succeeded${failed ? `, ${failed} failed` : ""}.`,
+              );
+            } catch (err) {
+              console.error("Force re-sync failed:", err);
+              Alert.alert("Force re-sync failed", (err as Error).message);
+            }
+          },
+          style: "destructive",
+        },
+      ],
+    );
   };
 
   if (loading) {
@@ -165,15 +182,19 @@ export default function SettingsSyncConfiguration() {
       </View>
 
       {/* Disabled for safety */}
-      {/* <TouchableOpacity
-        style={[styles.button, styles.fullWidthButton, syncing && styles.buttonDisabled]}
+      <TouchableOpacity
+        style={[
+          styles.button,
+          styles.fullWidthButton,
+          syncing && styles.buttonDisabled,
+        ]}
         onPress={triggerForceResync}
         disabled={syncing}
       >
         <Text style={styles.buttonText}>
           {syncing ? "Re-syncing..." : "Force Re-sync All Posts"}
         </Text>
-      </TouchableOpacity> */}
+      </TouchableOpacity>
 
       {statusMessage && <Text style={styles.status}>{statusMessage}</Text>}
       {lastSyncAt && (

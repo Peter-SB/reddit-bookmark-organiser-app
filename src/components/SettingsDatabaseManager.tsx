@@ -73,6 +73,68 @@ export default function SettingsDatabaseManager() {
     router.replace("/");
   };
 
+  const saveErrorLog = async (context: string, err: unknown) => {
+    const timestamp = new Date().toISOString();
+    const errorMessage = err instanceof Error ? err.message : String(err);
+    const errorStack =
+      err instanceof Error ? (err.stack ?? "No stack trace") : "No stack trace";
+
+    const logContent = [
+      "Reddit Post Organiser - Error Log",
+      "==================================",
+      `Timestamp: ${timestamp}`,
+      `Platform: ${Platform.OS} ${Platform.Version}`,
+      `Context: ${context}`,
+      `Selected Database: ${selected}`,
+      "",
+      "Error Message:",
+      errorMessage,
+      "",
+      "Stack Trace:",
+      errorStack,
+    ].join("\n");
+
+    try {
+      const safeTimestamp = timestamp.replace(/[:.]/g, "-");
+      const filename = `error-log-${safeTimestamp}.txt`;
+      const cacheUri = FileSystem.cacheDirectory + filename;
+      await FileSystem.writeAsStringAsync(cacheUri, logContent, {
+        encoding: FileSystem.EncodingType.UTF8,
+      });
+
+      if (Platform.OS === "android" && FileSystem.StorageAccessFramework) {
+        const perm =
+          await FileSystem.StorageAccessFramework.requestDirectoryPermissionsAsync();
+        if (perm.granted) {
+          const base64 = await FileSystem.readAsStringAsync(cacheUri, {
+            encoding: FileSystem.EncodingType.Base64,
+          });
+          const destUri =
+            await FileSystem.StorageAccessFramework.createFileAsync(
+              perm.directoryUri,
+              filename,
+              "text/plain",
+            );
+          await FileSystem.StorageAccessFramework.writeAsStringAsync(
+            destUri,
+            base64,
+            { encoding: FileSystem.EncodingType.Base64 },
+          );
+          Alert.alert("Saved", `Error log saved to device.`);
+          return;
+        }
+      }
+
+      await Sharing.shareAsync(cacheUri, {
+        mimeType: "text/plain",
+        dialogTitle: "Save error log",
+      });
+    } catch (logErr) {
+      console.error("Failed to save error log:", logErr);
+      Alert.alert("Error", "Failed to save error log.");
+    }
+  };
+
   // Makes sure WAL checkpoint is merged before sharing
   const checkpointDbAndGetSrc = async (filename: string) => {
     console.debug("Checkpointing database:", filename);
@@ -95,7 +157,18 @@ export default function SettingsDatabaseManager() {
       });
     } catch (err) {
       console.warn("Export failed:", err);
-      Alert.alert("Error", "Failed to share database.");
+      const message = err instanceof Error ? err.message : String(err);
+      Alert.alert(
+        "Share Failed",
+        `${message}\n\nWould you like to save a full error log?`,
+        [
+          { text: "Dismiss", style: "cancel" },
+          {
+            text: "Save Error Log",
+            onPress: () => saveErrorLog("Share Database", err),
+          },
+        ],
+      );
     } finally {
       setLoading(false);
     }
@@ -132,7 +205,18 @@ export default function SettingsDatabaseManager() {
       }
     } catch (err) {
       console.error("Save failed:", err);
-      Alert.alert("Error", "Failed to save database.");
+      const message = err instanceof Error ? err.message : String(err);
+      Alert.alert(
+        "Export Failed",
+        `${message}\n\nWould you like to save a full error log?`,
+        [
+          { text: "Dismiss", style: "cancel" },
+          {
+            text: "Save Error Log",
+            onPress: () => saveErrorLog("Export Database", err),
+          },
+        ],
+      );
     } finally {
       setLoading(false);
     }
