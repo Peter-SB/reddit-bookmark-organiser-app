@@ -1,8 +1,12 @@
 export const SYNC_SERVER_URL_KEY = 'SYNC_SERVER_URL';
-export const SYNC_TABLE_NAME_KEY = 'SYNC_TABLE_NAME';
-export const SYNC_SEMANTIC_EMBED_MODEL_KEY = 'SYNC_SEMANTIC_EMBED_MODEL';
-export const SYNC_SIMILAR_EMBED_MODEL_KEY = 'SYNC_SIMILAR_EMBED_MODEL';
+// Storage key kept as 'SYNC_TABLE_NAME' so existing installs' saved value carries over as the library id.
+export const SYNC_LIBRARY_ID_KEY = 'SYNC_TABLE_NAME';
 
-export const DEFAULT_SYNC_TABLE = 'posts';
-export const DEFAULT_EMBED_MODEL = 'default';
+export const DEFAULT_LIBRARY_ID = 'main';
 export const DEFAULT_SYNC_INTERVAL_MS = 15 * 60 * 1000; // 15 minutes
+
+export const LIBRARY_ID_PATTERN = /^[a-z][a-z0-9_]*$/;
+
+// Force export/resync configuration
+export const FORCE_EXPORT_BATCH_SIZE = 10;
+export const FORCE_EXPORT_CONCURRENCY = 1;

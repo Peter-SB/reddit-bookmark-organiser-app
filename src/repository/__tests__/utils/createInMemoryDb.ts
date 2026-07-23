@@ -96,6 +96,21 @@ const SCHEMA_SQL = `
 
   CREATE INDEX IF NOT EXISTS idx_place_markers_updated_at ON place_markers(updated_at DESC);
 
+  CREATE TABLE IF NOT EXISTS semantic_search_history (
+    id          INTEGER PRIMARY KEY AUTOINCREMENT,
+    query       TEXT    NOT NULL,
+    chunk_type  TEXT    NOT NULL,
+    k           INTEGER NOT NULL,
+    library_id  TEXT    NOT NULL,
+    status      TEXT    NOT NULL DEFAULT 'pending',
+    results     TEXT,
+    error       TEXT,
+    created_at  TEXT    NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at  TEXT    NOT NULL DEFAULT CURRENT_TIMESTAMP
+  );
+
+  CREATE INDEX IF NOT EXISTS idx_semantic_search_history_created_at ON semantic_search_history(created_at DESC);
+
   CREATE INDEX IF NOT EXISTS idx_posts_deleted_archived_added         ON posts(isDeleted, isArchived, addedAt);
   CREATE INDEX IF NOT EXISTS idx_posts_deleted_archived_updated       ON posts(isDeleted, isArchived, updatedAt);
   CREATE INDEX IF NOT EXISTS idx_posts_deleted_archived_queued        ON posts(isDeleted, isArchived, queuedAt);

@@ -712,6 +712,19 @@ export class PostRepository {
     return rows.map(r => this.mapRowToPost(r, folderMap.get(r.id) ?? []));
   }
 
+  // Fetch all posts (including those previously synced) with pagination support.
+  // Used by force export to page through large databases without loading all posts into memory.
+  public async getAllPostsPaginated(limit: number, offset: number): Promise<Post[]> {
+    const rows = await this.db.getAllAsync<PostRow>(
+      `SELECT * FROM posts WHERE isDeleted = 0 ORDER BY id ASC LIMIT ? OFFSET ?`,
+      limit,
+      offset
+    );
+    const postIds = rows.map(r => r.id);
+    const folderMap = postIds.length > 0 ? await this.loadAllFolderIds(postIds) : new Map();
+    return rows.map(r => this.mapRowToPost(r, folderMap.get(r.id) ?? []));
+  }
+
   public async updateSyncState(
     postId: number,
     status: string,

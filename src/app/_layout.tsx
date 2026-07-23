@@ -109,6 +109,7 @@ function AppContent() {
         <Stack.Screen name="author/[author]" options={{ headerShown: false }} />
         <Stack.Screen name="author/import" options={{ headerShown: false }} />
         <Stack.Screen name="author/authors" options={{ headerShown: false }} />
+        <Stack.Screen name="" options={{ headerShown: false }} />
         <Stack.Screen
           name="subreddit/subreddits"
           options={{ headerShown: false }}

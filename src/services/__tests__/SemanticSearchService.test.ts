@@ -1,11 +1,6 @@
 import { SemanticSearchService } from "../SemanticSearchService";
 import { SettingsRepository } from "@/repository/SettingsRepository";
-import {
-  SYNC_SEMANTIC_EMBED_MODEL_KEY,
-  SYNC_SERVER_URL_KEY,
-  SYNC_SIMILAR_EMBED_MODEL_KEY,
-  SYNC_TABLE_NAME_KEY,
-} from "@/constants/sync";
+import { SYNC_LIBRARY_ID_KEY, SYNC_SERVER_URL_KEY } from "@/constants/sync";
 
 jest.mock("@/repository/SettingsRepository", () => ({
   SettingsRepository: { getSettings: jest.fn() },
@@ -22,54 +17,83 @@ describe("SemanticSearchService", () => {
     jest.clearAllMocks();
     (SettingsRepository.getSettings as jest.Mock).mockResolvedValue({
       [SYNC_SERVER_URL_KEY]: "example.com",
-      [SYNC_TABLE_NAME_KEY]: "posts",
-      [SYNC_SEMANTIC_EMBED_MODEL_KEY]: "semantic-model",
-      [SYNC_SIMILAR_EMBED_MODEL_KEY]: "similar-model",
+      [SYNC_LIBRARY_ID_KEY]: "main",
     });
   });
 
-  it("builds payload with defaults and normalises server url", async () => {
-    fetchMock.mockResolvedValue({
-      ok: true,
-      status: 200,
-      json: async () => ({
-        query: "hello",
-        k: 3,
-        results: [
-          { post_id: 42, text: "snippet", metadata: { title: "Example" } },
-        ],
-      }),
-    });
+  it("creates a search job, polls until complete, and maps results", async () => {
+    fetchMock
+      .mockResolvedValueOnce({
+        ok: true,
+        status: 202,
+        json: async () => ({ job_id: "job-1" }),
+      })
+      .mockResolvedValueOnce({
+        ok: true,
+        status: 200,
+        json: async () => ({
+          job_id: "job-1",
+          status: "complete",
+          results: [
+            {
+              chunk_id: "c1",
+              post_id: 42,
+              text: "snippet",
+              metadata: { title: "Example" },
+              score: 0.87,
+            },
+          ],
+        }),
+      });
 
     const res = await SemanticSearchService.search({
       query: "hello",
       k: 3,
-      includeText: true,
+      chunkType: "title",
     });
 
-    expect(fetchMock).toHaveBeenCalledWith(
-      "http://example.com/search",
+    expect(fetchMock).toHaveBeenNthCalledWith(
+      1,
+      "http://example.com/search/",
       expect.objectContaining({ method: "POST" })
     );
     const body = JSON.parse(fetchMock.mock.calls[0][1].body);
-    expect(body).toEqual(
-      expect.objectContaining({
-        q: "hello",
-        k: 3,
-        include_text: true,
-        embedding_profile: "semantic-model",
-        table_name: "posts",
-      })
-    );
+    expect(body).toEqual({
+      query: "hello",
+      chunk_type: "title",
+      k: 3,
+      library_id: "main",
+    });
+
+    expect(fetchMock).toHaveBeenNthCalledWith(2, "http://example.com/search/job-1");
     expect(res.results[0]).toEqual(
-      expect.objectContaining({ postId: 42, text: "snippet" })
+      expect.objectContaining({ postId: 42, text: "snippet", score: 0.87 })
     );
+    expect(res.chunkType).toBe("title");
+  });
+
+  it("throws when the search job fails", async () => {
+    fetchMock
+      .mockResolvedValueOnce({
+        ok: true,
+        status: 202,
+        json: async () => ({ job_id: "job-2" }),
+      })
+      .mockResolvedValueOnce({
+        ok: true,
+        status: 200,
+        json: async () => ({ job_id: "job-2", status: "failed", error: "boom" }),
+      });
+
+    await expect(
+      SemanticSearchService.search({ query: "hello" })
+    ).rejects.toThrow(/boom/);
   });
 
   it("throws when server url is missing", async () => {
     (SettingsRepository.getSettings as jest.Mock).mockResolvedValue({
       [SYNC_SERVER_URL_KEY]: "",
-      [SYNC_TABLE_NAME_KEY]: "posts",
+      [SYNC_LIBRARY_ID_KEY]: "main",
     });
 
     await expect(
@@ -77,41 +101,42 @@ describe("SemanticSearchService", () => {
     ).rejects.toThrow(/server url not configured/i);
   });
 
-  it("hits /similar with post id and parses results", async () => {
+  it("hits /search/similar with post id and parses results", async () => {
     fetchMock.mockResolvedValue({
       ok: true,
       status: 200,
       json: async () => ({
         post_id: 7,
-        k: 4,
-        results: [{ post_id: 99, text: "sample", metadata: { title: "Match" } }],
+        chunk_type: "body",
+        chunks_averaged: 4,
+        results: [
+          { chunk_id: "c2", post_id: 99, text: "sample", metadata: { title: "Match" }, score: 0.5 },
+        ],
       }),
     });
 
     const res = await SemanticSearchService.similar({
       postId: 7,
       k: 4,
-      includeText: true,
+      chunkType: "body",
     });
 
     expect(fetchMock).toHaveBeenCalledWith(
-      "http://example.com/similar",
+      "http://example.com/search/similar",
       expect.objectContaining({ method: "POST" })
     );
     const payload = JSON.parse(fetchMock.mock.calls[0][1].body);
-    expect(payload).toEqual(
-      expect.objectContaining({
-        post_id: 7,
-        k: 4,
-        include_text: false,
-        embedding_profile: "similar-model",
-        table_name: "posts",
-      })
-    );
+    expect(payload).toEqual({
+      post_id: 7,
+      chunk_type: "body",
+      k: 4,
+      library_id: "main",
+    });
     expect(res).toEqual(
       expect.objectContaining({
         postId: 7,
-        k: 4,
+        chunkType: "body",
+        chunksAveraged: 4,
         results: [expect.objectContaining({ postId: 99, text: "sample" })],
       })
     );

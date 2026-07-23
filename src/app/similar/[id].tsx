@@ -1,5 +1,6 @@
 import { PostCard } from "@/components/PostCard";
-import { DEFAULT_SEARCH_INCLUDE_TEXT } from "@/constants/search";
+import { CHUNK_TYPES, DEFAULT_CHUNK_TYPE } from "@/constants/search";
+import type { ChunkType } from "@/constants/search";
 import { spacing } from "@/constants/spacing";
 import { fontWeights } from "@/constants/typography";
 import { useTheme } from "@/contexts/ThemeContext";
@@ -35,6 +36,8 @@ export default function SimilarPostsScreen() {
 
   const { posts, refreshPosts } = usePosts();
   const [results, setResults] = useState<SemanticSearchResult[]>([]);
+  const [chunkType, setChunkType] = useState<ChunkType>(DEFAULT_CHUNK_TYPE);
+  const [chunksAveraged, setChunksAveraged] = useState(0);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [hasLoaded, setHasLoaded] = useState(false);
@@ -63,10 +66,11 @@ export default function SimilarPostsScreen() {
     try {
       const res = await SemanticSearchService.similar({
         postId,
-        includeText: DEFAULT_SEARCH_INCLUDE_TEXT,
+        chunkType,
         k: 999,
       });
       setResults(res.results);
+      setChunksAveraged(res.chunksAveraged);
     } catch (err: any) {
       setError(err?.message || "Failed to load similar posts.");
       setResults([]);
@@ -74,7 +78,7 @@ export default function SimilarPostsScreen() {
       setLoading(false);
       setHasLoaded(true);
     }
-  }, [postId]);
+  }, [postId, chunkType]);
 
   useEffect(() => {
     fetchSimilar();
@@ -141,6 +145,38 @@ export default function SimilarPostsScreen() {
         </TouchableOpacity>
         <Text style={styles.headerTitle}>Similar Posts</Text>
       </View>
+
+      <View style={styles.chunkTypeRow}>
+        {CHUNK_TYPES.map((option) => {
+          const selected = option.value === chunkType;
+          return (
+            <TouchableOpacity
+              key={option.value}
+              style={[
+                styles.chunkTypeOption,
+                selected && styles.chunkTypeOptionSelected,
+              ]}
+              onPress={() => setChunkType(option.value)}
+            >
+              <Text
+                style={[
+                  styles.chunkTypeOptionText,
+                  selected && styles.chunkTypeOptionTextSelected,
+                ]}
+              >
+                {option.label}
+              </Text>
+            </TouchableOpacity>
+          );
+        })}
+      </View>
+
+      {chunkType === "body" && !loading && chunksAveraged > 0 ? (
+        <Text style={[styles.statusText, styles.chunksAveragedText]}>
+          Averaged across {chunksAveraged} chunk
+          {chunksAveraged === 1 ? "" : "s"}
+        </Text>
+      ) : null}
 
       {error ? <Text style={styles.errorText}>{error}</Text> : null}
 
@@ -211,6 +247,37 @@ function makeStyles(
     statusText: {
       fontSize: fontSizes.body,
       color: palette.muted,
+    },
+    chunkTypeRow: {
+      flexDirection: "row",
+      gap: spacing.xs,
+      paddingHorizontal: spacing.m,
+      paddingTop: spacing.s,
+    },
+    chunkTypeOption: {
+      flex: 1,
+      paddingVertical: spacing.xs,
+      borderRadius: 8,
+      borderWidth: 1,
+      borderColor: palette.border,
+      alignItems: "center",
+    },
+    chunkTypeOptionSelected: {
+      backgroundColor: palette.foregroundLight,
+      borderColor: palette.foregroundLight,
+    },
+    chunkTypeOptionText: {
+      fontSize: fontSizes.small,
+      color: palette.foreground,
+      fontWeight: fontWeights.medium,
+    },
+    chunkTypeOptionTextSelected: {
+      color: palette.background,
+    },
+    chunksAveragedText: {
+      paddingHorizontal: spacing.m,
+      paddingTop: spacing.xs,
+      fontSize: fontSizes.small,
     },
     errorText: {
       color: palette.favHeartRed,

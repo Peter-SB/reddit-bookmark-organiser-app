@@ -193,6 +193,21 @@ export class DatabaseService {
         createdAt   TEXT    NOT NULL DEFAULT CURRENT_TIMESTAMP,
         updatedAt   TEXT    NOT NULL DEFAULT CURRENT_TIMESTAMP
       );
+
+      CREATE TABLE IF NOT EXISTS semantic_search_history (
+        id          INTEGER PRIMARY KEY AUTOINCREMENT,
+        query       TEXT    NOT NULL,
+        chunk_type  TEXT    NOT NULL,
+        k           INTEGER NOT NULL,
+        library_id  TEXT    NOT NULL,
+        status      TEXT    NOT NULL DEFAULT 'pending',
+        results     TEXT,
+        error       TEXT,
+        created_at  TEXT    NOT NULL DEFAULT CURRENT_TIMESTAMP,
+        updated_at  TEXT    NOT NULL DEFAULT CURRENT_TIMESTAMP
+      );
+
+      CREATE INDEX IF NOT EXISTS idx_semantic_search_history_created_at ON semantic_search_history(created_at DESC);
     `);
 
     // Migration: add minHash column if it doesn't exist

@@ -1,9 +1,10 @@
 import { spacing } from "@/constants/spacing";
 import { fontWeights } from "@/constants/typography";
 import {
-  DEFAULT_SYNC_TABLE,
+  DEFAULT_LIBRARY_ID,
+  LIBRARY_ID_PATTERN,
+  SYNC_LIBRARY_ID_KEY,
   SYNC_SERVER_URL_KEY,
-  SYNC_TABLE_NAME_KEY,
 } from "@/constants/sync";
 import { usePostSync } from "@/hooks/usePostSync";
 import { SettingsRepository } from "@/repository/SettingsRepository";
@@ -27,7 +28,7 @@ export default function SettingsSyncConfiguration() {
     [palette, fontSizes],
   );
   const [serverUrl, setServerUrl] = useState("");
-  const [tableName, setTableName] = useState(DEFAULT_SYNC_TABLE);
+  const [libraryId, setLibraryId] = useState(DEFAULT_LIBRARY_ID);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [statusMessage, setStatusMessage] = useState<string | null>(null);
@@ -41,12 +42,12 @@ export default function SettingsSyncConfiguration() {
       try {
         const settings = await SettingsRepository.getSettings([
           SYNC_SERVER_URL_KEY,
-          SYNC_TABLE_NAME_KEY,
+          SYNC_LIBRARY_ID_KEY,
         ]);
         if (settings[SYNC_SERVER_URL_KEY])
           setServerUrl(settings[SYNC_SERVER_URL_KEY]);
-        if (settings[SYNC_TABLE_NAME_KEY])
-          setTableName(settings[SYNC_TABLE_NAME_KEY]);
+        if (settings[SYNC_LIBRARY_ID_KEY])
+          setLibraryId(settings[SYNC_LIBRARY_ID_KEY]);
       } catch (err) {
         console.warn("Failed to load sync settings:", err);
       } finally {
@@ -56,16 +57,23 @@ export default function SettingsSyncConfiguration() {
   }, []);
 
   const save = async () => {
+    const normalisedLibraryId = libraryId.trim() || DEFAULT_LIBRARY_ID;
+    if (!LIBRARY_ID_PATTERN.test(normalisedLibraryId)) {
+      Alert.alert(
+        "Invalid Library ID",
+        "Library ID must start with a lowercase letter and contain only lowercase letters, digits, and underscores.",
+      );
+      return;
+    }
+
     setSaving(true);
     setStatusMessage(null);
     try {
       await Promise.all([
         SettingsRepository.setSetting(SYNC_SERVER_URL_KEY, serverUrl.trim()),
-        SettingsRepository.setSetting(
-          SYNC_TABLE_NAME_KEY,
-          tableName.trim() || DEFAULT_SYNC_TABLE,
-        ),
+        SettingsRepository.setSetting(SYNC_LIBRARY_ID_KEY, normalisedLibraryId),
       ]);
+      setLibraryId(normalisedLibraryId);
       setStatusMessage("Sync settings saved.");
     } catch (err) {
       console.error("Failed to save sync settings:", err);
@@ -152,12 +160,12 @@ export default function SettingsSyncConfiguration() {
         autoCorrect={false}
       />
 
-      <Text style={styles.label}>Table Name</Text>
+      <Text style={styles.label}>Library ID</Text>
       <TextInput
         style={styles.input}
-        value={tableName}
-        onChangeText={setTableName}
-        placeholder={DEFAULT_SYNC_TABLE}
+        value={libraryId}
+        onChangeText={setLibraryId}
+        placeholder={DEFAULT_LIBRARY_ID}
         autoCapitalize="none"
         autoCorrect={false}
       />

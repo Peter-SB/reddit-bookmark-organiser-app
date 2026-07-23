@@ -1,7 +1,9 @@
 import {
-  DEFAULT_SYNC_TABLE,
+  DEFAULT_LIBRARY_ID,
+  SYNC_LIBRARY_ID_KEY,
   SYNC_SERVER_URL_KEY,
-  SYNC_TABLE_NAME_KEY,
+  FORCE_EXPORT_BATCH_SIZE,
+  FORCE_EXPORT_CONCURRENCY,
 } from '@/constants/sync';
 import { Post } from '@/models/models';
 import { PostRepository } from '@/repository/PostRepository';
@@ -9,12 +11,16 @@ import { SettingsRepository } from '@/repository/SettingsRepository';
 import { parseDbDate } from '@/utils/datetimeUtils';
 
 const DEFAULT_SYNC_BATCH_SIZE = 10;
+// Caps how many batches are in flight at once so a large sync (e.g. thousands of
+// posts on a force resync) doesn't fire hundreds of concurrent requests and
+// overwhelm the server.
+const DEFAULT_SYNC_CONCURRENCY = 4;
 
 // todo: better error handeling and logging. Better ui for displaying when failed/successs
 
 export type SyncSettings = {
   serverUrl: string;
-  tableName: string;
+  libraryId: string;
 };
 
 export type SyncResult = {
@@ -42,7 +48,7 @@ export class PostSyncService {
   private async loadSettings(): Promise<SyncSettings | null> {
     const settings = await SettingsRepository.getSettings([
       SYNC_SERVER_URL_KEY,
-      SYNC_TABLE_NAME_KEY,
+      SYNC_LIBRARY_ID_KEY,
     ]);
 
     const serverUrl = (settings[SYNC_SERVER_URL_KEY] || '').trim();
@@ -51,11 +57,11 @@ export class PostSyncService {
       return null;
     }
 
-    const tableName = (settings[SYNC_TABLE_NAME_KEY] || DEFAULT_SYNC_TABLE).trim() || DEFAULT_SYNC_TABLE;
+    const libraryId = (settings[SYNC_LIBRARY_ID_KEY] || DEFAULT_LIBRARY_ID).trim() || DEFAULT_LIBRARY_ID;
 
     return {
       serverUrl: this.normaliseServerUrl(serverUrl),
-      tableName,
+      libraryId,
     };
   }
 
@@ -88,27 +94,34 @@ export class PostSyncService {
     };
   }
 
-  private buildPayload(posts: Post[], config: SyncSettings, forceEmbed: boolean) {
+  private buildPayload(posts: Post[], config: SyncSettings) {
     const payload: any = {
       posts: posts.map((p) => this.mapPostToPayload(p)),
-      table_name: config.tableName,
-      force_embed: Boolean(forceEmbed),
+      library_id: config.libraryId,
     };
     return payload;
   }
 
   private buildEndpoint(baseUrl: string) {
-    return `${baseUrl}/sync`;
+    return `${baseUrl}/posts/sync`;
   }
 
-  private mapResponseResults(rawResults: any[]): SyncResult[] {
-    return rawResults.map((r) => ({
-      postId: r.post_id ?? r.postId ?? null,
-      status: r.status ?? (r.success ? 'synced' : 'failed'),
-      success: Boolean(r.success),
-      updatedAt: r.updated_at ?? r.updatedAt,
-      error: r.error ?? null,
-    }));
+  // The sync response no longer echoes back updated_at, so on success we treat the
+  // post's own updatedAt (the value just pushed to the server) as the new syncedAt.
+  private mapResponseResults(rawResults: any[], posts: Post[]): SyncResult[] {
+    const postsById = new Map(posts.map((p) => [p.id, p]));
+    return rawResults.map((r) => {
+      const postId = r.post_id ?? r.postId ?? null;
+      const success = Boolean(r.success);
+      const post = postId != null ? postsById.get(postId) : undefined;
+      return {
+        postId,
+        status: r.status ?? (success ? 'synced' : 'failed'),
+        success,
+        updatedAt: success && post?.updatedAt ? new Date(post.updatedAt).toISOString() : undefined,
+        error: r.error ?? null,
+      };
+    });
   }
 
   private async persistResults(results: SyncResult[], posts: Post[]): Promise<void> {
@@ -131,13 +144,13 @@ export class PostSyncService {
     }
   }
 
-  private async syncPosts(posts: Post[], settingsOverride?: SyncSettings, forceEmbed: boolean = false): Promise<SyncResult[]> {
+  private async syncPosts(posts: Post[], settingsOverride?: SyncSettings): Promise<SyncResult[]> {
     if (posts.length === 0) return [];
     const config = settingsOverride ?? (await this.loadSettings());
     if (!config) throw new Error('Sync settings not configured');
 
     const endpoint = this.buildEndpoint(config.serverUrl);
-    const payload = this.buildPayload(posts, config, forceEmbed);
+    const payload = this.buildPayload(posts, config);
     let results: SyncResult[] = [];
 
     try {
@@ -160,7 +173,7 @@ export class PostSyncService {
       }
 
       if (Array.isArray(data?.results) && data.results.length > 0) {
-        results = this.mapResponseResults(data.results);
+        results = this.mapResponseResults(data.results, posts);
       } else {
         results = posts.map((p) => ({
           postId: p.id,
@@ -183,19 +196,33 @@ export class PostSyncService {
     return results;
   }
 
+  // Splits posts into DEFAULT_SYNC_BATCH_SIZE-sized requests and runs at most
+  // DEFAULT_SYNC_CONCURRENCY of them at once, rather than firing every batch
+  // in parallel or sending everything in a single oversized request.
+  private async syncInBatches(posts: Post[]): Promise<SyncResult[]> {
+    if (posts.length <= DEFAULT_SYNC_BATCH_SIZE) {
+      return this.syncPosts(posts);
+    }
+
+    const chunks: Post[][] = [];
+    for (let i = 0; i < posts.length; i += DEFAULT_SYNC_BATCH_SIZE) {
+      chunks.push(posts.slice(i, i + DEFAULT_SYNC_BATCH_SIZE));
+    }
+
+    const results: SyncResult[] = [];
+    for (let i = 0; i < chunks.length; i += DEFAULT_SYNC_CONCURRENCY) {
+      const window = chunks.slice(i, i + DEFAULT_SYNC_CONCURRENCY);
+      const windowResults = await Promise.all(
+        window.map((chunk) => this.syncPosts(chunk))
+      );
+      results.push(...windowResults.flat());
+    }
+    return results;
+  }
+
   public async syncPendingPosts(): Promise<SyncResult[]> {
     const pending = await this.repo.getPendingSyncPosts();
-    if (pending.length <= DEFAULT_SYNC_BATCH_SIZE) {
-      return this.syncPosts(pending);
-    }
-
-    const batches: Promise<SyncResult[]>[] = [];
-    for (let i = 0; i < pending.length; i += DEFAULT_SYNC_BATCH_SIZE) {
-      batches.push(this.syncPosts(pending.slice(i, i + DEFAULT_SYNC_BATCH_SIZE)));
-    }
-
-    const results = await Promise.all(batches);
-    return results.flat();
+    return this.syncInBatches(pending);
   }
 
   public async syncSinglePost(postId: number): Promise<SyncResult[]> {
@@ -204,9 +231,54 @@ export class PostSyncService {
     return this.syncPosts([post]);
   }
 
+  // Syncs all posts in the database regardless of sync state, using pagination to work with
+  // very large databases without loading all posts into memory at once.
+  // Respects FORCE_EXPORT_CONCURRENCY to avoid overwhelming the server.
   public async forceResyncAllPosts(): Promise<SyncResult[]> {
     await this.repo.resetSyncStateForAll();
-    const pending = await this.repo.getPendingSyncPosts();
-    return this.syncPosts(pending, undefined, true);
+    const allResults: SyncResult[] = [];
+    let offset = 0;
+
+    while (true) {
+      const posts = await this.repo.getAllPostsPaginated(FORCE_EXPORT_BATCH_SIZE, offset);
+      if (posts.length === 0) break;
+
+      // Sync this page's posts with respecting the force export concurrency limit
+      const pageResults = await this.syncInBatchesWithConcurrency(
+        posts,
+        FORCE_EXPORT_BATCH_SIZE,
+        FORCE_EXPORT_CONCURRENCY
+      );
+      allResults.push(...pageResults);
+      offset += FORCE_EXPORT_BATCH_SIZE;
+    }
+
+    return allResults;
+  }
+
+  // Splits posts into batches and syncs them with a configurable concurrency limit.
+  private async syncInBatchesWithConcurrency(
+    posts: Post[],
+    batchSize: number,
+    concurrency: number
+  ): Promise<SyncResult[]> {
+    if (posts.length <= batchSize) {
+      return this.syncPosts(posts);
+    }
+
+    const chunks: Post[][] = [];
+    for (let i = 0; i < posts.length; i += batchSize) {
+      chunks.push(posts.slice(i, i + batchSize));
+    }
+
+    const results: SyncResult[] = [];
+    for (let i = 0; i < chunks.length; i += concurrency) {
+      const window = chunks.slice(i, i + concurrency);
+      const windowResults = await Promise.all(
+        window.map((chunk) => this.syncPosts(chunk))
+      );
+      results.push(...windowResults.flat());
+    }
+    return results;
   }
 }
