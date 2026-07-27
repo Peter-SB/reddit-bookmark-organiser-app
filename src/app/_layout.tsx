@@ -105,11 +105,18 @@ function AppContent() {
         <Stack.Screen name="highlights" options={{ headerShown: false }} />
         <Stack.Screen name="settings" options={{ headerShown: false }} />
         <Stack.Screen name="semantic-search" options={{ headerShown: false }} />
+        <Stack.Screen
+          name="semantic-search/index"
+          options={{ headerShown: false }}
+        />
+        <Stack.Screen
+          name="semantic-search/[id]"
+          options={{ headerShown: false }}
+        />
         <Stack.Screen name="similar/[id]" options={{ headerShown: false }} />
         <Stack.Screen name="author/[author]" options={{ headerShown: false }} />
         <Stack.Screen name="author/import" options={{ headerShown: false }} />
         <Stack.Screen name="author/authors" options={{ headerShown: false }} />
-        <Stack.Screen name="" options={{ headerShown: false }} />
         <Stack.Screen
           name="subreddit/subreddits"
           options={{ headerShown: false }}

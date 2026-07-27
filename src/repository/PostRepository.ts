@@ -675,7 +675,7 @@ export class PostRepository {
     for (const row of rows) {
       if (row.bodyMinHash) {
         const similarity = MinHashService.similarity(inputHash, JSON.parse(row.bodyMinHash));
-        console.debug(`Comparing with post ${row.id}: similarity = ${similarity}`);
+        // console.debug(`Comparing with post ${row.id}: similarity = ${similarity}`);
         if (similarity >= threshold) {
           similarIds.push(row.id);
         }

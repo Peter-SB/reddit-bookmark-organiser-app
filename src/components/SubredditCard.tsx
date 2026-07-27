@@ -55,6 +55,9 @@ export const SubredditCard: React.FC<SubredditCardProps> = ({
         <Text style={styles.name} numberOfLines={1}>
           r/{subreddit.name}
         </Text>
+        {!subreddit.isEnabledForSearch && (
+          <Text style={styles.excludedBadge}>excluded</Text>
+        )}
       </View>
       <Icon name="chevron-right" size={22} color={palette.muted} />
     </TouchableOpacity>
@@ -86,6 +89,15 @@ function makeStyles(
       fontWeight: fontWeights.semibold,
       color: palette.foreground,
       flexShrink: 1,
+    },
+    excludedBadge: {
+      fontSize: fontSizes.small * 0.85,
+      color: palette.muted,
+      borderWidth: 1,
+      borderColor: palette.border,
+      borderRadius: 4,
+      paddingHorizontal: 4,
+      paddingVertical: 1,
     },
   });
 }

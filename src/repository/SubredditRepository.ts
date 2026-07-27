@@ -6,6 +6,7 @@ import { DatabaseService } from '../services/DatabaseService';
 type SubredditRow = {
   name: string;
   isFavorite: number;
+  isEnabledForSearch: number;
   rating: number | null;
   notes: string | null;
   createdAt: string;
@@ -23,6 +24,7 @@ export class SubredditRepository {
     return {
       name: row.name,
       isFavorite: row.isFavorite === 1,
+      isEnabledForSearch: row.isEnabledForSearch === 1,
       rating: row.rating ?? null,
       notes: row.notes ?? null,
       createdAt: new Date(row.createdAt),
@@ -57,8 +59,8 @@ export class SubredditRepository {
   public async add(name: string): Promise<Subreddit> {
     const now = new Date().toISOString();
     await this.db.runAsync(
-      `INSERT OR IGNORE INTO subreddits (name, isFavorite, rating, notes, createdAt, updatedAt)
-       VALUES (?, 0, NULL, NULL, ?, ?)`,
+      `INSERT OR IGNORE INTO subreddits (name, isFavorite, isEnabledForSearch, rating, notes, createdAt, updatedAt)
+       VALUES (?, 0, 1, NULL, NULL, ?, ?)`,
       name,
       now,
       now,
@@ -80,7 +82,9 @@ export class SubredditRepository {
    */
   public async upsert(
     name: string,
-    patch: Partial<Pick<Subreddit, 'isFavorite' | 'rating' | 'notes'>>,
+    patch: Partial<
+      Pick<Subreddit, 'isFavorite' | 'isEnabledForSearch' | 'rating' | 'notes'>
+    >,
   ): Promise<Subreddit> {
     const now = new Date().toISOString();
 
@@ -89,6 +93,10 @@ export class SubredditRepository {
     if (existing) {
       const newIsFavorite =
         patch.isFavorite !== undefined ? patch.isFavorite : existing.isFavorite;
+      const newIsEnabledForSearch =
+        patch.isEnabledForSearch !== undefined
+          ? patch.isEnabledForSearch
+          : existing.isEnabledForSearch;
       const newRating =
         patch.rating !== undefined ? patch.rating : existing.rating;
       const newNotes =
@@ -96,9 +104,10 @@ export class SubredditRepository {
 
       await this.db.runAsync(
         `UPDATE subreddits
-         SET isFavorite = ?, rating = ?, notes = ?, updatedAt = ?
+         SET isFavorite = ?, isEnabledForSearch = ?, rating = ?, notes = ?, updatedAt = ?
          WHERE name = ? COLLATE NOCASE`,
         newIsFavorite ? 1 : 0,
+        newIsEnabledForSearch ? 1 : 0,
         newRating ?? null,
         newNotes ?? null,
         now,
@@ -106,14 +115,16 @@ export class SubredditRepository {
       );
     } else {
       const isFavorite = patch.isFavorite ?? false;
+      const isEnabledForSearch = patch.isEnabledForSearch ?? true;
       const rating = patch.rating ?? null;
       const notes = patch.notes ?? null;
 
       await this.db.runAsync(
-        `INSERT INTO subreddits (name, isFavorite, rating, notes, createdAt, updatedAt)
-         VALUES (?, ?, ?, ?, ?, ?)`,
+        `INSERT INTO subreddits (name, isFavorite, isEnabledForSearch, rating, notes, createdAt, updatedAt)
+         VALUES (?, ?, ?, ?, ?, ?, ?)`,
         name,
         isFavorite ? 1 : 0,
+        isEnabledForSearch ? 1 : 0,
         rating,
         notes,
         now,
@@ -128,6 +139,10 @@ export class SubredditRepository {
     const existing = await this.getByName(name);
     const newVal = existing ? !existing.isFavorite : true;
     return this.upsert(name, { isFavorite: newVal });
+  }
+
+  public async setEnabledForSearch(name: string, enabled: boolean): Promise<Subreddit> {
+    return this.upsert(name, { isEnabledForSearch: enabled });
   }
 
   public async setRating(name: string, rating: number | null): Promise<Subreddit> {

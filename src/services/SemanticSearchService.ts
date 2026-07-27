@@ -97,7 +97,8 @@ export class SemanticSearchService {
   }
 
   static async search(
-    params: SemanticSearchParams
+    params: SemanticSearchParams,
+    onStatusUpdate?: (status: string) => void
   ): Promise<SemanticSearchResponse> {
     const q = params.query.trim();
     if (!q) throw new Error("Enter a search query to continue.");
@@ -143,7 +144,7 @@ export class SemanticSearchService {
       throw new Error("Search failed: server did not return a job id.");
     }
 
-    const job = await this.pollSearchJob(baseUrl, jobId);
+    const job = await this.pollSearchJob(baseUrl, jobId, onStatusUpdate);
     const rawResults: any[] = Array.isArray(job?.results) ? job.results : [];
 
     return {
@@ -154,7 +155,11 @@ export class SemanticSearchService {
     };
   }
 
-  private static async pollSearchJob(baseUrl: string, jobId: string): Promise<any> {
+  private static async pollSearchJob(
+    baseUrl: string,
+    jobId: string,
+    onStatusUpdate?: (status: string) => void
+  ): Promise<any> {
     const deadline = Date.now() + SEARCH_POLL_TIMEOUT_MS;
 
     while (Date.now() < deadline) {
@@ -178,6 +183,12 @@ export class SemanticSearchService {
         throw new Error(`Search polling failed (${response.status}): ${detail}`);
       }
 
+      const status = data?.status;
+      if (status && onStatusUpdate) {
+        const statusLabel = this.getStatusLabel(status);
+        onStatusUpdate(statusLabel);
+      }
+
       if (data?.status === "complete") return data;
       if (data?.status === "failed") {
         throw new Error(data?.error || "Search job failed.");
@@ -187,6 +198,21 @@ export class SemanticSearchService {
     }
 
     throw new Error("Search timed out waiting for results.");
+  }
+
+  private static getStatusLabel(status: string): string {
+    switch (status) {
+      case "embedding":
+        return "Embedding...";
+      case "searching":
+        return "Searching...";
+      case "complete":
+        return "Complete";
+      case "failed":
+        return "Failed";
+      default:
+        return status;
+    }
   }
 
   static async similar(

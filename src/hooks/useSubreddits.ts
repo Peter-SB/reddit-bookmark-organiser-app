@@ -32,6 +32,7 @@ export function useSubreddits(options: UseSubredditsOptions = {}): {
   refresh: () => Promise<void>;
   addSubreddit: (url: string) => Promise<AddSubredditResult>;
   removeSubreddit: (name: string) => Promise<void>;
+  setEnabledForSearch: (name: string, enabled: boolean) => Promise<void>;
 } {
   const [subreddits, setSubreddits] = useState<Subreddit[]>([]);
   const [loading, setLoading] = useState(true);
@@ -98,5 +99,18 @@ export function useSubreddits(options: UseSubredditsOptions = {}): {
     notifySubredditsChange();
   }, []);
 
-  return { subreddits, loading, refresh: load, addSubreddit, removeSubreddit };
+  const setEnabledForSearch = useCallback(async (name: string, enabled: boolean) => {
+    const repo = await SubredditRepository.create();
+    await repo.setEnabledForSearch(name, enabled);
+    notifySubredditsChange();
+  }, []);
+
+  return {
+    subreddits,
+    loading,
+    refresh: load,
+    addSubreddit,
+    removeSubreddit,
+    setEnabledForSearch,
+  };
 }

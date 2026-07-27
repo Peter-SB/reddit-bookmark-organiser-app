@@ -6,6 +6,7 @@ import {
   KeyboardAvoidingView,
   Modal,
   Platform,
+  RefreshControl,
   StyleSheet,
   Text,
   TextInput,
@@ -43,7 +44,8 @@ export default function SemanticSearchHistoryScreen() {
     [palette, fontSizes],
   );
   const router = useRouter();
-  const { entries, loading, startSearch, deleteEntry } = useSearchHistory();
+  const { entries, loading, refresh, startSearch, deleteEntry } =
+    useSearchHistory();
 
   const [query, setQuery] = useState("");
   const [kInput, setKInput] = useState(String(DEFAULT_SEARCH_RESULTS));
@@ -51,6 +53,7 @@ export default function SemanticSearchHistoryScreen() {
   const [modalVisible, setModalVisible] = useState(false);
   const [starting, setStarting] = useState(false);
   const [formError, setFormError] = useState<string | null>(null);
+  const [isRefreshing, setIsRefreshing] = useState(false);
 
   const handleSearch = useCallback(async () => {
     const trimmed = query.trim();
@@ -95,13 +98,32 @@ export default function SemanticSearchHistoryScreen() {
     [deleteEntry],
   );
 
+  const handleRefresh = useCallback(async () => {
+    setIsRefreshing(true);
+    try {
+      await refresh();
+    } finally {
+      setIsRefreshing(false);
+    }
+  }, [refresh]);
+
   const renderEntry = ({ item }: { item: SearchHistoryEntry }) => {
+    const getStatusLabel = () => {
+      if (item.status === "pending") {
+        return item.pollStatus || "Processing...";
+      }
+      if (item.status === "error") {
+        return item.error || "Search failed";
+      }
+      return `${item.results.length} result${item.results.length === 1 ? "" : "s"}`;
+    };
+
     const statusNode =
       item.status === "pending" ? (
         <View style={styles.statusBadgeRow}>
           <ActivityIndicator size="small" color={palette.accent} />
           <Text style={[styles.statusBadgeText, { marginLeft: spacing.xs }]}>
-            Searching...
+            {getStatusLabel()}
           </Text>
         </View>
       ) : item.status === "error" ? (
@@ -114,12 +136,12 @@ export default function SemanticSearchHistoryScreen() {
             ]}
             numberOfLines={1}
           >
-            {item.error || "Search failed"}
+            {getStatusLabel()}
           </Text>
         </View>
       ) : (
         <Text style={styles.statusBadgeText}>
-          {item.results.length} result{item.results.length === 1 ? "" : "s"}
+          {getStatusLabel()}
         </Text>
       );
 
@@ -151,10 +173,7 @@ export default function SemanticSearchHistoryScreen() {
 
   return (
     <SafeAreaView style={styles.container}>
-      <View style={styles.header}>
-        <TouchableOpacity onPress={() => router.replace("/")}>
-          <Icon name="arrow-back" size={26} color={palette.foreground} />
-        </TouchableOpacity>
+      <View style={styles.headerBar}>
         <Text style={styles.headerTitle}>Semantic Search</Text>
         <TouchableOpacity
           onPress={() => setModalVisible(true)}
@@ -180,6 +199,13 @@ export default function SemanticSearchHistoryScreen() {
               </Text>
             </View>
           ) : null
+        }
+        refreshControl={
+          <RefreshControl
+            refreshing={isRefreshing}
+            onRefresh={handleRefresh}
+            tintColor={palette.accent}
+          />
         }
       />
 
@@ -283,20 +309,18 @@ function makeStyles(
       flex: 1,
       backgroundColor: palette.background,
     },
-    header: {
+    headerBar: {
       flexDirection: "row",
       alignItems: "center",
       justifyContent: "space-between",
       paddingHorizontal: spacing.m,
-      paddingVertical: spacing.s,
-      borderBottomWidth: 1,
-      borderBottomColor: palette.border,
-      backgroundColor: palette.background,
+      paddingVertical: spacing.m,
     },
     headerTitle: {
       fontSize: fontSizes.large,
       fontWeight: fontWeights.semibold,
       color: palette.foreground,
+      flex: 1,
     },
     headerIconButton: {
       padding: spacing.xs,

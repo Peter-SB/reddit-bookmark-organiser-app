@@ -96,6 +96,16 @@ const SCHEMA_SQL = `
 
   CREATE INDEX IF NOT EXISTS idx_place_markers_updated_at ON place_markers(updated_at DESC);
 
+  CREATE TABLE IF NOT EXISTS subreddits (
+    name               TEXT    PRIMARY KEY COLLATE NOCASE,
+    isFavorite         INTEGER NOT NULL DEFAULT 0,
+    isEnabledForSearch INTEGER NOT NULL DEFAULT 1,
+    rating             REAL,
+    notes              TEXT,
+    createdAt          TEXT    NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updatedAt          TEXT    NOT NULL DEFAULT CURRENT_TIMESTAMP
+  );
+
   CREATE TABLE IF NOT EXISTS semantic_search_history (
     id          INTEGER PRIMARY KEY AUTOINCREMENT,
     query       TEXT    NOT NULL,

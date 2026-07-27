@@ -16,6 +16,7 @@ export type SearchHistoryEntry = {
   status: SearchHistoryStatus;
   results: SemanticSearchResult[];
   error: string | null;
+  pollStatus?: string | null;
   createdAt: Date;
   updatedAt: Date;
 };
@@ -36,6 +37,7 @@ type SearchHistoryRow = {
   status: string;
   results: string | null;
   error: string | null;
+  poll_status: string | null;
   created_at: string;
   updated_at: string;
 };
@@ -66,6 +68,7 @@ export class SearchHistoryRepository {
       status: row.status as SearchHistoryStatus,
       results,
       error: row.error,
+      pollStatus: row.poll_status,
       createdAt: parseDbDate(row.created_at),
       updatedAt: parseDbDate(row.updated_at),
     };
@@ -110,6 +113,15 @@ export class SearchHistoryRepository {
        SET status = 'error', error = ?, updated_at = CURRENT_TIMESTAMP
        WHERE id = ?`,
       [error, id]
+    );
+  }
+
+  async updatePollStatus(id: number, pollStatus: string): Promise<void> {
+    await this.db.runAsync(
+      `UPDATE semantic_search_history
+       SET poll_status = ?, updated_at = CURRENT_TIMESTAMP
+       WHERE id = ?`,
+      [pollStatus, id]
     );
   }
 

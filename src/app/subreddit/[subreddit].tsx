@@ -14,6 +14,7 @@ import { usePosts } from "@/hooks/usePosts";
 import { usePostSync } from "@/hooks/usePostSync";
 import { useRedditApi } from "@/hooks/useRedditApi";
 import { openRedditSubreddit } from "@/utils/redditLinks";
+import { parseSubredditNames } from "@/utils/subredditNames";
 import * as Linking from "expo-linking";
 import { useFocusEffect, useLocalSearchParams, useRouter } from "expo-router";
 import React, { useCallback, useEffect, useMemo, useState } from "react";
@@ -55,6 +56,13 @@ export default function SubredditImportScreen() {
     }
   }, [subredditParam]);
 
+  /** "sub1+sub2+sub3" (Reddit's own multireddit syntax) means "Search All". */
+  const subredditNames = useMemo(
+    () => parseSubredditNames(subredditName),
+    [subredditName],
+  );
+  const isSearchAll = subredditNames.length > 1;
+
   const [sort, setSort] = useState<SubredditSort>("hot");
   const [timeRange, setTimeRange] = useState<SubredditTimeRange>("day");
 
@@ -87,14 +95,14 @@ export default function SubredditImportScreen() {
     return new Map(savedPosts.map((post) => [post.redditId, post]));
   }, [savedPosts]);
   const savedTitlesForSubreddit = useMemo(() => {
-    const target = subredditName.toLowerCase();
+    const targets = new Set(subredditNames.map((s) => s.toLowerCase()));
     const titles = new Set<string>();
     for (const post of savedPosts) {
-      if ((post.subreddit || "").toLowerCase() !== target) continue;
+      if (!targets.has((post.subreddit || "").toLowerCase())) continue;
       if (post.title) titles.add(post.title.trim().toLowerCase());
     }
     return titles;
-  }, [savedPosts, subredditName]);
+  }, [savedPosts, subredditNames]);
 
   const filteredRedditPosts = useMemo(() => {
     let posts = redditPosts;
@@ -125,7 +133,14 @@ export default function SubredditImportScreen() {
         loadMore();
       }
       refreshPosts();
-    }, [loadMore, redditPosts.length, loading, error, refreshPosts, subredditName]),
+    }, [
+      loadMore,
+      redditPosts.length,
+      loading,
+      error,
+      refreshPosts,
+      subredditName,
+    ]),
   );
 
   // Reload immediately when the sort/time-range filter changes
@@ -283,8 +298,24 @@ export default function SubredditImportScreen() {
             </Text>
           </View>
           <View style={styles.rowMetaActions}>
-            <View style={styles.leftMeta}>
-              <Text style={styles.metadataText}>u/{item.author}</Text>
+            <View
+              style={styles.leftMeta}
+              onStartShouldSetResponder={() => true}
+            >
+              <TouchableOpacity
+                onPress={() =>
+                  router.push(
+                    `/author/${encodeURIComponent(item.author)}` as any,
+                  )
+                }
+                hitSlop={{ top: 6, bottom: 6, left: 4, right: 4 }}
+              >
+                <Text style={styles.metadataText}>
+                  {isSearchAll
+                    ? `r/${item.subreddit} • u/${item.author}`
+                    : `u/${item.author}`}
+                </Text>
+              </TouchableOpacity>
               {publishedDate ? (
                 <>
                   <Text style={styles.separator}>•</Text>
@@ -352,6 +383,7 @@ export default function SubredditImportScreen() {
       formatPostDate,
       savedPostByRedditId,
       savedTitlesForSubreddit,
+      isSearchAll,
       router,
       handleAddPost,
       handleAddArchived,
@@ -419,7 +451,9 @@ export default function SubredditImportScreen() {
           <Icon name="arrow-back" size={26} color={palette.foreground} />
         </TouchableOpacity>
         <Text style={styles.headerTitle} numberOfLines={1}>
-          {subredditName ? (
+          {isSearchAll ? (
+            `Search All (${subredditNames.length})`
+          ) : subredditName ? (
             <Text
               style={styles.headerLink}
               onPress={() => openRedditSubreddit(subredditName)}

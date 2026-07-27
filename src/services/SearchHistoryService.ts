@@ -24,7 +24,9 @@ export class SearchHistoryService {
       libraryId,
     });
 
-    SemanticSearchService.search(params)
+    SemanticSearchService.search(params, async (status) => {
+      await repo.updatePollStatus(id, status);
+    })
       .then((res) => repo.markComplete(id, res.results))
       .catch((err: any) => repo.markError(id, err?.message || "Search failed"));
 

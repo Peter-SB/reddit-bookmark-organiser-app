@@ -1,12 +1,14 @@
 import { InputBar } from "@/components/InputBar";
 import { SearchBar } from "@/components/SearchBar";
 import { SubredditCard } from "@/components/SubredditCard";
+import { SubredditSearchAllFilterModal } from "@/components/SubredditSearchAllFilterModal";
 import { spacing } from "@/constants/spacing";
 import { fontWeights } from "@/constants/typography";
 import { useTheme } from "@/contexts/ThemeContext";
 import type { ThemeContextValue } from "@/contexts/ThemeContext";
 import { useSubreddits } from "@/hooks/useSubreddits";
 import { Subreddit } from "@/models/Subreddit";
+import { joinSubredditNames } from "@/utils/subredditNames";
 import { useFocusEffect, useRouter } from "expo-router";
 import React, { useCallback, useEffect, useState, useMemo } from "react";
 import {
@@ -36,6 +38,9 @@ export default function SubredditsScreen() {
 
   const { subreddits, loading, refresh, addSubreddit, removeSubreddit } =
     useSubreddits({ search });
+  // Unfiltered list — Search All / the include-filter always operate on every
+  // added subreddit, independent of what's currently typed into the search box.
+  const { subreddits: allSubreddits, setEnabledForSearch } = useSubreddits();
 
   useEffect(() => {
     if (!loading) setHasLoaded(true);
@@ -92,6 +97,42 @@ export default function SubredditsScreen() {
 
   const totalSubreddits = subreddits.length;
 
+  const enabledSubredditNames = useMemo(
+    () => allSubreddits.filter((s) => s.isEnabledForSearch).map((s) => s.name),
+    [allSubreddits],
+  );
+
+  const handleSearchAll = useCallback(() => {
+    if (enabledSubredditNames.length === 0) {
+      Alert.alert(
+        "No subreddits selected",
+        "Use the filter button to include at least one subreddit in Search All.",
+      );
+      return;
+    }
+    router.push(
+      `/subreddit/${encodeURIComponent(joinSubredditNames(enabledSubredditNames))}` as any,
+    );
+  }, [enabledSubredditNames, router]);
+
+  const handleToggleEnabledForSearch = useCallback(
+    (name: string, enabled: boolean) => {
+      setEnabledForSearch(name, enabled);
+    },
+    [setEnabledForSearch],
+  );
+
+  const handleSetAllEnabledForSearch = useCallback(
+    (enabled: boolean) => {
+      for (const s of allSubreddits) {
+        if (s.isEnabledForSearch !== enabled) {
+          setEnabledForSearch(s.name, enabled);
+        }
+      }
+    },
+    [allSubreddits, setEnabledForSearch],
+  );
+
   return (
     <SafeAreaView style={styles.container}>
       {/* Header */}
@@ -106,6 +147,28 @@ export default function SubredditsScreen() {
           )}
         </Text>
         <View style={{ width: 26 }} />
+      </View>
+
+      {/* Search All */}
+      <View style={styles.searchAllRow}>
+        <TouchableOpacity
+          style={styles.searchAllButton}
+          onPress={handleSearchAll}
+          accessibilityLabel="Search all included subreddits"
+        >
+          <Icon name="dynamic-feed" size={18} color={palette.foreground} />
+          <Text style={styles.searchAllButtonText}>
+            Search All
+            {enabledSubredditNames.length > 0
+              ? ` (${enabledSubredditNames.length})`
+              : ""}
+          </Text>
+        </TouchableOpacity>
+        <SubredditSearchAllFilterModal
+          subreddits={allSubreddits}
+          onToggle={handleToggleEnabledForSearch}
+          onSetAll={handleSetAllEnabledForSearch}
+        />
       </View>
 
       {/* Search */}
@@ -189,6 +252,27 @@ function makeStyles(
       fontSize: fontSizes.body,
       fontWeight: fontWeights.normal,
       color: palette.muted,
+    },
+    searchAllRow: {
+      flexDirection: "row",
+      alignItems: "center",
+      justifyContent: "space-between",
+      paddingHorizontal: spacing.m,
+      paddingTop: spacing.s,
+    },
+    searchAllButton: {
+      flexDirection: "row",
+      alignItems: "center",
+      gap: spacing.xs,
+      paddingVertical: spacing.xs,
+      paddingHorizontal: spacing.s,
+      borderRadius: 8,
+      backgroundColor: palette.backgroundMidLight,
+    },
+    searchAllButtonText: {
+      fontSize: fontSizes.body,
+      fontWeight: fontWeights.medium,
+      color: palette.foreground,
     },
     searchContainer: {
       paddingHorizontal: spacing.m,

@@ -18,6 +18,7 @@ function makeMockDb() {
 function makeRow(overrides: Partial<{
   name: string;
   isFavorite: number;
+  isEnabledForSearch: number;
   rating: number | null;
   notes: string | null;
   createdAt: string;
@@ -26,6 +27,7 @@ function makeRow(overrides: Partial<{
   return {
     name: 'memes',
     isFavorite: 0,
+    isEnabledForSearch: 1,
     rating: null,
     notes: null,
     createdAt: NOW,
@@ -58,6 +60,20 @@ describe('SubredditRepository', () => {
       expect(result!.isFavorite).toBe(false);
     });
 
+    it('maps isEnabledForSearch integer 1 to true', async () => {
+      const row = makeRow({ isEnabledForSearch: 1 });
+      const repo = makeRepo({ getFirstAsync: jest.fn().mockResolvedValue(row) });
+      const result = await repo.getByName('memes');
+      expect(result!.isEnabledForSearch).toBe(true);
+    });
+
+    it('maps isEnabledForSearch integer 0 to false', async () => {
+      const row = makeRow({ isEnabledForSearch: 0 });
+      const repo = makeRepo({ getFirstAsync: jest.fn().mockResolvedValue(row) });
+      const result = await repo.getByName('memes');
+      expect(result!.isEnabledForSearch).toBe(false);
+    });
+
     it('maps all fields correctly', async () => {
       const row = makeRow({ name: 'aww', isFavorite: 1, rating: 4.5, notes: 'wholesome' });
       const repo = makeRepo({ getFirstAsync: jest.fn().mockResolvedValue(row) });
@@ -65,6 +81,7 @@ describe('SubredditRepository', () => {
       expect(result).toMatchObject({
         name: 'aww',
         isFavorite: true,
+        isEnabledForSearch: true,
         rating: 4.5,
         notes: 'wholesome',
       });
@@ -109,7 +126,7 @@ describe('SubredditRepository', () => {
   // ─── add ────────────────────────────────────────────────────────────────
 
   describe('add', () => {
-    it('inserts the subreddit and returns it', async () => {
+    it('inserts the subreddit as enabled-for-search by default and returns it', async () => {
       const newRow = makeRow({ name: 'newsub' });
       const runAsync = jest.fn().mockResolvedValue({ lastInsertRowId: 1, changes: 1 });
       const getFirstAsync = jest.fn().mockResolvedValue(newRow);
@@ -124,6 +141,7 @@ describe('SubredditRepository', () => {
         expect.any(String),
       );
       expect(result.name).toBe('newsub');
+      expect(result.isEnabledForSearch).toBe(true);
     });
 
     it('is idempotent — INSERT OR IGNORE leaves an existing row unchanged', async () => {
@@ -171,6 +189,7 @@ describe('SubredditRepository', () => {
         expect.stringContaining('INSERT INTO subreddits'),
         'newsub',
         1,      // isFavorite true → 1
+        1,      // isEnabledForSearch defaults to true → 1
         null,   // rating
         null,   // notes
         expect.any(String),
@@ -179,7 +198,7 @@ describe('SubredditRepository', () => {
       expect(result.isFavorite).toBe(true);
     });
 
-    it('uses default false/null for unset fields on insert', async () => {
+    it('uses default false/true/null for unset fields on insert', async () => {
       const runAsync = jest.fn().mockResolvedValue({ lastInsertRowId: 1, changes: 1 });
       const newRow = makeRow({ name: 'sub2', rating: 4.0 });
       const getFirstAsync = jest.fn()
@@ -193,11 +212,35 @@ describe('SubredditRepository', () => {
         expect.stringContaining('INSERT INTO subreddits'),
         'sub2',
         0,    // isFavorite defaults to false → 0
+        1,    // isEnabledForSearch defaults to true → 1
         4.0,  // rating as provided
         null, // notes defaults to null
         expect.any(String),
         expect.any(String),
       );
+    });
+
+    it('respects an explicit isEnabledForSearch: false on insert', async () => {
+      const runAsync = jest.fn().mockResolvedValue({ lastInsertRowId: 1, changes: 1 });
+      const newRow = makeRow({ name: 'sub3', isEnabledForSearch: 0 });
+      const getFirstAsync = jest.fn()
+        .mockResolvedValueOnce(null)
+        .mockResolvedValueOnce(newRow);
+      const repo = makeRepo({ getFirstAsync, runAsync });
+
+      const result = await repo.upsert('sub3', { isEnabledForSearch: false });
+
+      expect(runAsync).toHaveBeenCalledWith(
+        expect.stringContaining('INSERT INTO subreddits'),
+        'sub3',
+        0,
+        0, // isEnabledForSearch explicitly false → 0
+        null,
+        null,
+        expect.any(String),
+        expect.any(String),
+      );
+      expect(result.isEnabledForSearch).toBe(false);
     });
   });
 
@@ -218,6 +261,7 @@ describe('SubredditRepository', () => {
       expect(runAsync).toHaveBeenCalledWith(
         expect.stringContaining('UPDATE subreddits'),
         0,      // isFavorite preserved (false → 0)
+        1,      // isEnabledForSearch preserved (true → 1)
         5.0,    // rating changed
         'nice', // notes preserved
         expect.any(String),
@@ -225,6 +269,29 @@ describe('SubredditRepository', () => {
       );
       expect(result.rating).toBe(5.0);
       expect(result.notes).toBe('nice');
+    });
+
+    it('preserves isEnabledForSearch=false when updating an unrelated field', async () => {
+      const existingRow = makeRow({ name: 'disabled', isEnabledForSearch: 0, rating: 3.0 });
+      const updatedRow = makeRow({ name: 'disabled', isEnabledForSearch: 0, rating: 5.0 });
+      const runAsync = jest.fn().mockResolvedValue({ lastInsertRowId: 0, changes: 1 });
+      const getFirstAsync = jest.fn()
+        .mockResolvedValueOnce(existingRow)
+        .mockResolvedValueOnce(updatedRow);
+      const repo = makeRepo({ getFirstAsync, runAsync });
+
+      const result = await repo.upsert('disabled', { rating: 5.0 });
+
+      expect(runAsync).toHaveBeenCalledWith(
+        expect.stringContaining('UPDATE subreddits'),
+        0,
+        0, // isEnabledForSearch preserved as false → 0
+        5.0,
+        null,
+        expect.any(String),
+        'disabled',
+      );
+      expect(result.isEnabledForSearch).toBe(false);
     });
   });
 
@@ -246,6 +313,7 @@ describe('SubredditRepository', () => {
         expect.stringContaining('INSERT INTO subreddits'),
         'sub1',
         1, // true → 1
+        1, // isEnabledForSearch defaults to true → 1
         null,
         null,
         expect.any(String),
@@ -269,12 +337,68 @@ describe('SubredditRepository', () => {
       expect(runAsync).toHaveBeenCalledWith(
         expect.stringContaining('UPDATE subreddits'),
         0, // flipped to false → 0
+        1, // isEnabledForSearch preserved (true → 1)
         null,
         null,
         expect.any(String),
         'sub2',
       );
       expect(result.isFavorite).toBe(false);
+    });
+  });
+
+  // ─── setEnabledForSearch ────────────────────────────────────────────────
+
+  describe('setEnabledForSearch', () => {
+    it('inserts an enabled subreddit when none exists', async () => {
+      const runAsync = jest.fn().mockResolvedValue({ lastInsertRowId: 1, changes: 1 });
+      const newRow = makeRow({ name: 'newsub', isEnabledForSearch: 1 });
+      const getFirstAsync = jest.fn()
+        .mockResolvedValueOnce(null)
+        .mockResolvedValueOnce(newRow);
+      const repo = makeRepo({ getFirstAsync, runAsync });
+
+      const result = await repo.setEnabledForSearch('newsub', true);
+
+      expect(result.isEnabledForSearch).toBe(true);
+    });
+
+    it('disables an existing subreddit without touching other fields', async () => {
+      const existingRow = makeRow({ name: 'memes', isFavorite: 1, rating: 4.5, isEnabledForSearch: 1 });
+      const disabledRow = makeRow({ name: 'memes', isFavorite: 1, rating: 4.5, isEnabledForSearch: 0 });
+      const runAsync = jest.fn().mockResolvedValue({ lastInsertRowId: 0, changes: 1 });
+      const getFirstAsync = jest.fn()
+        .mockResolvedValueOnce(existingRow)
+        .mockResolvedValueOnce(disabledRow);
+      const repo = makeRepo({ getFirstAsync, runAsync });
+
+      const result = await repo.setEnabledForSearch('memes', false);
+
+      expect(runAsync).toHaveBeenCalledWith(
+        expect.stringContaining('UPDATE subreddits'),
+        1,   // isFavorite preserved
+        0,   // isEnabledForSearch → false
+        4.5, // rating preserved
+        null,
+        expect.any(String),
+        'memes',
+      );
+      expect(result.isEnabledForSearch).toBe(false);
+      expect(result.isFavorite).toBe(true);
+    });
+
+    it('re-enables a previously disabled subreddit', async () => {
+      const existingRow = makeRow({ name: 'memes', isEnabledForSearch: 0 });
+      const enabledRow = makeRow({ name: 'memes', isEnabledForSearch: 1 });
+      const runAsync = jest.fn().mockResolvedValue({ lastInsertRowId: 0, changes: 1 });
+      const getFirstAsync = jest.fn()
+        .mockResolvedValueOnce(existingRow)
+        .mockResolvedValueOnce(enabledRow);
+      const repo = makeRepo({ getFirstAsync, runAsync });
+
+      const result = await repo.setEnabledForSearch('memes', true);
+
+      expect(result.isEnabledForSearch).toBe(true);
     });
   });
 

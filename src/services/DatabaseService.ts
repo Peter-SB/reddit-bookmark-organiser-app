@@ -186,12 +186,13 @@ export class DatabaseService {
       );
 
       CREATE TABLE IF NOT EXISTS subreddits (
-        name        TEXT    PRIMARY KEY COLLATE NOCASE,
-        isFavorite  INTEGER NOT NULL DEFAULT 0,
-        rating      REAL,
-        notes       TEXT,
-        createdAt   TEXT    NOT NULL DEFAULT CURRENT_TIMESTAMP,
-        updatedAt   TEXT    NOT NULL DEFAULT CURRENT_TIMESTAMP
+        name               TEXT    PRIMARY KEY COLLATE NOCASE,
+        isFavorite         INTEGER NOT NULL DEFAULT 0,
+        isEnabledForSearch INTEGER NOT NULL DEFAULT 1,
+        rating             REAL,
+        notes              TEXT,
+        createdAt          TEXT    NOT NULL DEFAULT CURRENT_TIMESTAMP,
+        updatedAt          TEXT    NOT NULL DEFAULT CURRENT_TIMESTAMP
       );
 
       CREATE TABLE IF NOT EXISTS semantic_search_history (
@@ -294,6 +295,28 @@ export class DatabaseService {
       );
       CREATE INDEX IF NOT EXISTS idx_place_markers_updated_at ON place_markers(updated_at DESC);
     `);
+    // Migration: add poll_status column to semantic_search_history if it doesn't exist
+    const searchHistoryColumns = await this.db.getAllAsync(
+      `PRAGMA table_info(semantic_search_history);`
+    );
+    const hasPollStatus = searchHistoryColumns.some(
+      (col: any) => col.name === 'poll_status'
+    );
+    if (!hasPollStatus) {
+      await this.db.execAsync(
+        `ALTER TABLE semantic_search_history ADD COLUMN poll_status TEXT;`
+      );
+    }
+    // Migration: add isEnabledForSearch column to subreddits if it doesn't exist
+    const subredditColumns = await this.db.getAllAsync(`PRAGMA table_info(subreddits);`);
+    const hasIsEnabledForSearch = subredditColumns.some(
+      (col: any) => col.name === 'isEnabledForSearch'
+    );
+    if (!hasIsEnabledForSearch) {
+      await this.db.execAsync(
+        `ALTER TABLE subreddits ADD COLUMN isEnabledForSearch INTEGER NOT NULL DEFAULT 1;`
+      );
+    }
   }
 
   public getDb(): SQLiteDatabase {
