@@ -217,20 +217,15 @@ export default function PostScreen() {
     }
   }, [hasUnsavedChanges, animateAndGoBack, handleSave, post]);
 
-  // Saves only the summary field - used by PostSummary auto-save to avoid overwriting unsaved edits in other fields.
-  const handleAutoSaveSummary = useCallback(
-    async (summary: string) => {
-      if (!post) return;
-      const updated: Post = {
-        ...post,
-        summary,
-        updatedAt: new Date(),
-      };
-      const saved = await savePost(updated);
-      setPost(saved);
-    },
-    [post, savePost],
-  );
+  /**
+   * A background summary job has just written `summary` to the DB (or restored
+   * the previous one). Mirror it into local state so the screen shows the saved
+   * value and hasUnsavedChanges doesn't report a change the user never made.
+   */
+  const handleSummaryCommitted = useCallback((summary: string) => {
+    setEditedSummary(summary);
+    setPost((current) => (current ? { ...current, summary } : current));
+  }, []);
 
   // Keep a ref to the latest handleBack so the BackHandler never needs to
   // re-register when editing state changes (avoids the gap where Android's
@@ -773,7 +768,7 @@ export default function PostScreen() {
                 <PostSummary
                   post={post}
                   onSave={setEditedSummary}
-                  onAutoSave={handleAutoSaveSummary}
+                  onCommitted={handleSummaryCommitted}
                   currentFont={currentFont}
                   editedSummary={editedSummary}
                   setEditedSummary={setEditedSummary}

@@ -811,6 +811,27 @@ export class PostRepository {
     return result.changes;
   }
 
+  /**
+   * Write just the AI summary, without touching any other column.
+   *
+   * Used by SummaryJobService, which generates in the background and cannot
+   * know whether an in-memory Post is still current — `update(post)` would
+   * rewrite every column from that stale copy. Bumping updatedAt is enough to
+   * make the periodic sync pick the change up (see getPendingSyncPosts).
+   */
+  public async updateSummaryById(id: number, summary: string): Promise<number> {
+    const result = await this.db.runAsync(
+      `UPDATE posts
+         SET summary   = ?,
+             updatedAt = CURRENT_TIMESTAMP
+       WHERE id = ?`,
+      summary || null,
+      id
+    );
+    console.debug(`Updated summary for post ${id}:`, result);
+    return result.changes;
+  }
+
   public async delete(id: number): Promise<number> {
     const result = await this.db.runAsync(
       `UPDATE posts
