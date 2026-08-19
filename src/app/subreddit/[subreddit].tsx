@@ -13,15 +13,24 @@ import {
 import { usePosts } from "@/hooks/usePosts";
 import { usePostSync } from "@/hooks/usePostSync";
 import { useRedditApi } from "@/hooks/useRedditApi";
+import { useDebouncedValue } from "@/hooks/useDebouncedValue";
+import { buildSavedLibraryIndex } from "@/utils/savedLibraryIndex";
 import { openRedditSubreddit } from "@/utils/redditLinks";
 import { parseSubredditNames } from "@/utils/subredditNames";
 import * as Linking from "expo-linking";
 import { useFocusEffect, useLocalSearchParams, useRouter } from "expo-router";
-import React, { useCallback, useEffect, useMemo, useState } from "react";
+import React, {
+  useCallback,
+  useDeferredValue,
+  useEffect,
+  useMemo,
+  useState,
+} from "react";
 import {
   ActivityIndicator,
   Alert,
   BackHandler,
+  InteractionManager,
   StyleSheet,
   Switch,
   Text,
@@ -31,6 +40,19 @@ import {
 import { FlashList } from "@shopify/flash-list";
 import { SafeAreaView } from "react-native-safe-area-context";
 import Icon from "react-native-vector-icons/MaterialIcons";
+
+/** Rows we try to keep on screen before waiting for the user to scroll. */
+const MIN_VISIBLE_POSTS = 15;
+/** Upper bound on posts auto-fetched to satisfy MIN_VISIBLE_POSTS. */
+const MAX_AUTO_LOADED_POSTS = 300;
+/** Idle time before a typed query is applied to the loaded posts. */
+const SEARCH_DEBOUNCE_MS = 200;
+/**
+ * How stale the saved-post list may be before this screen re-queries it on
+ * focus. In-app changes update the shared list immediately, so this only
+ * bounds drift from writes made outside it.
+ */
+const SAVED_POSTS_MAX_AGE_MS = 30_000;
 
 export default function SubredditImportScreen() {
   const { palette, fontSizes } = useTheme();
@@ -77,6 +99,7 @@ export default function SubredditImportScreen() {
     posts: savedPosts,
     handleAddPost: addPostFromUrl,
     refreshPosts,
+    refreshPostsIfStale,
   } = usePosts();
   const { getPostData } = useRedditApi();
   const { syncSinglePost } = usePostSync({ autoStart: false });
@@ -86,68 +109,79 @@ export default function SubredditImportScreen() {
     new Set(),
   );
   const [hideEmpty, setHideEmpty] = useState(true);
+  const [minScore, setMinScore] = useState(0);
+  const [minComments, setMinComments] = useState(0);
   const [search, setSearch] = useState("");
 
-  const savedRedditIds = useMemo(() => {
-    return new Set(savedPosts.map((p) => p.redditId));
-  }, [savedPosts]);
-  const savedPostByRedditId = useMemo(() => {
-    return new Map(savedPosts.map((post) => [post.redditId, post]));
-  }, [savedPosts]);
-  const savedTitlesForSubreddit = useMemo(() => {
-    const targets = new Set(subredditNames.map((s) => s.toLowerCase()));
-    const titles = new Set<string>();
-    for (const post of savedPosts) {
-      if (!targets.has((post.subreddit || "").toLowerCase())) continue;
-      if (post.title) titles.add(post.title.trim().toLowerCase());
-    }
-    return titles;
-  }, [savedPosts, subredditNames]);
+  // Walking the whole library is deferred: React keeps the previous index for
+  // the urgent render, so a library reload (or first population) never blocks
+  // the Reddit rows from painting — the ticks and author stats fill in on the
+  // follow-up low-priority render instead.
+  const deferredSavedPosts = useDeferredValue(savedPosts);
+  const { savedRedditIds, postByRedditId, authorStats, titlesInSubreddits } =
+    useMemo(
+      () => buildSavedLibraryIndex(deferredSavedPosts, subredditNames),
+      [deferredSavedPosts, subredditNames],
+    );
+
+  // Typing re-scans the body of every loaded post, so filter on a debounced
+  // copy of the query while the text input itself stays immediate.
+  const debouncedSearch = useDebouncedValue(search, SEARCH_DEBOUNCE_MS);
 
   const filteredRedditPosts = useMemo(() => {
     let posts = redditPosts;
     if (hideEmpty) {
-      posts = posts.filter((post) => (post.bodyText || "").trim().length > 0);
+      posts = posts.filter((post) => post.wordCount > 0);
     }
-    if (search.trim()) {
-      const q = search.trim().toLowerCase();
+    if (minScore > 0) {
+      posts = posts.filter((post) => (post.score ?? 0) >= minScore);
+    }
+    if (minComments > 0) {
+      posts = posts.filter((post) => post.commentCount >= minComments);
+    }
+    const q = debouncedSearch.trim().toLowerCase();
+    if (q) {
       posts = posts.filter(
         (post) =>
-          (post.title || "").toLowerCase().includes(q) ||
-          (post.bodyText || "").toLowerCase().includes(q),
+          post.titleKey.includes(q) || post.bodyText.toLowerCase().includes(q),
       );
     }
     console.debug(
-      `[SubredditScreen] filteredRedditPosts: raw=${redditPosts.length} hideEmpty=${hideEmpty} search="${search}" -> filtered=${posts.length}`,
+      `[SubredditScreen] filteredRedditPosts: raw=${redditPosts.length} hideEmpty=${hideEmpty} minScore=${minScore} minComments=${minComments} search="${debouncedSearch}" -> filtered=${posts.length}`,
     );
     return posts;
-  }, [redditPosts, hideEmpty, search]);
+  }, [redditPosts, hideEmpty, minScore, minComments, debouncedSearch]);
 
-  // Load initial posts when screen is focused
+  // Filters are applied client-side, so a strict one (e.g. 100+ upvotes) can
+  // drop a whole page and leave too few rows to scroll — which means
+  // onEndReached never fires and the list looks empty. Keep pulling pages until
+  // the screen is filled or we've fetched a sensible maximum.
+  useEffect(() => {
+    if (loading || !hasMore) return;
+    if (filteredRedditPosts.length >= MIN_VISIBLE_POSTS) return;
+    if (redditPosts.length >= MAX_AUTO_LOADED_POSTS) return;
+    loadMore();
+  }, [
+    filteredRedditPosts.length,
+    redditPosts.length,
+    loading,
+    hasMore,
+    loadMore,
+  ]);
+
+  // Refresh the saved-post list on focus so "already added" ticks stay current.
+  // It re-queries the whole library, so it waits until navigation and the first
+  // paint are done, and is skipped outright if the list is already fresh.
+  // The Reddit listing itself is loaded (and reloaded on sort/time-range
+  // changes) by useSubredditImport.
   useFocusEffect(
     useCallback(() => {
-      console.debug(
-        `[SubredditScreen] focus effect — subredditName="${subredditName}" redditPosts=${redditPosts.length} loading=${loading} error=${error?.message ?? null}`,
-      );
-      if (redditPosts.length === 0 && !loading && !error) {
-        loadMore();
-      }
-      refreshPosts();
-    }, [
-      loadMore,
-      redditPosts.length,
-      loading,
-      error,
-      refreshPosts,
-      subredditName,
-    ]),
+      const task = InteractionManager.runAfterInteractions(() => {
+        refreshPostsIfStale(SAVED_POSTS_MAX_AGE_MS);
+      });
+      return () => task.cancel();
+    }, [refreshPostsIfStale]),
   );
-
-  // Reload immediately when the sort/time-range filter changes
-  useEffect(() => {
-    loadMore();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [sort, timeRange]);
 
   // Handle back button
   useFocusEffect(
@@ -160,10 +194,6 @@ export default function SubredditImportScreen() {
       return () => sub.remove();
     }, [router]),
   );
-
-  const getWordCount = useCallback((bodyText: string) => {
-    return bodyText.trim().split(/\s+/).filter(Boolean).length;
-  }, []);
 
   /** Relative post age, e.g. "5m", "2h", "3d", matching Reddit's own display. */
   const formatPostDate = useCallback((created: number) => {
@@ -265,19 +295,19 @@ export default function SubredditImportScreen() {
       const isAdded = savedRedditIds.has(item.id);
       const isAdding = addingPostIds.has(item.id);
       const isArchiving = archivingPostIds.has(item.id);
-      const wordCount = getWordCount(item.bodyText);
+      const wordCount = item.wordCount;
       const publishedDate = formatPostDate(item.created);
       const score =
         typeof item.score === "number" ? item.score.toLocaleString() : null;
       const commentCount = item.commentCount.toLocaleString();
       const fullUrl = `https://www.reddit.com${item.permalink}`;
-      const normalizedTitle = item.title?.trim().toLowerCase() ?? "";
-      const isDuplicateTitle = savedTitlesForSubreddit.has(normalizedTitle);
+      const stats = authorStats.get((item.author || "").toLowerCase());
+      const isDuplicateTitle = titlesInSubreddits.has(item.titleKey);
       const muteTitle = isDuplicateTitle || wordCount === 0;
 
       const handlePress = () => {
         if (isAdded) {
-          const savedPost = savedPostByRedditId.get(item.id);
+          const savedPost = postByRedditId.get(item.id);
           if (savedPost?.id) {
             router.push(`/post/${savedPost.id}` as any);
             return;
@@ -316,6 +346,24 @@ export default function SubredditImportScreen() {
                     : `u/${item.author}`}
                 </Text>
               </TouchableOpacity>
+              {stats && stats.readAvgRating != null ? (
+                <View style={styles.authorStat}>
+                  <Icon name="star" size={11} color={palette.starYellow} />
+                  <Text style={styles.metadataText}>
+                    {stats.readAvgRating.toFixed(1)}
+                  </Text>
+                </View>
+              ) : null}
+              {stats && stats.activeCount > 0 ? (
+                <View style={styles.authorStat}>
+                  <Icon
+                    name="description"
+                    size={11}
+                    color={palette.foregroundMidLight}
+                  />
+                  <Text style={styles.metadataText}>{stats.activeCount}</Text>
+                </View>
+              ) : null}
               {publishedDate ? (
                 <>
                   <Text style={styles.separator}>•</Text>
@@ -379,10 +427,10 @@ export default function SubredditImportScreen() {
       savedRedditIds,
       addingPostIds,
       archivingPostIds,
-      getWordCount,
       formatPostDate,
-      savedPostByRedditId,
-      savedTitlesForSubreddit,
+      postByRedditId,
+      titlesInSubreddits,
+      authorStats,
       isSearchAll,
       router,
       handleAddPost,
@@ -467,8 +515,12 @@ export default function SubredditImportScreen() {
         <SubredditFilterModal
           sort={sort}
           timeRange={timeRange}
+          minScore={minScore}
+          minComments={minComments}
           onSortChange={setSort}
           onTimeRangeChange={setTimeRange}
+          onMinScoreChange={setMinScore}
+          onMinCommentsChange={setMinComments}
         />
       </View>
 
@@ -598,6 +650,14 @@ function makeStyles(
       flexDirection: "row",
       alignItems: "center",
       justifyContent: "flex-start",
+      flexShrink: 1,
+      flexWrap: "wrap",
+    },
+    authorStat: {
+      flexDirection: "row",
+      alignItems: "center",
+      gap: 2,
+      marginLeft: spacing.s,
     },
     metadataText: {
       fontSize: fontSizes.small * 0.8,

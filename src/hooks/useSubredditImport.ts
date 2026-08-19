@@ -33,9 +33,22 @@ export type SubredditTimeRange = 'hour' | 'day' | 'week' | 'month' | 'year' | 'a
  * RedditPostPreview plus the comment count (Reddit API's `num_comments`
  * field, present on every post listing), used to show engagement in the
  * subreddit browse screen.
+ *
+ * `wordCount` and `titleKey` are derived from the body/title once, when the
+ * listing page is parsed. Both used to be recomputed inside the row renderer,
+ * which meant re-splitting every selftext on every re-render of every row.
  */
 export interface SubredditPostPreview extends RedditPostPreview {
   commentCount: number;
+  /** Words in the post body — 0 for link posts and empty selftexts. */
+  wordCount: number;
+  /** Trimmed, lowercased title, for matching against already-saved titles. */
+  titleKey: string;
+}
+
+/** Words in a Reddit selftext; matches the count shown on each row. */
+function countWords(bodyText: string): number {
+  return bodyText.trim().split(/\s+/).filter(Boolean).length;
 }
 
 interface UseSubredditImportResult {
@@ -55,11 +68,25 @@ export function useSubredditImport(
   const [posts, setPosts] = useState<SubredditPostPreview[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<Error | null>(null);
-  const [after, setAfter] = useState<string | null>(null);
   const [hasMore, setHasMore] = useState(true);
+
+  // Pagination cursor and "more pages exist" flag are kept in refs as well as
+  // state: loadMore reads them at call time, so switching sort/time range can
+  // reset them without leaving a stale closure holding the previous listing's
+  // cursor (which used to make the first page of the new sort never load).
+  const afterRef = useRef<string | null>(null);
+  const hasMoreRef = useRef(true);
 
   // Prevent concurrent loads
   const isLoadingRef = useRef(false);
+
+  // Incremented whenever subreddit/sort/timeRange changes. Responses from a
+  // previous set of parameters are discarded instead of being appended.
+  const requestIdRef = useRef(0);
+
+  // Reddit only honours the `t` (time range) parameter on `top` listings, so
+  // changing the time range under any other sort must not trigger a reload.
+  const effectiveTimeRange = sort === 'top' ? timeRange : undefined;
 
   // In-memory cache for the OAuth token
   const tokenRef = useRef<string | null>(null);
@@ -96,15 +123,6 @@ export function useSubredditImport(
       };
     })();
   }, []);
-
-  // Reset state when subredditName, sort, or timeRange changes
-  useEffect(() => {
-    setPosts([]);
-    setAfter(null);
-    setHasMore(true);
-    setError(null);
-    isLoadingRef.current = false;
-  }, [subredditName, sort, timeRange]);
 
   // Get a valid OAuth token, caching in memory and SecureStore
   async function getToken(): Promise<string> {
@@ -204,12 +222,14 @@ export function useSubredditImport(
   }
 
   const loadMore = useCallback(async () => {
-    if (isLoadingRef.current || loading || !hasMore || !subredditName) {
+    if (isLoadingRef.current || !hasMoreRef.current || !subredditName) {
       console.debug(
-        `[useSubredditImport] loadMore skipped — isLoading=${isLoadingRef.current} loading=${loading} hasMore=${hasMore} subredditName="${subredditName}"`,
+        `[useSubredditImport] loadMore skipped — isLoading=${isLoadingRef.current} hasMore=${hasMoreRef.current} subredditName="${subredditName}"`,
       );
       return;
     }
+    const requestId = requestIdRef.current;
+    const after = afterRef.current;
     isLoadingRef.current = true;
     setLoading(true);
     setError(null);
@@ -220,8 +240,8 @@ export function useSubredditImport(
       const token = await getToken();
       const ua = credsRef.current?.userAgent || '';
       let url = `${API_BASE}/r/${subredditName}/${sort}?limit=25&raw_json=1`;
-      if (sort === 'top' && timeRange) {
-        url += `&t=${timeRange}`;
+      if (effectiveTimeRange) {
+        url += `&t=${effectiveTimeRange}`;
       }
       if (after) {
         url += `&after=${after}`;
@@ -240,23 +260,33 @@ export function useSubredditImport(
         console.debug(`[useSubredditImport] non-OK response HTTP ${resp.status}:`, data);
         throw new Error(`Reddit API returned: ${msg} (HTTP ${resp.status})`);
       }
+      if (requestId !== requestIdRef.current) {
+        console.debug(
+          `[useSubredditImport] discarding stale response for "${subredditName}" ${sort}/${effectiveTimeRange ?? '-'}`,
+        );
+        return;
+      }
       const children = data?.data?.children || [];
       console.debug(
         `[useSubredditImport] response OK — ${children.length} children in data.data.children`,
       );
       const newPosts: SubredditPostPreview[] = children.map((child: any) => {
         const post = child.data;
+        const bodyText = post.selftext || '';
+        const title = post.title || '';
         return {
           id: post.id,
-          title: post.title,
+          title,
           author: post.author,
           subreddit: post.subreddit,
           url: post.url,
-          bodyText: post.selftext || '',
+          bodyText,
           created: post.created_utc || post.created,
           permalink: post.permalink,
           score: typeof post.score === 'number' ? post.score : post.ups,
           commentCount: typeof post.num_comments === 'number' ? post.num_comments : 0,
+          wordCount: countWords(bodyText),
+          titleKey: title.trim().toLowerCase(),
         };
       });
       setPosts((prev) => {
@@ -273,23 +303,42 @@ export function useSubredditImport(
         );
         return deduped;
       });
-      setAfter(data?.data?.after || null);
-      setHasMore(!!data?.data?.after);
+      afterRef.current = data?.data?.after || null;
+      hasMoreRef.current = !!afterRef.current;
+      setHasMore(hasMoreRef.current);
     } catch (err: any) {
       console.error('Error loading subreddit posts:', err);
-      setError(err);
+      if (requestId === requestIdRef.current) {
+        setError(err);
+      }
     } finally {
-      setLoading(false);
-      isLoadingRef.current = false;
+      // A stale request must not clear the in-flight flag of the newer one.
+      if (requestId === requestIdRef.current) {
+        setLoading(false);
+        isLoadingRef.current = false;
+      }
     }
-  }, [subredditName, sort, timeRange, after, loading, hasMore]);
+  }, [subredditName, sort, effectiveTimeRange]);
 
   const reset = useCallback(() => {
+    requestIdRef.current += 1;
+    afterRef.current = null;
+    hasMoreRef.current = true;
+    isLoadingRef.current = false;
     setPosts([]);
-    setAfter(null);
     setHasMore(true);
     setError(null);
+    setLoading(false);
   }, []);
+
+  // Restart the listing whenever the subreddit, sort, or time range changes.
+  // `reset` bumps the request id so any in-flight fetch for the old parameters
+  // is dropped, then the first page of the new listing is fetched immediately.
+  useEffect(() => {
+    reset();
+    loadMore();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [subredditName, sort, effectiveTimeRange]);
 
   return {
     posts,

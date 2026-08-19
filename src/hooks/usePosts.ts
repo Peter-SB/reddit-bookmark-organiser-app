@@ -27,6 +27,8 @@ export interface UsePostsResult {
   posts: PostListItem[]; // Lightweight list items for rendering post cards.
   loading: boolean;
   refreshPosts: () => Promise<void>;
+  /** Re-query only if the shared list is older than maxAgeMs. See refreshPostsIfStale. */
+  refreshPostsIfStale: (maxAgeMs: number) => Promise<void>;
   addPost: (postData: Omit<Post, 'id'>) => Promise<Post>;
   handleAddPost: (url: string, options: HandleAddPostOptions) => Promise<void>;
   updatePost: (post: Post) => Promise<Post>;
@@ -47,6 +49,8 @@ export interface UsePostsResult {
 // This prevents duplicate DB loads across screens.
 let sharedPosts: PostListItem[] = [];
 let sharedLoading = true;
+/** When sharedPosts was last re-queried from the DB (0 = never). */
+let sharedLoadedAt = 0;
 let sharedRepo: PostRepository | null = null;
 let sharedInitPromise: Promise<void> | null = null;
 /** Listeners notified on full list reloads (add, delete, initial load). */
@@ -67,6 +71,7 @@ export function resetSharedPostsState() {
   sharedInitPromise = null;
   sharedPosts = [];
   sharedLoading = true;
+  sharedLoadedAt = 0;
   notifyListeners();
 }
 async function initSharedRepo(): Promise<PostRepository> {
@@ -125,6 +130,7 @@ async function sharedLoadPosts(r?: PostRepository): Promise<void> {
   const all = await repository.getAllListItems();
   sharedPosts = all;
   sharedLoading = false;
+  sharedLoadedAt = Date.now();
   notifyListeners();
 }
 
@@ -157,6 +163,25 @@ export function usePosts(): UsePostsResult {
   }, []);
 
   const refreshPosts = useCallback(async () => {
+    await initSharedRepo();
+    await sharedLoadPosts();
+  }, []);
+
+  /**
+   * Refresh only if the shared list hasn't been re-queried within maxAgeMs.
+   *
+   * Reloading pulls every non-deleted post out of SQLite and re-renders every
+   * subscriber, which is wasted work on screens that refresh on focus. In-app
+   * mutations already update the shared list optimistically, so a re-query only
+   * matters for writes made outside it (e.g. background sync).
+   */
+  const refreshPostsIfStale = useCallback(async (maxAgeMs: number) => {
+    if (sharedLoadedAt > 0 && Date.now() - sharedLoadedAt < maxAgeMs) {
+      console.debug(
+        `Skipping post refresh — list is ${Date.now() - sharedLoadedAt}ms old (max ${maxAgeMs}ms)`,
+      );
+      return;
+    }
     await initSharedRepo();
     await sharedLoadPosts();
   }, []);
@@ -462,6 +487,7 @@ export function usePosts(): UsePostsResult {
     posts: sharedPosts,
     loading: sharedLoading,
     refreshPosts,
+    refreshPostsIfStale,
     addPost,
     handleAddPost,
     updatePost,
@@ -483,6 +509,7 @@ export function usePosts(): UsePostsResult {
 export function _resetPostsSharedState() {
   sharedPosts = [];
   sharedLoading = true;
+  sharedLoadedAt = 0;
   sharedRepo = null;
   sharedInitPromise = null;
   listeners.clear();

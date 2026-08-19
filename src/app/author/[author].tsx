@@ -97,6 +97,36 @@ export default function AuthorPostsScreen() {
     [toggleQueue],
   );
 
+  /**
+   * Shown below the list, and inside the empty state — an author with nothing
+   * saved yet is exactly when importing their posts is most useful.
+   */
+  const renderImportButton = useCallback(
+    (style?: object) => {
+      if (!authorName) return null;
+      return (
+        <TouchableOpacity
+          style={[styles.importButton, style]}
+          onPress={() =>
+            router.push(
+              `/author/import?author=${encodeURIComponent(authorName)}`,
+            )
+          }
+        >
+          <Icon
+            name="cloud-download"
+            size={24}
+            color={palette.foregroundLight}
+          />
+          <Text style={styles.importButtonText}>
+            Find More Posts by {authorName}
+          </Text>
+        </TouchableOpacity>
+      );
+    },
+    [authorName, router, styles, palette],
+  );
+
   const statusText =
     !authorName && hasLoaded
       ? "Author missing. Open this screen from a saved post to see more from that user."
@@ -182,30 +212,13 @@ export default function AuthorPostsScreen() {
               <Text style={styles.emptySubtitle}>
                 Try syncing or importing more posts from this author.
               </Text>
+              {renderImportButton(styles.emptyStateImportButton)}
             </View>
           ) : null
         }
         ListFooterComponent={
-          authorPosts.length > 0 && authorName ? (
-            <View style={styles.footerContainer}>
-              <TouchableOpacity
-                style={styles.importButton}
-                onPress={() =>
-                  router.push(
-                    `/author/import?author=${encodeURIComponent(authorName)}`,
-                  )
-                }
-              >
-                <Icon
-                  name="cloud-download"
-                  size={24}
-                  color={palette.foregroundLight}
-                />
-                <Text style={styles.importButtonText}>
-                  Find More Posts by {authorName}
-                </Text>
-              </TouchableOpacity>
-            </View>
+          authorPosts.length > 0 ? (
+            <View style={styles.footerContainer}>{renderImportButton()}</View>
           ) : null
         }
       />
@@ -305,6 +318,10 @@ function makeStyles(
       borderWidth: 1,
       borderColor: palette.border,
       gap: spacing.s,
+    },
+    emptyStateImportButton: {
+      marginTop: spacing.l,
+      marginBottom: 0,
     },
     importButtonText: {
       fontSize: fontSizes.body,
