@@ -6,6 +6,7 @@ import { useTheme } from "@/contexts/ThemeContext";
 import type { ThemeContextValue } from "@/contexts/ThemeContext";
 import {
   SubredditPostPreview,
+  SubredditSearchSort,
   SubredditSort,
   SubredditTimeRange,
   useSubredditImport,
@@ -54,6 +55,11 @@ const SEARCH_DEBOUNCE_MS = 200;
  */
 const SAVED_POSTS_MAX_AGE_MS = 30_000;
 
+function firstParam(value: string | string[] | undefined): string {
+  if (!value) return "";
+  return Array.isArray(value) ? (value[0] ?? "") : value;
+}
+
 export default function SubredditImportScreen() {
   const { palette, fontSizes } = useTheme();
   const styles = useMemo(
@@ -61,13 +67,36 @@ export default function SubredditImportScreen() {
     [palette, fontSizes],
   );
   const router = useRouter();
-  const { subreddit } = useLocalSearchParams<{
+  const routeParams = useLocalSearchParams<{
     subreddit?: string | string[];
+    q?: string | string[];
+    ssort?: string | string[];
+    t?: string | string[];
+    restrict?: string | string[];
+    minScore?: string | string[];
+    minComments?: string | string[];
+    terms?: string | string[];
+    exclude?: string | string[];
+    titleOnly?: string | string[];
+    selfOnly?: string | string[];
+    scope?: string | string[];
   }>();
+  const { subreddit } = routeParams;
   const subredditParam = useMemo(() => {
     if (!subreddit) return "";
     return Array.isArray(subreddit) ? (subreddit[0] ?? "") : subreddit;
   }, [subreddit]);
+
+  /**
+   * A `q` param puts the screen in search mode: the same list, rows and add
+   * actions, but fed by Reddit's search endpoint instead of a listing. The
+   * form fields are echoed through so the search icon can reopen the form
+   * pre-filled.
+   */
+  const searchQuery = firstParam(routeParams.q);
+  const isSearchMode = !!searchQuery;
+  const searchRestrict = firstParam(routeParams.restrict) !== "0";
+  const searchTerms = firstParam(routeParams.terms);
 
   const subredditName = useMemo(() => {
     const raw = String(subredditParam ?? "").trim();
@@ -86,7 +115,24 @@ export default function SubredditImportScreen() {
   const isSearchAll = subredditNames.length > 1;
 
   const [sort, setSort] = useState<SubredditSort>("hot");
-  const [timeRange, setTimeRange] = useState<SubredditTimeRange>("day");
+  const [searchSort, setSearchSort] = useState<SubredditSearchSort>(
+    () => (firstParam(routeParams.ssort) as SubredditSearchSort) || "relevance",
+  );
+  const [timeRange, setTimeRange] = useState<SubredditTimeRange>(
+    () => (firstParam(routeParams.t) as SubredditTimeRange) || "day",
+  );
+
+  const searchOptions = useMemo(
+    () =>
+      isSearchMode
+        ? {
+            q: searchQuery,
+            sort: searchSort,
+            restrictToSubreddit: searchRestrict,
+          }
+        : undefined,
+    [isSearchMode, searchQuery, searchSort, searchRestrict],
+  );
 
   const {
     posts: redditPosts,
@@ -94,7 +140,7 @@ export default function SubredditImportScreen() {
     error,
     hasMore,
     loadMore,
-  } = useSubredditImport(subredditName, sort, timeRange);
+  } = useSubredditImport(subredditName, sort, timeRange, searchOptions);
   const {
     posts: savedPosts,
     handleAddPost: addPostFromUrl,
@@ -109,8 +155,12 @@ export default function SubredditImportScreen() {
     new Set(),
   );
   const [hideEmpty, setHideEmpty] = useState(true);
-  const [minScore, setMinScore] = useState(0);
-  const [minComments, setMinComments] = useState(0);
+  const [minScore, setMinScore] = useState(
+    () => parseInt(firstParam(routeParams.minScore), 10) || 0,
+  );
+  const [minComments, setMinComments] = useState(
+    () => parseInt(firstParam(routeParams.minComments), 10) || 0,
+  );
   const [search, setSearch] = useState("");
 
   // Walking the whole library is deferred: React keeps the previous index for
@@ -209,6 +259,50 @@ export default function SubredditImportScreen() {
     if (months < 12) return `${months}m`;
     return `${Math.floor(months / 12)}y`;
   }, []);
+
+  /** "r/x", "3 subs" or "All of Reddit" — the scope line under a search title. */
+  const searchScopeLabel = useMemo(() => {
+    if (!searchRestrict) return "All of Reddit";
+    if (subredditNames.length > 1) return `${subredditNames.length} subs`;
+    return subredditNames[0] ? `r/${subredditNames[0]}` : "";
+  }, [searchRestrict, subredditNames]);
+
+  /**
+   * Opens the search form, pre-filled with the current search when there is
+   * one, otherwise scoped to whatever this screen is currently showing.
+   */
+  const openSearchForm = useCallback(() => {
+    const params: Record<string, string> = { subreddit: subredditName };
+    if (isSearchMode) {
+      params.terms = searchTerms;
+      params.exclude = firstParam(routeParams.exclude);
+      params.titleOnly = firstParam(routeParams.titleOnly) || "0";
+      params.selfOnly = firstParam(routeParams.selfOnly) || "0";
+      params.scope = firstParam(routeParams.scope) || "this";
+      params.ssort = searchSort;
+      params.t = timeRange;
+      params.minScore = String(minScore);
+      params.minComments = String(minComments);
+    }
+    console.debug(
+      `[SubredditScreen] opening search form with`,
+      params,
+    );
+    router.push({ pathname: "/reddit-search", params } as any);
+  }, [
+    router,
+    subredditName,
+    isSearchMode,
+    searchTerms,
+    routeParams.exclude,
+    routeParams.titleOnly,
+    routeParams.selfOnly,
+    routeParams.scope,
+    searchSort,
+    timeRange,
+    minScore,
+    minComments,
+  ]);
 
   const handleAddPost = useCallback(
     async (redditPost: SubredditPostPreview) => {
@@ -477,12 +571,24 @@ export default function SubredditImportScreen() {
 
     return (
       <View style={styles.emptyState}>
-        <Text style={styles.emptyTitle}>No posts found</Text>
+        <Text style={styles.emptyTitle}>
+          {isSearchMode ? "No results" : "No posts found"}
+        </Text>
         <Text style={styles.emptySubtitle}>
           {error
             ? "There was an error loading posts."
-            : "This subreddit has no posts matching this filter."}
+            : isSearchMode
+              ? "No posts match this search."
+              : "This subreddit has no posts matching this filter."}
         </Text>
+        {isSearchMode && !error ? (
+          <TouchableOpacity
+            style={styles.emptyAction}
+            onPress={openSearchForm}
+          >
+            <Text style={styles.emptyActionLabel}>Edit search</Text>
+          </TouchableOpacity>
+        ) : null}
         <View style={styles.emptyFooter}>
           <Text style={styles.footerHint}>
             {hasMore ? "Swipe to Load More" : "No More Posts"}
@@ -490,7 +596,16 @@ export default function SubredditImportScreen() {
         </View>
       </View>
     );
-  }, [subredditName, error, hasMore, loading, styles, palette]);
+  }, [
+    subredditName,
+    error,
+    hasMore,
+    loading,
+    styles,
+    palette,
+    isSearchMode,
+    openSearchForm,
+  ]);
 
   return (
     <SafeAreaView style={styles.container}>
@@ -498,30 +613,65 @@ export default function SubredditImportScreen() {
         <TouchableOpacity onPress={() => router.back()}>
           <Icon name="arrow-back" size={26} color={palette.foreground} />
         </TouchableOpacity>
-        <Text style={styles.headerTitle} numberOfLines={1}>
-          {isSearchAll ? (
-            `Search All (${subredditNames.length})`
-          ) : subredditName ? (
+        {isSearchMode ? (
+          <View style={styles.headerTitleBlock}>
             <Text
-              style={styles.headerLink}
-              onPress={() => openRedditSubreddit(subredditName)}
+              style={[styles.headerTitle, styles.headerTitleInBlock]}
+              numberOfLines={1}
             >
-              {`r/${subredditName}`}
+              {searchTerms || searchQuery}
             </Text>
-          ) : (
-            "Subreddit"
-          )}
-        </Text>
-        <SubredditFilterModal
-          sort={sort}
-          timeRange={timeRange}
-          minScore={minScore}
-          minComments={minComments}
-          onSortChange={setSort}
-          onTimeRangeChange={setTimeRange}
-          onMinScoreChange={setMinScore}
-          onMinCommentsChange={setMinComments}
-        />
+            <Text style={styles.headerSubtitle} numberOfLines={1}>
+              {searchScopeLabel}
+            </Text>
+          </View>
+        ) : (
+          <Text style={styles.headerTitle} numberOfLines={1}>
+            {isSearchAll ? (
+              `Search All (${subredditNames.length})`
+            ) : subredditName ? (
+              <Text
+                style={styles.headerLink}
+                onPress={() => openRedditSubreddit(subredditName)}
+              >
+                {`r/${subredditName}`}
+              </Text>
+            ) : (
+              "Subreddit"
+            )}
+          </Text>
+        )}
+        <TouchableOpacity
+          style={styles.headerIconButton}
+          onPress={openSearchForm}
+          accessibilityLabel="Search this subreddit"
+        >
+          <Icon name="search" size={24} color={palette.foreground} />
+        </TouchableOpacity>
+        {isSearchMode ? (
+          <SubredditFilterModal
+            searchMode
+            sort={searchSort}
+            timeRange={timeRange}
+            minScore={minScore}
+            minComments={minComments}
+            onSortChange={setSearchSort}
+            onTimeRangeChange={setTimeRange}
+            onMinScoreChange={setMinScore}
+            onMinCommentsChange={setMinComments}
+          />
+        ) : (
+          <SubredditFilterModal
+            sort={sort}
+            timeRange={timeRange}
+            minScore={minScore}
+            minComments={minComments}
+            onSortChange={setSort}
+            onTimeRangeChange={setTimeRange}
+            onMinScoreChange={setMinScore}
+            onMinCommentsChange={setMinComments}
+          />
+        )}
       </View>
 
       {error && (
@@ -542,7 +692,9 @@ export default function SubredditImportScreen() {
               <SearchBar
                 value={search}
                 onChangeText={setSearch}
-                placeholder="Search loaded posts..."
+                placeholder={
+                  isSearchMode ? "Filter results..." : "Search loaded posts..."
+                }
               />
             </View>
             <View style={styles.listHeader}>
@@ -599,6 +751,34 @@ function makeStyles(
     },
     headerLink: {
       // textDecorationLine: "underline",
+    },
+    headerTitleInBlock: {
+      flex: 0,
+      marginHorizontal: 0,
+    },
+    headerTitleBlock: {
+      flex: 1,
+      marginHorizontal: spacing.m,
+    },
+    headerSubtitle: {
+      fontSize: fontSizes.small * 0.8,
+      color: palette.muted,
+    },
+    headerIconButton: {
+      padding: 4,
+      marginRight: spacing.s,
+    },
+    emptyAction: {
+      marginTop: spacing.m,
+      paddingVertical: spacing.s,
+      paddingHorizontal: spacing.m,
+      borderRadius: 8,
+      borderWidth: 1,
+      borderColor: palette.border,
+    },
+    emptyActionLabel: {
+      fontSize: fontSizes.body,
+      color: palette.foreground,
     },
     errorContainer: {
       backgroundColor: palette.favHeartRed,

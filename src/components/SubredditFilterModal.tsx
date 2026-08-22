@@ -11,15 +11,26 @@ import Icon from "react-native-vector-icons/MaterialIcons";
 import { useTheme } from "@/contexts/ThemeContext";
 import type { ThemeContextValue } from "@/contexts/ThemeContext";
 import {
+  SubredditSearchSort,
   SubredditSort,
   SubredditTimeRange,
 } from "@/hooks/useSubredditImport";
+import { MIN_COUNT_OPTIONS } from "@/constants/search";
 
 const SORT_OPTIONS: { key: SubredditSort; label: string }[] = [
   { key: "hot", label: "Hot" },
   { key: "new", label: "New" },
   { key: "top", label: "Top" },
   { key: "rising", label: "Rising" },
+];
+
+/** Reddit's search endpoint drops `rising` and adds relevance / most-comments. */
+const SEARCH_SORT_OPTIONS: { key: SubredditSearchSort; label: string }[] = [
+  { key: "relevance", label: "Relevance" },
+  { key: "hot", label: "Hot" },
+  { key: "new", label: "New" },
+  { key: "top", label: "Top" },
+  { key: "comments", label: "Most Comments" },
 ];
 
 const TIME_RANGE_OPTIONS: { key: SubredditTimeRange; label: string }[] = [
@@ -31,21 +42,34 @@ const TIME_RANGE_OPTIONS: { key: SubredditTimeRange; label: string }[] = [
   { key: "all", label: "All Time" },
 ];
 
-/** Thresholds offered for the minimum upvote / comment filters. 0 = no minimum. */
-const MIN_COUNT_OPTIONS = [0, 5, 10, 25, 50, 100, 500];
-
-interface SubredditFilterModalProps {
-  sort: SubredditSort;
+interface CommonFilterProps {
   timeRange: SubredditTimeRange;
   /** Minimum upvotes a post must have to be listed (0 = no minimum) */
   minScore: number;
   /** Minimum comments a post must have to be listed (0 = no minimum) */
   minComments: number;
-  onSortChange: (sort: SubredditSort) => void;
   onTimeRangeChange: (t: SubredditTimeRange) => void;
   onMinScoreChange: (min: number) => void;
   onMinCommentsChange: (min: number) => void;
 }
+
+/**
+ * The sort sets of the listing and search endpoints overlap but are not the
+ * same, so `searchMode` discriminates which one `sort`/`onSortChange` speak.
+ */
+type SubredditFilterModalProps = CommonFilterProps &
+  (
+    | {
+        searchMode?: false;
+        sort: SubredditSort;
+        onSortChange: (sort: SubredditSort) => void;
+      }
+    | {
+        searchMode: true;
+        sort: SubredditSearchSort;
+        onSortChange: (sort: SubredditSearchSort) => void;
+      }
+  );
 
 export function SubredditFilterModal({
   sort,
@@ -56,6 +80,7 @@ export function SubredditFilterModal({
   onTimeRangeChange,
   onMinScoreChange,
   onMinCommentsChange,
+  searchMode = false,
 }: SubredditFilterModalProps) {
   const { palette, fontSizes } = useTheme();
   const styles = useMemo(
@@ -136,14 +161,17 @@ export function SubredditFilterModal({
             showsVerticalScrollIndicator={false}
           >
             <Text style={styles.sectionLabel}>Sort By</Text>
-            {SORT_OPTIONS.map((opt) => (
+            {(searchMode ? SEARCH_SORT_OPTIONS : SORT_OPTIONS).map((opt) => (
               <TouchableOpacity
                 key={opt.key}
                 style={[
                   styles.menuItem,
                   sort === opt.key && styles.menuItemActive,
                 ]}
-                onPress={() => onSortChange(opt.key)}
+                // The option list and the callback always come from the same
+                // branch of the props union; TS can't see that through the
+                // shared render path.
+                onPress={() => (onSortChange as (k: string) => void)(opt.key)}
               >
                 <Text
                   style={[
@@ -156,7 +184,7 @@ export function SubredditFilterModal({
               </TouchableOpacity>
             ))}
 
-            {sort === "top" && (
+            {(sort === "top" || (searchMode && sort === "relevance")) && (
               <>
                 <View style={styles.divider} />
                 <Text style={styles.sectionLabel}>Time Range</Text>

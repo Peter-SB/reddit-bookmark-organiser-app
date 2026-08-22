@@ -30,6 +30,27 @@ export type SubredditSort = 'hot' | 'new' | 'top' | 'rising';
 export type SubredditTimeRange = 'hour' | 'day' | 'week' | 'month' | 'year' | 'all';
 
 /**
+ * Sorts offered by Reddit's search endpoint. It has no `rising`, and adds
+ * `relevance` and `comments` (most-discussed), neither of which the plain
+ * listing endpoints support.
+ */
+export type SubredditSearchSort = 'relevance' | 'hot' | 'top' | 'new' | 'comments';
+
+/** Search sorts for which Reddit honours the `t` (time range) parameter. */
+const SEARCH_SORTS_WITH_TIME_RANGE: SubredditSearchSort[] = ['relevance', 'top'];
+
+export interface SubredditSearchOptions {
+  /** The `q` string, already built by `buildRedditSearchQuery`. */
+  q: string;
+  sort: SubredditSearchSort;
+  /**
+   * When false the search runs across all of Reddit rather than the
+   * subreddit(s) in the path (`restrict_sr` omitted, global /search endpoint).
+   */
+  restrictToSubreddit?: boolean;
+}
+
+/**
  * RedditPostPreview plus the comment count (Reddit API's `num_comments`
  * field, present on every post listing), used to show engagement in the
  * subreddit browse screen.
@@ -60,10 +81,17 @@ interface UseSubredditImportResult {
   reset: () => void;
 }
 
+/**
+ * Loads a subreddit listing, or — when `search` is given — the results of a
+ * Reddit search over the same subreddit(s). Both endpoints return identical
+ * `t3` listings and paginate the same way, so the two modes differ only in the
+ * URL that gets built.
+ */
 export function useSubredditImport(
   subredditName: string,
   sort: SubredditSort,
   timeRange?: SubredditTimeRange,
+  search?: SubredditSearchOptions,
 ): UseSubredditImportResult {
   const [posts, setPosts] = useState<SubredditPostPreview[]>([]);
   const [loading, setLoading] = useState(false);
@@ -84,9 +112,23 @@ export function useSubredditImport(
   // previous set of parameters are discarded instead of being appended.
   const requestIdRef = useRef(0);
 
+  // The search options are read as primitives so callers can pass a freshly
+  // built object every render without restarting the listing.
+  const searchQuery = search?.q ?? '';
+  const searchSort = search?.sort;
+  const searchRestrict = search?.restrictToSubreddit !== false;
+  const isSearch = !!searchQuery && !!searchSort;
+
   // Reddit only honours the `t` (time range) parameter on `top` listings, so
   // changing the time range under any other sort must not trigger a reload.
-  const effectiveTimeRange = sort === 'top' ? timeRange : undefined;
+  // Search is looser: `t` applies to `relevance` and `top` results.
+  const effectiveTimeRange = isSearch
+    ? SEARCH_SORTS_WITH_TIME_RANGE.includes(searchSort!)
+      ? timeRange
+      : undefined
+    : sort === 'top'
+      ? timeRange
+      : undefined;
 
   // In-memory cache for the OAuth token
   const tokenRef = useRef<string | null>(null);
@@ -222,7 +264,10 @@ export function useSubredditImport(
   }
 
   const loadMore = useCallback(async () => {
-    if (isLoadingRef.current || !hasMoreRef.current || !subredditName) {
+    // A global (all of Reddit) search has no subreddit in the path, so it is
+    // the one case where an empty subreddit name is still loadable.
+    const needsSubreddit = !isSearch || searchRestrict;
+    if (isLoadingRef.current || !hasMoreRef.current || (needsSubreddit && !subredditName)) {
       console.debug(
         `[useSubredditImport] loadMore skipped — isLoading=${isLoadingRef.current} hasMore=${hasMoreRef.current} subredditName="${subredditName}"`,
       );
@@ -239,7 +284,17 @@ export function useSubredditImport(
       }
       const token = await getToken();
       const ua = credsRef.current?.userAgent || '';
-      let url = `${API_BASE}/r/${subredditName}/${sort}?limit=25&raw_json=1`;
+      let url: string;
+      if (isSearch) {
+        // restrict_sr is what keeps a subreddit search from silently becoming
+        // a site-wide one; without it Reddit ignores the path entirely.
+        url = searchRestrict
+          ? `${API_BASE}/r/${subredditName}/search?q=${encodeURIComponent(searchQuery)}&restrict_sr=1`
+          : `${API_BASE}/search?q=${encodeURIComponent(searchQuery)}`;
+        url += `&type=link&sort=${searchSort}&limit=25&raw_json=1`;
+      } else {
+        url = `${API_BASE}/r/${subredditName}/${sort}?limit=25&raw_json=1`;
+      }
       if (effectiveTimeRange) {
         url += `&t=${effectiveTimeRange}`;
       }
@@ -262,7 +317,7 @@ export function useSubredditImport(
       }
       if (requestId !== requestIdRef.current) {
         console.debug(
-          `[useSubredditImport] discarding stale response for "${subredditName}" ${sort}/${effectiveTimeRange ?? '-'}`,
+          `[useSubredditImport] discarding stale response for "${subredditName}" ${isSearch ? `search "${searchQuery}"/${searchSort}` : sort}/${effectiveTimeRange ?? '-'}`,
         );
         return;
       }
@@ -318,7 +373,7 @@ export function useSubredditImport(
         isLoadingRef.current = false;
       }
     }
-  }, [subredditName, sort, effectiveTimeRange]);
+  }, [subredditName, sort, effectiveTimeRange, isSearch, searchQuery, searchSort, searchRestrict]);
 
   const reset = useCallback(() => {
     requestIdRef.current += 1;
@@ -338,7 +393,7 @@ export function useSubredditImport(
     reset();
     loadMore();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [subredditName, sort, effectiveTimeRange]);
+  }, [subredditName, sort, effectiveTimeRange, isSearch, searchQuery, searchSort, searchRestrict]);
 
   return {
     posts,

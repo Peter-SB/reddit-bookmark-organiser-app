@@ -125,6 +125,7 @@ function AppContent() {
           name="subreddit/[subreddit]"
           options={{ headerShown: false }}
         />
+        <Stack.Screen name="reddit-search" options={{ headerShown: false }} />
         <Stack.Screen name="+not-found" />
       </Stack>
       <StatusBar style={isDarkMode ? "light" : "dark"} />
